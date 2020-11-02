@@ -24551,13 +24551,11 @@ BOOLEAN ResolvePendingInterrupt( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType )
 	// if the interrupt called match the type we are trying to resolve..
 	if ( gTacticalStatus.ubInterruptPending == ubInterruptType || ubInterruptType == INSTANT_INTERRUPT )
 	{
-		/////////////////////////////
-		// Gather all interrupters //
-		/////////////////////////////
+		// Gather all interrupters
 		SOLDIERTYPE *pInterrupter;
 		UINT8 ubInterruptersFound = 0;
-		UINT8 ubaInterruptersList[64];
-		UINT16 uCnt = 0, uiReactionTime;
+		UINT8 ubaInterruptersList[MAX_NUM_SOLDIERS];
+		UINT16 uCnt = 0;
 		INT16 iInjuryPenalty;
 
 		for ( uCnt = 0; uCnt < MAX_NUM_SOLDIERS; uCnt++ )
@@ -24566,9 +24564,9 @@ BOOLEAN ResolvePendingInterrupt( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType )
 			pInterrupter = MercPtrs[uCnt];
 			if ( pInterrupter == NULL )
 				continue;			// not valid
-			if (pInterrupter->stats.bLife < OKLIFE || pInterrupter->bCollapsed || !pInterrupter->bActive || !pInterrupter->bInSector || pInterrupter->bActionPoints < 4)
+			if ( pInterrupter->stats.bLife < OKLIFE || pInterrupter->bCollapsed || !pInterrupter->bActive || !pInterrupter->bInSector || pInterrupter->bActionPoints < 1 )
 				continue;			// not active
-			if (pInterrupter->bBreath < OKBREATH && pInterrupter->bTeam != OUR_TEAM)
+			if ( pInterrupter->bBreath < OKBREATH && pInterrupter->bTeam != OUR_TEAM )
 				continue;			// BOB: prevent NPCs from getting interrupts when out of breath
 			if ( pSoldier->bTeam == pInterrupter->bTeam )
 				continue;			// same team
@@ -24579,84 +24577,39 @@ BOOLEAN ResolvePendingInterrupt( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType )
 			if ( CONSIDERED_NEUTRAL( pInterrupter, pSoldier ) )
 				continue;			// neutral
 
-			/////////////////////////////////////////////////////////////
-			// Calculate Reaction Time (i.e. interrupt counter length) //
-			/////////////////////////////////////////////////////////////
+			// Calculate Reaction Time (i.e. min required interrupt counter value)
+			FLOAT dReactionTime = 0.0;
 
-			// set base value ( interrupt per every X APs an enemy uses )
 			// if not seen but just heard... we interrupt only if they attack us (or if they are very close) in that case
 			if ( (pInterrupter->aiData.bOppList[pSoldier->ubID] == SEEN_CURRENTLY) || (pInterrupter->aiData.bOppList[pSoldier->ubID] == HEARD_THIS_TURN && (ubInterruptType == AFTERSHOT_INTERRUPT || ubInterruptType == AFTERACTION_INTERRUPT || PythSpacesAway( pInterrupter->sGridNo, pSoldier->sGridNo ) < 3)) )
 			{
-				uiReactionTime = gGameExternalOptions.ubBasicReactionTimeLengthIIS;
+				const int max_stats_points = 300;  // max DEX + max WIS + max lvl * 10
+				dReactionTime = gGameExternalOptions.dBestReactionTimeIIS * max_stats_points /
+					(EffectiveDexterity( pInterrupter, FALSE ) + EffectiveWisdom( pInterrupter ) + EffectiveExpLevel( pInterrupter ) * 10);
 			}
-			else
+			else  // not seen or not heard anything worth interrupting
 			{
-				// not seen or not heard anything worth interrupting
 				continue;
 			}
-			uiReactionTime = uiReactionTime * 10; // x10 ... we will divide by 10 after all adjustments done
-			// adjust based on Agility
-			if ( pInterrupter->stats.bAgility >= 80 )
-			{
-				uiReactionTime = (uiReactionTime * (100 - (2 * (pInterrupter->stats.bAgility - 80))) / 100);
-			}
-			else if ( pInterrupter->stats.bAgility < 80 && pInterrupter->stats.bAgility > 50 )
-			{
-				uiReactionTime = (uiReactionTime * (100 + (2 * (80 - pInterrupter->stats.bAgility))) / 100);
-			}
-			else
-			{
-				uiReactionTime = (uiReactionTime * 8 / 5);
-			}
-			// adjust based on APs left
-			// at full possible APs no adjustement (100% applies), +1% length per every 2% of APs down from full
-			uiReactionTime = (uiReactionTime * (100 + (50 - (50 * pInterrupter->bActionPoints / pInterrupter->CalcActionPoints( )))) / 100);
-			// adjust based on injuries
-			if ( pInterrupter->stats.bLife < pInterrupter->stats.bLifeMax )
-			{
-				// OK, this looks a bit complicated..
-				// our HP lost minus half of the bandaged part gives us 2% longer reaction time per 1% of our health down from full health
-				// this penalty is however slightly reduced by our experience level
-				iInjuryPenalty = (200 * (pInterrupter->stats.bLifeMax - pInterrupter->stats.bLife + ((pInterrupter->stats.bLifeMax - pInterrupter->stats.bLife - pInterrupter->bBleeding) / 2))) / (pInterrupter->stats.bLifeMax);
-				uiReactionTime = (uiReactionTime * (100 + iInjuryPenalty * (100 - (3 * EffectiveExpLevel( pInterrupter ))) / 100) / 100);
-			}
 
-			// adjust by breath down
-			if ( pSoldier->bBreath < 100 )
-			{
-				// +1% per 2 points of breath down
-				uiReactionTime = (uiReactionTime * (100 + ((100 - pSoldier->bBreath) / 2)) / 100);
-			}
-
-			// adjust for getting aid, being in gas or being in shock
+			// apply penalties for getting aid, being in gas or being in shock
+			FLOAT dPenaltyPercent = 0.0;
 			if ( pInterrupter->flags.uiStatusFlags & SOLDIER_GASSED )
-				uiReactionTime = (uiReactionTime * (100 + AIM_PENALTY_GASSED) / 100);
+				dPenaltyPercent += gGameExternalOptions.ubReactionTimePenaltyGasIIS;
 
 			if ( pInterrupter->ubServiceCount > 0 )
-				uiReactionTime = (uiReactionTime * (100 + AIM_PENALTY_GETTINGAID) / 100);
+				dPenaltyPercent += gGameExternalOptions.ubReactionTimePenaltyAidIIS;
 
 			if ( pInterrupter->aiData.bShock )
-				uiReactionTime = (uiReactionTime * (100 + (pInterrupter->aiData.bShock * 20)) / 100); // this is severe, 20% per point
+				dPenaltyPercent += pInterrupter->aiData.bShock * gGameExternalOptions.dReactionTimePenaltyShockIIS;
 
-			// Phlegmatic characters has slightly longer reaction time			
-			if ( DoesMercHavePersonality( pSoldier, CHAR_TRAIT_PHLEGMATIC ) )
-			{
-				uiReactionTime = ((uiReactionTime * 110) / 100);
-			}
+			dReactionTime = dReactionTime * (100 + dPenaltyPercent) / 100;
 
-			// finally divide back by 10 to get the needed result (round properly)
-			uiReactionTime = ((uiReactionTime + 5) / 10);
-
-			/////////////////////////////////////////////
-			// Check if we reached reaction time value //
-			/////////////////////////////////////////////
-
-			// if we have hit the needed amount, the actual interrupt occurs for the observer
+			// if the victims' IC exceeds reaction time, the actual interrupt occurs for the observer
+			UINT8 uiReactionTime = (UINT8)roundf( dReactionTime );
 			if ( pInterrupter->aiData.ubInterruptCounter[pSoldier->ubID] >= uiReactionTime )
 			{
-				///////////////////////////
-				// Success! Add to list! //
-				///////////////////////////
+				// Success! Add to list!
 
 				// the soldier to be interrupted is added to the list (once only)
 				if ( ubInterruptersFound == 0 )
@@ -24672,17 +24625,15 @@ BOOLEAN ResolvePendingInterrupt( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType )
 				pInterrupter->aiData.ubInterruptCounter[pSoldier->ubID] = 0;
 			}
 		}
+
 		if ( ubInterruptersFound > 0 )
 		{
-			////////////////////////////////////////////////
-			// Check for possible "Collective Interrupts" //
-			////////////////////////////////////////////////
+			// Check for possible "Collective Interrupts"
 			if ( gGameExternalOptions.fAllowCollectiveInterrupts )
 			{
 				SOLDIERTYPE *pTeammate;
 				UINT16 uCnt2 = 0, usColIntChance = 0;
 				UINT8 ubOriginalInterruptersCount = ubInterruptersFound, uCnt3 = 0;
-				BOOLEAN fAlreadyIn;
 
 				for ( uCnt = 0; uCnt < ubOriginalInterruptersCount; uCnt++ )
 				{
@@ -24695,11 +24646,11 @@ BOOLEAN ResolvePendingInterrupt( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType )
 							continue;			// not valid
 						if ( pTeammate->bTeam != pInterrupter->bTeam )
 							continue;			// little paranoya check here
-						if ( pTeammate->stats.bLife < OKLIFE || pTeammate->bCollapsed || !pTeammate->bActive || !pTeammate->bInSector || pTeammate->bActionPoints < 4 )
+						if ( pTeammate->stats.bLife < OKLIFE || pTeammate->bCollapsed || !pTeammate->bActive || !pTeammate->bInSector || pTeammate->bActionPoints < 1 )
 							continue;			// not active
 
 						// check if we haven't been added to the list already
-						fAlreadyIn = FALSE;
+						BOOLEAN fAlreadyIn = FALSE;
 						for ( uCnt3 = 0; uCnt3 < ubInterruptersFound; uCnt3++ )
 						{
 							if ( pTeammate->ubID == ubaInterruptersList[uCnt3] )
@@ -24763,7 +24714,6 @@ BOOLEAN ResolvePendingInterrupt( SOLDIERTYPE * pSoldier, UINT8 ubInterruptType )
 		}
 		else // no interrupters found, reset until next occasion
 		{
-			// reset 
 			gTacticalStatus.ubInterruptPending = DISABLED_INTERRUPT;
 		}
 	}

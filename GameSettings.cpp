@@ -1479,10 +1479,13 @@ void LoadGameExternalOptions()
 	
 	// improved Interrupt System (info: multiplayer game ALWAYS use the old interrupt system, because the new one causes crashes, no problem so far)
 	gGameExternalOptions.fImprovedInterruptSystem			= iniReader.ReadBoolean("Tactical Gameplay Settings", "IMPROVED_INTERRUPT_SYSTEM", TRUE);
-	gGameExternalOptions.ubBasicPercentRegisterValueIIS		= iniReader.ReadInteger("Tactical Gameplay Settings", "BASIC_PERCENTAGE_APS_REGISTERED", 60, 0, 250);
-	gGameExternalOptions.ubPercentRegisterValuePerLevelIIS	= iniReader.ReadInteger("Tactical Gameplay Settings", "PERCENTAGE_APS_REGISTERED_PER_EXP_LEVEL", 4, 0, 100);
-	gGameExternalOptions.ubBasicReactionTimeLengthIIS		= iniReader.ReadInteger("Tactical Gameplay Settings", "BASIC_REACTION_TIME_LENGTH", 25, 5, 100);
-	gGameExternalOptions.fAllowCollectiveInterrupts			= iniReader.ReadBoolean("Tactical Gameplay Settings", "ALLOW_COLLECTIVE_INTERRUPTS", TRUE);
+	gGameExternalOptions.dBestReactionTimeIIS = iniReader.ReadDouble( "Tactical Gameplay Settings", "BEST_REACTION_TIME", 7.0, 0.0, 100.0 );
+	gGameExternalOptions.dBestCautionCoefficientIIS = iniReader.ReadDouble( "Tactical Gameplay Settings", "BEST_CAUTION_COEFFICIENT", 0.5, 0.0, 1.0 );
+	gGameExternalOptions.ubRegisterPointsPercentVehiclesIIS = iniReader.ReadInteger( "Tactical Gameplay Settings", "IC_PERCENT_SEEN_BY_ARMORED_VEHICLE", 25, 0, 200 );
+	gGameExternalOptions.ubReactionTimePenaltyAidIIS = iniReader.ReadInteger( "Tactical Gameplay Settings", "REACTION_TIME_PENALTY_AID", 15, 0, 200 );
+	gGameExternalOptions.ubReactionTimePenaltyGasIIS = iniReader.ReadInteger( "Tactical Gameplay Settings", "REACTION_TIME_PENALTY_GAS", 30, 0, 200 );
+	gGameExternalOptions.dReactionTimePenaltyShockIIS = iniReader.ReadDouble( "Tactical Gameplay Settings", "REACTION_TIME_PENALTY_SHOCK", 0.5, 0.0, 100.0 );
+	gGameExternalOptions.fAllowCollectiveInterrupts = iniReader.ReadBoolean( "Tactical Gameplay Settings", "ALLOW_COLLECTIVE_INTERRUPTS", TRUE );
 	gGameExternalOptions.fAllowInstantInterruptsOnSight		= iniReader.ReadBoolean("Tactical Gameplay Settings", "ALLOW_INSTANT_INTERRUPTS_ON_SPOTTING", FALSE);
 
 	gGameExternalOptions.fNoEnemyAutoReadyWeapon			= iniReader.ReadInteger("Tactical Gameplay Settings", "NO_ENEMY_AUTOMATIC_WEAPON_READYING", 1, 0, 2);
@@ -2435,7 +2438,7 @@ void LoadSkillTraitsExternalSettings()
 	gSkillTraitValues.ubMAAPsChangeStanceReduction = iniReader.ReadInteger("Martial Arts","APS_CHANGE_STANCE_REDUCTION", 25, 0, 100);
 	gSkillTraitValues.ubMAApsTurnAroundReduction = iniReader.ReadInteger("Martial Arts","APS_TURN_AROUND_REDUCTION", 25, 0, 100);
 	gSkillTraitValues.ubMAAPsClimbOrJumpReduction = iniReader.ReadInteger("Martial Arts","APS_CLIMB_OR_JUMP_REDUCTION", 25, 0, 100);
-	gSkillTraitValues.ubMAReducedAPsRegisteredWhenMoving = iniReader.ReadInteger("Martial Arts","REDUCED_CHANCE_TO_BE_INTERRUPTED_WHEN_CHARGING_IN", 40, 0, 100);
+	gSkillTraitValues.ubMAReducedAPsRegisteredWhenMoving = iniReader.ReadInteger( "Martial Arts", "IC_WHEN_CHARGING_IN_PERCENT_REDUCTION", 15, 0, 100 );
 	gSkillTraitValues.ubMAChanceToCkickDoors = iniReader.ReadInteger("Martial Arts","CHANCE_KICK_DOORS_BONUS", 25, 0, 250);
 	gSkillTraitValues.fPermitExtraAnimationsOnlyToMA = iniReader.ReadBoolean("Martial Arts","PERMIT_EXTRA_ANIMATIONS_TO_EXPERT_MARTIAL_ARTS_ONLY", TRUE);
 

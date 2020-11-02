@@ -353,9 +353,12 @@ typedef struct
 	BOOLEAN fEnhancedCloseCombatSystem;
 
 	BOOLEAN fImprovedInterruptSystem;
-	UINT8 ubBasicPercentRegisterValueIIS;
-	UINT8 ubPercentRegisterValuePerLevelIIS;
-	UINT8 ubBasicReactionTimeLengthIIS;
+	FLOAT dBestReactionTimeIIS;
+	FLOAT dBestCautionCoefficientIIS;
+	UINT8 ubRegisterPointsPercentVehiclesIIS;
+	UINT8 ubReactionTimePenaltyAidIIS;
+	UINT8 ubReactionTimePenaltyGasIIS;
+	FLOAT dReactionTimePenaltyShockIIS;
 	BOOLEAN fAllowCollectiveInterrupts;
 	BOOLEAN fAllowInstantInterruptsOnSight;
 

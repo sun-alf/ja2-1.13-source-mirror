@@ -4637,7 +4637,7 @@ UINT32 guiBrokenSaveGameVersion = 0;
 extern int gEnemyPreservedTempFileVersion[256];
 extern int gCivPreservedTempFileVersion[256];
 
-#define LOADSAVEGAME_LOGTIME 1
+//#define LOADSAVEGAME_LOGTIME 1
 
 #include "time.h"
 

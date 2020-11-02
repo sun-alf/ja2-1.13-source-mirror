@@ -1126,9 +1126,8 @@ void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT32 iBPCost, UINT8 ub
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// SANDRO - Interrupt counter
-	if( UsingImprovedInterruptSystem() && sAPCost > 0 && ubInterruptType != DISABLED_INTERRUPT )
+	if ( UsingImprovedInterruptSystem() && sAPCost > 0 && ubInterruptType != DISABLED_INTERRUPT )
 	{
-		UINT8 ubPointsRegistered = 0;
 		UINT16 uCnt = 0;
 		SOLDIERTYPE *pOpponent;
 		BOOLEAN fFoundInterrupter = FALSE;
@@ -1136,8 +1135,8 @@ void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT32 iBPCost, UINT8 ub
 		for ( uCnt = 0; uCnt < MAX_NUM_SOLDIERS; uCnt++ )
 		{
 			// first find all guys who watch us
-			pOpponent = MercPtrs[ uCnt ];
-			if ( pOpponent == NULL)
+			pOpponent = MercPtrs[uCnt];
+			if ( pOpponent == NULL )
 				continue;			// not here or not even breathing -> next!
 			if ( pOpponent->stats.bLife < OKLIFE || pOpponent->bCollapsed || !pOpponent->bActive )
 				continue;			// not here or not even breathing -> next!
@@ -1148,89 +1147,82 @@ void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT32 iBPCost, UINT8 ub
 			if ( CONSIDERED_NEUTRAL( pSoldier, pOpponent ) )
 				continue;			// neutral
 
+			// Once again, in order to not to mess everything up:
+			//     pSoldier is Victim (whose APs are being deducted and who is being interrupted)
+			//     pOpponent is Camper (who sees/hears the Victim and is about to interrupt it)
 			// if we see or hear him
 			// dunno if this is the best solution yet, probably yes
 			if ( pOpponent->aiData.bOppList[pSoldier->ubID] == SEEN_CURRENTLY ||
-				 pOpponent->aiData.bOppList[pSoldier->ubID] == HEARD_THIS_TURN)
-			//if (SoldierToSoldierLineOfSightTest( pOpponent, pSoldier, TRUE, CALC_FROM_WANTED_DIR ) != 0)
+				pOpponent->aiData.bOppList[pSoldier->ubID] == HEARD_THIS_TURN )
 			{
 				// calculate how much points do we "register" (let's try to avoid chance-based calc to not inspire save-load mania)
 				// Experience says how well is the observer able to notice and percieve the environment around him, i.e. gives us the actual chance per AP
+				FLOAT caution_coef = 0.0;
 				if ( pOpponent->aiData.bOppList[pSoldier->ubID] == HEARD_THIS_TURN )
 				{
-					// if we only heard him, keep it lower
-					ubPointsRegistered = (gGameExternalOptions.ubBasicPercentRegisterValueIIS - 20) 
-										+ (gGameExternalOptions.ubPercentRegisterValuePerLevelIIS * EffectiveExpLevel( pOpponent )); // base 40% + 4% per level
+					const int max_stats_points = 200;  // for heard only case: max WIS + max lvl * 10
+					caution_coef = gGameExternalOptions.dBestCautionCoefficientIIS * max_stats_points /
+						(EffectiveWisdom( pSoldier ) + EffectiveExpLevel( pSoldier ) * 10);
 				}
 				else
 				{
-					ubPointsRegistered = gGameExternalOptions.ubBasicPercentRegisterValueIIS 
-										+ (gGameExternalOptions.ubPercentRegisterValuePerLevelIIS * EffectiveExpLevel( pOpponent )); // base 60% + 4% per level
+					const int max_stats_points = 300;  // for seen case: max WIS + max DEX + max lvl * 10
+					caution_coef = gGameExternalOptions.dBestCautionCoefficientIIS * max_stats_points /
+						(EffectiveWisdom( pSoldier ) + EffectiveDexterity( pSoldier, FALSE ) + EffectiveExpLevel( pSoldier ) * 10);
 				}
-				// adjust by range to target
-				//INT32 iRange = GetRangeInCellCoordsFromGridNoDiff( pOpponent->sGridNo, pSoldier->sGridNo );		// calculate actual range
-				//INT16 iDistVisible = (pOpponent->GetMaxDistanceVisible(pOpponent->sGridNo, pOpponent->bTargetLevel, CALC_FROM_ALL_DIRS ) * CELL_X_SIZE); // how far do we see
-				INT16 iDistVisible = pOpponent->GetMaxDistanceVisible(pOpponent->sGridNo, pOpponent->bTargetLevel, CALC_FROM_ALL_DIRS ) * CELL_X_SIZE; // -1% registered by 4% of the difference of how far we can see and how far is the target	
-				iDistVisible = max(iDistVisible, CELL_X_SIZE);
-				ubPointsRegistered -= min( 25, ( 25 * GetRangeInCellCoordsFromGridNoDiff( pOpponent->sGridNo, pSoldier->sGridNo ) / iDistVisible ));
-				
+
+				if ( caution_coef > 1.0 )  // caution coefficient is a bonus, and it cannot turn into a penalty (if it is > 1.0)
+					caution_coef = 1.0;
+				FLOAT dPointsRegistered = (FLOAT)sAPCost * ((FLOAT)pOpponent->CalcActionPoints() / pSoldier->CalcActionPoints()) * caution_coef;
+
 				if ( gGameOptions.fNewTraitSystem )
 				{
-					// without Night Ops, we get small penalty for interrupting a target in dark
-					if ( !(HAS_SKILL_TRAIT( pOpponent, NIGHT_OPS_NT )) && pOpponent->aiData.bOppList[pSoldier->ubID] == SEEN_CURRENTLY)
-					{
-						INT8 bLightLevel = LightTrueLevel(pSoldier->sGridNo, pSoldier->pathing.bLevel);
-						if ( bLightLevel > 6) // 7+ lightlevel is darkness
-						{
-							ubPointsRegistered -= bLightLevel;	// -7 to -12%
-						}
-					}
-
+					FLOAT dReductionPercent = 0.0;
 					// Martial Arts trait reduces the points registered when moving
-					if ( HAS_SKILL_TRAIT( pSoldier, MARTIAL_ARTS_NT ) && (ubInterruptType == SP_MOVEMENT_INTERRUPT || ubInterruptType == MOVEMENT_INTERRUPT ) &&
-						Item[pSoldier->inv[HANDPOS].usItem].usItemClass & (IC_PUNCH|IC_BLADE|IC_NONE)) // only get this if we have no weapon or blade in hands
+					if ( HAS_SKILL_TRAIT( pSoldier, MARTIAL_ARTS_NT ) && (ubInterruptType == SP_MOVEMENT_INTERRUPT || ubInterruptType == MOVEMENT_INTERRUPT) &&
+						Item[pSoldier->inv[HANDPOS].usItem].usItemClass & (IC_PUNCH | IC_BLADE | IC_NONE) ) // only get this if we have no weapon or blade in hands
 					{
 						// check how far we are, we only get this bonus at certain range
-						INT16 sTileDistance = PythSpacesAway(pSoldier->sGridNo, pOpponent->sGridNo);
-						if ( (sTileDistance <= 9) && (pOpponent->bTargetLevel == pSoldier->bTargetLevel)) // we must be on the same ground level as well
+						INT16 sTileDistance = PythSpacesAway( pSoldier->sGridNo, pOpponent->sGridNo );
+						if ( (sTileDistance <= 9) && (pOpponent->bTargetLevel == pSoldier->bTargetLevel) ) // we must be on the same ground level as well
 						{
-							UINT8 ubBonus = gSkillTraitValues.ubMAReducedAPsRegisteredWhenMoving * NUM_SKILL_TRAITS( pSoldier, MARTIAL_ARTS_NT );
-							if (sTileDistance > 6) // make it gradually effective based on distance 
+							FLOAT ubBonus = gSkillTraitValues.ubMAReducedAPsRegisteredWhenMoving * NUM_SKILL_TRAITS( pSoldier, MARTIAL_ARTS_NT );
+							if ( sTileDistance > 6 ) // make it gradually effective based on distance 
 								ubBonus = ubBonus * (10 - sTileDistance) / 4; // at 9th tile it is only 25% of the trait bonus, from 7th tile it is 100%
 
 							// check direction, we get full bonus if running towards the victim, but others around watching the scene have somehow better chance to interfere
 							if ( pSoldier->ubDirection != GetDirectionToGridNoFromGridNo( pSoldier->sGridNo, pOpponent->sGridNo ) )
-							{	
-								ubBonus = ubBonus *2/3; // two thirds only sound reasonable
+							{
+								ubBonus = ubBonus * 2 / 3; // two thirds only sound reasonable
 							}
-							ubPointsRegistered -= ubBonus;	
-						}					
+							dReductionPercent += ubBonus;
+						}
 					}
-					// Stealhty trait reduced the points registered on all actions
+					// Stealthy trait reduces the points registered on all actions
 					if ( HAS_SKILL_TRAIT( pSoldier, STEALTHY_NT ) )
 					{
-						ubPointsRegistered -= gSkillTraitValues.ubSTReducedAPsRegistered;							
+						dReductionPercent += gSkillTraitValues.ubSTReducedAPsRegistered;
 					}
+
+					dPointsRegistered *= (100.0 - dReductionPercent) / 100;  // reduce interrupt points by gathered percents
 				}
 
-				// ALRIGHT! Get final value
-				if (pOpponent->aiData.bOppList[pSoldier->ubID] == SEEN_CURRENTLY )
-					ubPointsRegistered = max( 20, min( 100, ubPointsRegistered ) ); // 20% is minimum on seeing
-				else
-					ubPointsRegistered = max( 10, min( 100, ubPointsRegistered ) ); // 10% is minimum on hearing
-				ubPointsRegistered = min( 100, ubPointsRegistered ); // 100% is maximum ofc
-				ubPointsRegistered = (UINT8)(sAPCost * ubPointsRegistered / 100.0f + 0.5f); // now calc how many APs we will award
+				if ( ARMED_VEHICLE( pOpponent ) )  // if the Camper is actually a tank/jeep, it may react more slowly (depending
+				{                                  // on modders' decision); apply percents to register
+					dPointsRegistered *= (FLOAT)gGameExternalOptions.ubRegisterPointsPercentVehiclesIIS / 100.0;
+				}
 
 				// increase the counter
+				UINT8 ubPointsRegistered = (UINT8)roundf( dPointsRegistered );
 				if ( ubPointsRegistered )
 				{
 					pOpponent->aiData.ubInterruptCounter[pSoldier->ubID] += ubPointsRegistered;
 					fFoundInterrupter = TRUE;
 				}
-			}	
+			}
 		}
 		// if interrupted, freeze our guy and trigger interrupt situation
-		if (fFoundInterrupter)
+		if ( fFoundInterrupter )
 		{
 			// if we've got the special movement flag type here, pass it to after-action type
 			// it's only meant for martial arts bonuses
