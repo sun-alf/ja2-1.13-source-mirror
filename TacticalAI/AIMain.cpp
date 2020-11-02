@@ -782,34 +782,40 @@ void HandleSoldierAI( SOLDIERTYPE *pSoldier ) // FIXME - this function is named 
 			}
 
 			//*** TRICK- TAKE INTO ACCOUNT PAUSED FOR NO TIME ( FOR NOW )
-			if (pSoldier->flags.fNoAPToFinishMove )
+			// sevenfm: check if we still have where to go and what to do
+			if (pSoldier->aiData.bAction != AI_ACTION_NONE &&
+				pSoldier->aiData.bNewSituation != IS_NEW_SITUATION &&
+				!TileIsOutOfBounds(pSoldier->aiData.usActionData) &&
+				NewOKDestination(pSoldier, pSoldier->aiData.usActionData, TRUE, pSoldier->pathing.bLevel))
 			{
-				SoldierTriesToContinueAlongPath(pSoldier);
-			}
-			// ATE: Let's also test if we are in any stationary animation...
-			else if ( ( gAnimControl[ pSoldier->usAnimState ].uiFlags & ANIM_STATIONARY ) )
-			{
-				// ATE: Put some ( MORE ) refinements on here....
-				// If we are trying to open door, or jump fence  don't continue until done...
-				if ( !pSoldier->flags.fContinueMoveAfterStanceChange && !pSoldier->bEndDoorOpenCode )
+				if (pSoldier->flags.fNoAPToFinishMove)
 				{
-					//ATE: just a few more.....
-					// If we have ANY pending aninmation that is movement.....
-					if ( pSoldier->usPendingAnimation != NO_PENDING_ANIMATION && ( gAnimControl[ pSoldier->usPendingAnimation ].uiFlags & ANIM_MOVING ) )
+					SoldierTriesToContinueAlongPath(pSoldier);
+				}
+				// ATE: Let's also test if we are in any stationary animation...
+				else if ((gAnimControl[pSoldier->usAnimState].uiFlags & ANIM_STATIONARY))
+				{
+					// ATE: Put some ( MORE ) refinements on here....
+					// If we are trying to open door, or jump fence  don't continue until done...
+					if (!pSoldier->flags.fContinueMoveAfterStanceChange && !pSoldier->bEndDoorOpenCode)
 					{
-						// Don't do anything, we're waiting on a pending animation....
-					}
-					else
-					{
-						// OK, we have a move to finish...
+						//ATE: just a few more.....
+						// If we have ANY pending aninmation that is movement.....
+						if (pSoldier->usPendingAnimation != NO_PENDING_ANIMATION && (gAnimControl[pSoldier->usPendingAnimation].uiFlags & ANIM_MOVING))
+						{
+							// Don't do anything, we're waiting on a pending animation....
+						}
+						else
+						{
+							// OK, we have a move to finish...
 #ifdef TESTAI
-						DebugMsg( TOPIC_JA2AI, DBG_LEVEL_0, String("GONNA TRY TO CONTINUE PATH FOR %d", pSoldier->ubID ) );
+							DebugMsg( TOPIC_JA2AI, DBG_LEVEL_0, String("GONNA TRY TO CONTINUE PATH FOR %d", pSoldier->ubID ) );
 #endif
-
-						SoldierTriesToContinueAlongPath(pSoldier);
+							SoldierTriesToContinueAlongPath(pSoldier);
+						}
 					}
 				}
-			}
+			}			
 		}
 		else if (pSoldier->aiData.bAction == AI_ACTION_CLIMB_ROOF && !pSoldier->aiData.bActionInProgress)
 		{
@@ -1462,6 +1468,12 @@ void CancelAIAction(SOLDIERTYPE *pSoldier, UINT8 ubForce)
 	pSoldier->aiData.bBypassToGreen = FALSE;
 
 	ActionDone(pSoldier);
+
+	// sevenfm: reset next action
+	pSoldier->aiData.bNextAction = AI_ACTION_NONE;
+	pSoldier->aiData.usNextActionData = 0;
+	pSoldier->aiData.bNextTargetLevel = 0;
+	pSoldier->iNextActionSpecialData = 0;
 }
 
 
@@ -1653,6 +1665,12 @@ void TurnBasedHandleNPCAI(SOLDIERTYPE *pSoldier)
 		}
 		else
 		{
+			// sevenfm: clear next action data before making decisions
+			pSoldier->aiData.bNextAction = AI_ACTION_NONE;
+			pSoldier->aiData.usNextActionData = 0;
+			pSoldier->aiData.bNextTargetLevel = 0;
+			pSoldier->iNextActionSpecialData = 0;
+
 			if (!(gTacticalStatus.uiFlags & ENGAGED_IN_CONV))
 			{
 				if(!pSoldier->ai_masterplan_) // if the Soldier has no plan, create one
@@ -1787,6 +1805,14 @@ void AIDecideRadioAnimation( SOLDIERTYPE *pSoldier )
 
 	// sevenfm: no radio animation in water
 	if (Water(pSoldier->sGridNo, pSoldier->pathing.bLevel))
+	{
+		// don't play animation
+		ActionDone(pSoldier);
+		return;
+	}
+
+	// sevenfm: only allow radio animation on initial red alert
+	if (gTacticalStatus.Team[pSoldier->bTeam].bAwareOfOpposition || SectorJammed())
 	{
 		// don't play animation
 		ActionDone(pSoldier);
@@ -2555,7 +2581,8 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
             if(bSlot != NO_SLOT)
             {
                 ReloadGun( pSoldier, &(pSoldier->inv[pSoldier->aiData.usActionData]), &(pSoldier->inv[bSlot]) );
-				PossiblyStartEnemyTaunt( pSoldier, TAUNT_RELOAD );
+				if (Chance(gGameExternalOptions.iChanceSayAnnoyingPhrase) || GetMagSize(&(pSoldier->inv[pSoldier->aiData.usActionData])) > 4)
+					PossiblyStartEnemyTaunt( pSoldier, TAUNT_RELOAD );
                 ActionDone( pSoldier );
             }
             break;

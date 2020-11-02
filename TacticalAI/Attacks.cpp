@@ -33,6 +33,7 @@
 #include "Structure Wrap.h"		// IsRoofPresentAtGridNo
 #include "Render Fun.h"
 #include "worldman.h"
+#include "WCheck.h"
 #endif
 
 // anv: for enemy taunts
@@ -858,7 +859,7 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 	UINT8	ubFriendCnt = 0,ubOpponentCnt = 0, ubOpponentID[MAXMERCS];
 	UINT8	ubMaxPossibleAimTime;
 	INT16	sRawAPCost, sMinAPcost;
-	UINT8	ubChanceToHit,ubChanceToGetThrough,ubChanceToReallyHit;
+	UINT8	ubChanceToHit, ubChanceToGetThrough, ubChanceToReallyHit, ubFriendlyFireChance;
 	UINT32	uiPenalty;
 	UINT8	ubSearchRange;
 	UINT16	usOppDist;
@@ -1335,6 +1336,12 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 		fSpare = FALSE;
 	}
 
+	// militia always try to spare grenades unless under attack or using flares
+	if (pSoldier->bTeam == MILITIA_TEAM && !pSoldier->aiData.bUnderFire && !Item[usGrenade].flare)
+	{
+		fSpare = TRUE;
+	}
+
 	// need 3 opponents for 0 difficulty, 1 opponent for max difficulty
 	if (fSpare && ubOpponentCnt < 3 - ubDiff / 2)
 	{
@@ -1396,7 +1403,7 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 				if ( PythSpacesAway( pSoldier->sGridNo, sGridNo ) > iTossRange )
 				{
 					// can't throw there!
-					return;
+					continue;
 				}
 
 				// if considering a gas/smoke grenade, check to see if there is such stuff already there!
@@ -1521,7 +1528,12 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 
 				if ( EXPLOSIVE_GUN( usInHand ) )
 				{
+					gUnderFire.Clear();
+					gUnderFire.Enable();
 					ubChanceToGetThrough = AISoldierToLocationChanceToGetThrough( pSoldier, sGridNo, bOpponentLevel[ubLoop], 0 );
+					ubFriendlyFireChance = gUnderFire.Chance(pSoldier->bTeam, pSoldier->bSide, TRUE);
+					gUnderFire.Disable();
+
 					// anv: tanks shouldn't care about chance to get through - can't hit? At least we'll destroy their cover.
 					// also AISoldierToLocationChanceToGetThrough used to return 0 for tanks, but that's a different story
 					if ( (gGameExternalOptions.fEnemyTanksBlowObstaclesUp && ARMED_VEHICLE( pSoldier )) || gGameExternalOptions.fEnemiesBlowObstaclesUp )
@@ -1532,11 +1544,18 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 					{
 						continue; // next gridno
 					}
+					// sevenfm: use rocket launchers more carefully
+					if (!ARMED_VEHICLE(pSoldier) && ubFriendlyFireChance > MIN_CHANCE_TO_ACCIDENTALLY_HIT_SOMEONE)
+					{
+						continue;
+					}
 				}
 				else
 				{
 					DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"calcbestthrow: checking chance for launcher to beat cover");
 					ubChanceToGetThrough = 100 * CalculateLaunchItemChanceToGetThrough( pSoldier, (pObjGL ? pObjGL : &pSoldier->inv[bPayloadPocket]), sGridNo, bOpponentLevel[ubLoop], 0, &sEndGridNo, TRUE, &bEndLevel, FALSE );//dnl ch63 240813
+					ubFriendlyFireChance = 0;
+
 					//NumMessage("Chance to get through = ",ubChanceToGetThrough);
 					// if we can't possibly get through all the cover
 					if (ubChanceToGetThrough == 0 )
@@ -1589,7 +1608,7 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 				if (Item[usInHand].rocketlauncher &&
 					ubOppsInRange < 2 &&
 					!ARMED_VEHICLE(MercPtrs[ubOpponentID[ubLoop]]) &&
-					!InARoom(sOpponentTile[ubLoop], NULL))
+					(!InARoom(sOpponentTile[ubLoop], NULL) || pSoldier->bTeam != ENEMY_TEAM))
 				{
 					continue;				// next gridno
 				}
@@ -1664,10 +1683,10 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 					pBestThrow->bTargetLevel		= bOpponentLevel[ubLoop];
 					// set current stance
 					pBestThrow->ubStance			= gAnimControl[pSoldier->usAnimState].ubEndHeight;
+					pBestThrow->ubFriendlyFireChance = ubFriendlyFireChance;
 
 					// bWeaponIn
 					// bScopeMode
-					// ubFriendlyFireChance
 				}
 			}
 		}
@@ -1680,10 +1699,14 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 	{
 		ubMinChanceToReallyHit = 30;
 	}
+	else if (EXPLOSIVE_GUN(usInHand) && !ARMED_VEHICLE(pSoldier) && (pBestThrow->ubOpponent == NOBODY || !ARMED_VEHICLE(MercPtrs[pBestThrow->ubOpponent])))
+	{
+		ubMinChanceToReallyHit = 80;
+	}
 	else
 	{
 		// 80-40% depending on soldier difficulty
-		ubMinChanceToReallyHit = 80 - 10 * ubDiff;
+		ubMinChanceToReallyHit = 40 + 10 * ubDiff;
 	}
 
 	if( pBestThrow->ubChanceToReallyHit < ubMinChanceToReallyHit )
@@ -1710,6 +1733,7 @@ void CalcBestStab(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestStab, BOOLEAN fBladeAt
 	//InitAttackType(pBestStab);		// set all structure fields to defaults//dnl ch69 150913
 
 	pSoldier->usAttackingWeapon = pSoldier->inv[HANDPOS].usItem;
+	pSoldier->bWeaponMode = WM_NORMAL;
 
 	// sevenfm: initialize
 	pBestStab->ubPossible = FALSE;
@@ -1871,7 +1895,6 @@ void CalcBestStab(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestStab, BOOLEAN fBladeAt
 		// calculate this opponent's threat value
 		// NOTE: ignore my cover!	By the time I run beside him I won't have any!
 		iThreatValue = CalcManThreatValue(pOpponent,pSoldier->sGridNo,FALSE,pSoldier);
-
 
 		// estimate the damage this stab would do to this opponent
 		iEstDamage = EstimateStabDamage(pSoldier,pOpponent,ubBestChanceToHit, fBladeAttack );
@@ -2399,155 +2422,167 @@ INT32 EstimateThrowDamage( SOLDIERTYPE *pSoldier, UINT8 ubItemPos, SOLDIERTYPE *
 	return( iDamage);
 }
 
-INT32 EstimateStabDamage( SOLDIERTYPE *pSoldier, SOLDIERTYPE *pOpponent,
-						INT16 ubChanceToHit, BOOLEAN fBladeAttack )
+INT32 EstimateStabDamage( SOLDIERTYPE *pSoldier, SOLDIERTYPE *pOpponent, INT16 ubChanceToHit, BOOLEAN fBladeAttack )
 {
-	INT32 iImpact, iFluke, iBonus;
+	INT32 iImpact, iBonus;
+	UINT16 usItem;
 
-	UINT16	usItem;
+	CHECKF(pSoldier);
+	CHECKF(pOpponent);
 
 	usItem = pSoldier->inv[HANDPOS].usItem;
 
 	if (fBladeAttack)
 	{
-		iImpact = GetDamage(&pSoldier->inv[HANDPOS]);
-		iImpact += EffectiveStrength( pSoldier, FALSE ) / 20; // 0 to 5 for strength, adjusted by damage taken
+		iImpact = GetDamage(&(pSoldier->inv[HANDPOS]));
+		iImpact += EffectiveStrength(pSoldier, FALSE) / 20; // 0 to 5 for strength, adjusted by damage taken
+
+		if (AM_A_ROBOT(pOpponent))
+		{
+			iImpact /= 4;
+		}
 	}
 	else
 	{
-		// this all was a little changed for enhanced close combat system - SANDRO
-		if ( gGameExternalOptions.fEnhancedCloseCombatSystem )
-		{
-			iImpact = EffectiveStrength( pSoldier, FALSE ) / 5; // 0 to 20 for strength, adjusted by damage taken
+		iImpact = EffectiveStrength(pSoldier, FALSE) / 5; // 0 to 20 for strength, adjusted by damage taken
 
-			if ( pSoldier->usAttackingWeapon )
+		// NB martial artists don't get a bonus for using brass knuckles! - oh, they do in STOMP - SANDRO
+		if (pSoldier->usAttackingWeapon)
+		{
+			if (gGameOptions.fNewTraitSystem)
 			{
-				iImpact += GetDamage(&pSoldier->inv[HANDPOS]);
+				iImpact += GetDamage(&(pSoldier->inv[HANDPOS]));
+
+				if (AM_A_ROBOT(pOpponent))
+				{
+					iImpact /= 2;
+				}
 			}
 			else
 			{
-				// base HTH damage
-				iImpact += 4; // Slightly reduced for we can now attack to head for bigger damage - SANDRO
-				// Add melee damage multiplier to bare HtH attacks as well - SANDRO
-				// actually I make the influence a little lesser, because to the blades and so,
-				// only the item impact is multiplied, not the level and strength bonus, but here it does
-				iImpact += iImpact * gGameExternalOptions.iMeleeDamageModifier / 120; 
+				if (!HAS_SKILL_TRAIT(pSoldier, MARTIALARTS_OT))
+				{
+					iImpact += GetDamage(&(pSoldier->inv[HANDPOS]));
+				}
+				if (AM_A_ROBOT(pOpponent))
+				{
+					iImpact /= 2;
+				}
 			}
 		}
 		else
 		{
-
-			// NB martial artists don't get a bonus for using brass knuckles!
-			if (pSoldier->usAttackingWeapon && !( HAS_SKILL_TRAIT( pSoldier, MARTIALARTS_OT ) ) )
+			// base HTH damage
+			// Enhanced Close Combat System - Slightly reduced for we can now attack to head for bigger damage
+			if (gGameExternalOptions.fEnhancedCloseCombatSystem)
 			{
-				iImpact = GetDamage(&pSoldier->inv[HANDPOS]);
+				iImpact += 4;
 			}
 			else
 			{
-				// base HTH damage
-				iImpact = 5;
+				iImpact += 5;
 			}
-			iImpact += EffectiveStrength( pSoldier, FALSE ) / 5; // 0 to 20 for strength, adjusted by damage taken
+
+			// Add melee damage multiplier to HtH attacks as well - SANDRO
+			iImpact = (INT32)(iImpact * gGameExternalOptions.iMeleeDamageModifier / 100);
+
+			if (AM_A_ROBOT(pOpponent))
+			{
+				iImpact = 0;
+			}
 		}
 	}
 
+	iImpact += EffectiveExpLevel(pSoldier) / 2;
 
-	iImpact += (EffectiveExpLevel( pSoldier ) / 2); // 0 to 4 for level // SANDRO - added effective level calc
+	// up to 25% extra impact for accurate attacks
+	iImpact = iImpact * (100 + ubChanceToHit / 4) / 100;
 
-	iFluke = 0;
-	iBonus = ubChanceToHit / 4;				// up to 50% extra impact for accurate attacks
-
-	iImpact = iImpact * (100 + iFluke + iBonus) / 100;
+	iBonus = 0;
 
 	if (!fBladeAttack)
 	{
-		// add bonuses for hand-to-hand and martial arts
-		// Check for new traits - SANDRO
-		if ( gGameOptions.fNewTraitSystem )
+		if (gGameOptions.fNewTraitSystem)
 		{
-			if (!pSoldier->usAttackingWeapon || Item[pSoldier->inv[HANDPOS].usItem].brassknuckles)
+			if (!pSoldier->usAttackingWeapon || Item[usItem].brassknuckles)
 			{
-				// add bonuses for martial arts
-				if ( HAS_SKILL_TRAIT( pSoldier, MARTIAL_ARTS_NT ) )
+				// add bonus for martial arts
+				if (HAS_SKILL_TRAIT(pSoldier, MARTIAL_ARTS_NT))
 				{
-					// also add breath damage bonus into consideration
-					iImpact = (INT32)(iImpact * ( 100 + (gSkillTraitValues.ubMABonusDamageHandToHand + gSkillTraitValues.ubMABonusBreathDamageHandToHand) * NUM_SKILL_TRAITS( pSoldier, MARTIAL_ARTS_NT ) ) / 100.0f + 0.5f);
-
-
-					// The Spinning kicks or aimed punch bonus - SANDRO
-					//if (pSoldier->usAnimState == NINJA_SPINKICK || (pSoldier->aiData.bAimTime > 0))
-					//{
-					//	iImpact += (iImpact * gSkillTraitValues.usMAAimedPunchDamageBonus * NUM_SKILL_TRAITS( pSoldier, MARTIAL_ARTS_NT ) ) / 100; // +75% damage per trait
-					//}
+					iBonus += (gSkillTraitValues.ubMABonusDamageHandToHand * NUM_SKILL_TRAITS(pSoldier, MARTIAL_ARTS_NT));
 				}
 			}
 			else
 			{
-				// +30% damage of blunt weapons for melee character
-				if (HAS_SKILL_TRAIT( pSoldier, MELEE_NT ))
+				// bonus damage of blunt weapons for melee character
+				if (HAS_SKILL_TRAIT(pSoldier, MELEE_NT))
 				{
-					iImpact = (INT32)(iImpact * (100 + gSkillTraitValues.ubMEDamageBonusBlunt) / 100.0f + 0.5f);
-
-					//if (pSoldier->aiData.bAimTime > 0)
-					//{
-					//	iImpact += (iImpact * (100 + gSkillTraitValues.usMEAimedMeleeAttackDamageBonus) / 100);  // 50% incresed damage if focused melee attack
-					//}
+					iBonus += gSkillTraitValues.ubMEDamageBonusBlunt;
 				}
 			}
 		}
-		else
+		else // original code
 		{
-			if ( HAS_SKILL_TRAIT( pSoldier, MARTIALARTS_OT ) )
+			// add bonuses for hand-to-hand and martial arts
+			if (HAS_SKILL_TRAIT(pSoldier, MARTIALARTS_OT))
 			{
-				iImpact = (INT32)(iImpact * (100 + gbSkillTraitBonus[MARTIALARTS_OT] * NUM_SKILL_TRAITS( pSoldier, MARTIALARTS_OT ) ) / 100.0f + 0.5f);
+				iBonus += gbSkillTraitBonus[MARTIALARTS_OT] * NUM_SKILL_TRAITS(pSoldier, MARTIALARTS_OT);
+
+				if (pSoldier->usAnimState == NINJA_SPINKICK)
+				{
+					iBonus += 100;
+				}
 			}
-			if ( HAS_SKILL_TRAIT( pSoldier, HANDTOHAND_OT ) )
+
+			if (HAS_SKILL_TRAIT(pSoldier, HANDTOHAND_OT))
 			{
-				iImpact = (INT32)(iImpact * (100 + gbSkillTraitBonus[HANDTOHAND_OT] * NUM_SKILL_TRAITS( pSoldier, HANDTOHAND_OT ) ) / 100.0f + 0.5f);
+				// SPECIAL  - give TRIPLE bonus for damage for hand-to-hand trait
+				// because the HTH bonus is half that of martial arts, and gets only 1x for to-hit bonus
+				iBonus += 3 * gbSkillTraitBonus[HANDTOHAND_OT] * NUM_SKILL_TRAITS(pSoldier, HANDTOHAND_OT);
 			}
 		}
-		// SANDRO - Enhanced Close Combat System - aiming at body parts makes difference
-		if (gGameExternalOptions.fEnhancedCloseCombatSystem && (gAnimControl[ pOpponent->usAnimState ].ubEndHeight == ANIM_PRONE))
-		{
-			iImpact = (INT32)(iImpact * 150 / 100);  // 50% incresed damage to lying characters
-		}
-		// Here, if we're doing a bare-fisted attack,
-		// we want to pay attention just to wounds inflicted
-		// SANDRO - No, we may consider the breath damage as asort of "real" damage too, so only reduce it by half
-		iImpact = iImpact / 2;
-		//iImpact = iImpact / PUNCH_REAL_DAMAGE_PORTION;
-	}
-	// SANDRO - damage bonus to melee trait
-	else 
-	{
-		if ( HAS_SKILL_TRAIT( pSoldier, MELEE_NT ) && (gGameOptions.fNewTraitSystem) )
-		{
-			iImpact += (iImpact * (100 + gSkillTraitValues.ubMEDamageBonusBlades ) / 100); // +30% damage
-			
-			//if (pSoldier->aiData.bAimTime > 0)
-			//{
-			//	iImpact += (iImpact * ( 100 + gSkillTraitValues.usMEAimedMeleeAttackDamageBonus ) / 100);  // 50% incresed damage if focused melee attack
-			//}
-		}
-		// SANDRO - Enhanced Close Combat System
+
 		if (gGameExternalOptions.fEnhancedCloseCombatSystem)
 		{
-			if (gAnimControl[ pOpponent->usAnimState ].ubEndHeight == ANIM_PRONE)
+			if (gAnimControl[pOpponent->usAnimState].ubEndHeight == ANIM_PRONE)
 			{
-				iImpact = (INT32)(iImpact * 140 / 100);  // 40% incresed damage to lying characters
+				iBonus += 30; // 30% increased damage to lying characters
+			}
+		}
+	}
+	// DAMAGE BONUS TO KNIFE ATTACK WITH MELEE SKILL
+	else
+	{
+		if (gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT(pSoldier, MELEE_NT))
+		{
+			iBonus += gSkillTraitValues.ubMEDamageBonusBlades; // +30% damage
+		}
+
+		// Enhanced Close Combat System
+		if (gGameExternalOptions.fEnhancedCloseCombatSystem)
+		{
+			if (gAnimControl[pOpponent->usAnimState].ubEndHeight == ANIM_PRONE)
+			{
+				iBonus += 30;  // increased damage to lying characters
 			}
 		}
 	}
 
-	// Flugente: Add personal damage bonus
-	iImpact = (iImpact * (100 + pSoldier->GetMeleeDamageBonus() ) / 100);
+	// apply all bonuses
+	iImpact = (iImpact * (100 + iBonus) + 50) / 100; // round it properly
 
-	if (iImpact < 1)
+	// Flugente: moved the damage calculation into a separate function
+	iImpact = max(1, (INT32)(iImpact * (100 - pOpponent->GetDamageResistance(FALSE, FALSE)) / 100));
+
+	// Flugente: Add personal damage bonus
+	if (fBladeAttack)
 	{
-		iImpact = 1;
+		iImpact = (iImpact * (100 + pSoldier->GetMeleeDamageBonus()) / 100);
 	}
 
-	return( iImpact );
+	iImpact = max(1, iImpact);
+
+	return iImpact;
 }
 
 INT8 TryToReload( SOLDIERTYPE * pSoldier )
@@ -2719,11 +2754,13 @@ INT8 CanNPCAttack(SOLDIERTYPE *pSoldier)
 		bCanAttack = TryToReload( pSoldier );
 		if( bCanAttack == TRUE )
 		{
-			PossiblyStartEnemyTaunt( pSoldier, TAUNT_RELOAD );
+			if (Chance(gGameExternalOptions.iChanceSayAnnoyingPhrase) || GetMagSize(&(pSoldier->inv[HANDPOS])) > 4)
+				PossiblyStartEnemyTaunt( pSoldier, TAUNT_RELOAD );
 		}
 		else
 		{
-			PossiblyStartEnemyTaunt( pSoldier, TAUNT_OUT_OF_AMMO );
+			if (Chance(gGameExternalOptions.iChanceSayAnnoyingPhrase) || GetMagSize(&(pSoldier->inv[HANDPOS])) > 4)
+				PossiblyStartEnemyTaunt( pSoldier, TAUNT_OUT_OF_AMMO );
 		}
 	}
 	else if (bCanAttack == NOSHOOT_NOWEAPON)

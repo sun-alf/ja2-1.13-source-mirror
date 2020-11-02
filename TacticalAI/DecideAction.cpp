@@ -2517,6 +2517,7 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 
 	// sevenfm: before deciding anything, stop cowering
 	if (SoldierAI(pSoldier) &&
+		!fCivilian &&
 		ubCanMove &&
 		pSoldier->stats.bLife >= OKLIFE &&
 		!pSoldier->bCollapsed &&
@@ -2749,12 +2750,17 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 						BestThrow.ubPossible = FALSE;
 
 						// try behind us, see if there's room to move back
-						sCheckGridNo = NewGridNo(pSoldier->sGridNo, DirectionInc(gOppositeDirection[ubOpponentDir]));
+						sCheckGridNo = NewGridNo(pSoldier->sGridNo, DirectionInc(gOppositeDirection[ubOpponentDir]));						
 						if (OKFallDirection(pSoldier, sCheckGridNo, pSoldier->pathing.bLevel, gOppositeDirection[ubOpponentDir], pSoldier->usAnimState))
+							//FindBestPath(pSoldier, sCheckGridNo, pSoldier->pathing.bLevel, DetermineMovementMode(pSoldier, AI_ACTION_GET_CLOSER), COPYROUTE, 0))
 						{
-							pSoldier->aiData.usActionData = sCheckGridNo;
-
-							return(AI_ACTION_GET_CLOSER);
+							// sevenfm: check if we can reach this gridno
+							INT32 iPathCost = EstimatePlotPath(pSoldier, sCheckGridNo, FALSE, FALSE, FALSE, DetermineMovementMode(pSoldier, AI_ACTION_GET_CLOSER), pSoldier->bStealthMode, FALSE, 0);
+							if(iPathCost !=0 && iPathCost <= pSoldier->bActionPoints)
+							{
+								pSoldier->aiData.usActionData = sCheckGridNo;
+								return AI_ACTION_GET_CLOSER;
+							}
 						}
 					}
 				}
@@ -2885,74 +2891,272 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 			}
 		}
 
-		// SNIPER!
-		CheckIfShotPossible(pSoldier, &BestShot);
-		DebugMsg (TOPIC_JA2,DBG_LEVEL_3,String("decideactionred: is sniper shot possible? = %d, CTH = %d",BestShot.ubPossible,BestShot.ubChanceToReallyHit));
-
-		if (BestShot.ubPossible && BestShot.ubChanceToReallyHit > 50 )
+		// sevenfm: moved can attack check here as only sniper/suppression code needs usable gun
+		if(CanNPCAttack(pSoldier) == TRUE)
 		{
-			// then do it!  The functions have already made sure that we have a
-			// pair of worthy opponents, etc., so we're not just wasting our time
+			// SNIPER!
+			// sevenfm: set bAimShotLocation
+			pSoldier->bAimShotLocation = AIM_SHOT_RANDOM;
+			CheckIfShotPossible(pSoldier, &BestShot);
+			DebugMsg(TOPIC_JA2, DBG_LEVEL_3, String("decideactionred: is sniper shot possible? = %d, CTH = %d", BestShot.ubPossible, BestShot.ubChanceToReallyHit));
 
-			// if necessary, swap the usItem from holster into the hand position
-			DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"decideactionred: sniper shot possible!");
-			if (BestShot.bWeaponIn != HANDPOS)
-				RearrangePocket(pSoldier,HANDPOS,BestShot.bWeaponIn,FOREVER);
-
-			pSoldier->aiData.usActionData = BestShot.sTarget;
-			//POSSIBLE STRUCTURE CHANGE PROBLEM. GOTTHARD 7/14/08
-			pSoldier->aiData.bAimTime			= BestShot.ubAimTime;
-			pSoldier->bScopeMode = BestShot.bScopeMode;
-			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, New113Message[ MSG113_SNIPER ] );
-			return(AI_ACTION_FIRE_GUN );
-		}
-		else		// snipe not possible
-		{
-			// if this dude has a longe-range weapon on him (longer than normal
-			// sight range), and there's at least one other team-mate around, and
-			// spotters haven't already been called for, then DO SO!
-
-			DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"decideactionred: sniper shot not possible");
-			DebugMsg (TOPIC_JA2,DBG_LEVEL_3,String("decideactionred: weapon in slot #%d",BestShot.bWeaponIn));
-		// WDS - Fix problem when there is no "best shot" weapon (i.e., BestShot.bWeaponIn == NO_SLOT)
-		if (BestShot.bWeaponIn != NO_SLOT) {
-			OBJECTTYPE * gun = &pSoldier->inv[BestShot.bWeaponIn];
-			DebugMsg (TOPIC_JA2,DBG_LEVEL_3,String("decideactionred: men in sector %d, ubspotters called by %d, nobody %d",gTacticalStatus.Team[pSoldier->bTeam].bMenInSector,gTacticalStatus.ubSpottersCalledForBy,NOBODY ));
-			if ( ( ( IsScoped(gun) && GunRange(gun, pSoldier) > MaxNormalDistanceVisible() ) || pSoldier->aiData.bOrders == SNIPER ) && // SANDRO - added argument
-				(gTacticalStatus.Team[pSoldier->bTeam].bMenInSector > 1) &&
-				(gTacticalStatus.ubSpottersCalledForBy == NOBODY))
-
+			if (BestShot.ubPossible && BestShot.ubChanceToReallyHit > 50)
 			{
-				// then call for spotters!  Uses up the rest of his turn (whatever
-				// that may be), but from now on, BLACK AI NPC may radio sightings!
-				gTacticalStatus.ubSpottersCalledForBy = pSoldier->ubID;
-				// HEADROCK HAM 3.1: This may be causing problems with HAM's lowered AP limit. From now on, we'll check
-				// whether the soldier has more than 0 APs to begin with.
-				if (pSoldier->bActionPoints > 0)
-					pSoldier->bActionPoints = 0;
+				// then do it!  The functions have already made sure that we have a
+				// pair of worthy opponents, etc., so we're not just wasting our time
 
-				DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"decideactionred: calling for sniper spotters");
+				// if necessary, swap the usItem from holster into the hand position
+				DebugMsg(TOPIC_JA2, DBG_LEVEL_3, "decideactionred: sniper shot possible!");
+				if (BestShot.bWeaponIn != HANDPOS)
+					RearrangePocket(pSoldier, HANDPOS, BestShot.bWeaponIn, FOREVER);
 
-				pSoldier->aiData.usActionData = NOWHERE;
-				return(AI_ACTION_NONE);
+				pSoldier->aiData.usActionData = BestShot.sTarget;
+				//POSSIBLE STRUCTURE CHANGE PROBLEM. GOTTHARD 7/14/08
+				pSoldier->aiData.bAimTime = BestShot.ubAimTime;
+				pSoldier->bScopeMode = BestShot.bScopeMode;
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, New113Message[MSG113_SNIPER]);
+				return(AI_ACTION_FIRE_GUN);
+			}
+			else		// snipe not possible
+			{
+				// if this dude has a long-range weapon on him (longer than normal
+				// sight range), and there's at least one other team-mate around, and
+				// spotters haven't already been called for, then DO SO!
+
+				DebugMsg(TOPIC_JA2, DBG_LEVEL_3, "decideactionred: sniper shot not possible");
+				DebugMsg(TOPIC_JA2, DBG_LEVEL_3, String("decideactionred: weapon in slot #%d", BestShot.bWeaponIn));
+				// WDS - Fix problem when there is no "best shot" weapon (i.e., BestShot.bWeaponIn == NO_SLOT)
+				if (BestShot.bWeaponIn != NO_SLOT) {
+					OBJECTTYPE * gun = &pSoldier->inv[BestShot.bWeaponIn];
+					DebugMsg(TOPIC_JA2, DBG_LEVEL_3, String("decideactionred: men in sector %d, ubspotters called by %d, nobody %d", gTacticalStatus.Team[pSoldier->bTeam].bMenInSector, gTacticalStatus.ubSpottersCalledForBy, NOBODY));
+					if (((IsScoped(gun) && GunRange(gun, pSoldier) > MaxNormalDistanceVisible()) || pSoldier->aiData.bOrders == SNIPER) && // SANDRO - added argument
+						(gTacticalStatus.Team[pSoldier->bTeam].bMenInSector > 1) &&
+						(gTacticalStatus.ubSpottersCalledForBy == NOBODY))
+
+					{
+						// then call for spotters!  Uses up the rest of his turn (whatever
+						// that may be), but from now on, BLACK AI NPC may radio sightings!
+						gTacticalStatus.ubSpottersCalledForBy = pSoldier->ubID;
+						// HEADROCK HAM 3.1: This may be causing problems with HAM's lowered AP limit. From now on, we'll check
+						// whether the soldier has more than 0 APs to begin with.
+						if (pSoldier->bActionPoints > 0)
+							pSoldier->bActionPoints = 0;
+
+						DebugMsg(TOPIC_JA2, DBG_LEVEL_3, "decideactionred: calling for sniper spotters");
+
+						pSoldier->aiData.usActionData = NOWHERE;
+						return(AI_ACTION_NONE);
+					}
+				}
+			}
+
+			//SUPPRESSION FIRE			
+			//CheckIfShotPossible(pSoldier, &BestShot);		//WarmSteel - No longer returns 0 when there IS actually a chance to hit.
+
+			//RELOADING
+			// WarmSteel - Because of suppression fire, we need enough ammo to even consider suppressing
+			// This means we need to reload. Also reload if we're just plainly low on bullets.
+			if (BestShot.bWeaponIn != NO_SLOT &&
+				pSoldier->bActionPoints > APBPConstants[AP_MINIMUM] &&
+				IsGunAutofireCapable(&pSoldier->inv[BestShot.bWeaponIn]) &&
+				Weapon[pSoldier->inv[BestShot.bWeaponIn].usItem].swapClips &&
+				(!pSoldier->aiData.bUnderFire && !GuySawEnemy(pSoldier, SEEN_LAST_TURN) && (TileIsOutOfBounds(sClosestOpponent) || PythSpacesAway(pSoldier->sGridNo, sClosestOpponent) > TACTICAL_RANGE / 2) || AICheckIsMachinegunner(pSoldier) && Chance(25) || Chance(10)) &&
+				pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft < gGameExternalOptions.ubAISuppressionMinimumAmmo && 
+				GetMagSize(&pSoldier->inv[BestShot.bWeaponIn]) >= gGameExternalOptions.ubAISuppressionMinimumMagSize)
+				// || pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft < (UINT8)(GetMagSize(&pSoldier->inv[BestShot.bWeaponIn]) / 4)))
+			{
+				// HEADROCK HAM 5: Fixed an issue where no ammo was found, leading to a crash when overloading the
+				// inventory vector (bAmmoSlot = -1...)
+				INT8 bAmmoSlot = FindAmmoToReload(pSoldier, BestShot.bWeaponIn, NO_SLOT);
+				if (bAmmoSlot > -1)
+				{
+					OBJECTTYPE * pAmmo = &(pSoldier->inv[bAmmoSlot]);
+					if ((*pAmmo)[0]->data.ubShotsLeft > pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft && GetAPsToReloadGunWithAmmo(pSoldier, &(pSoldier->inv[BestShot.bWeaponIn]), pAmmo) <= (INT16)pSoldier->bActionPoints)
+					{
+						pSoldier->aiData.usActionData = BestShot.bWeaponIn;
+						return AI_ACTION_RELOAD_GUN;
+					}
+				}
+			}			
+
+			// sevenfm: check that we have a clip to reload
+			BOOLEAN fExtraClip = FALSE;
+			if (BestShot.bWeaponIn != NO_SLOT)
+			{
+				INT8 bAmmoSlot = FindAmmoToReload(pSoldier, BestShot.bWeaponIn, NO_SLOT);
+				if (bAmmoSlot != NO_SLOT)
+				{
+					fExtraClip = TRUE;
+				}
+			}
+
+			// CHRISL: Changed from a simple flag to two externalized values for more modder control over AI suppression
+			// WarmSteel - Don't *always* try to suppress when under 50 CTH
+			if (BestShot.ubPossible &&
+				BestShot.bWeaponIn != -1 &&
+				// check valid target
+				!TileIsOutOfBounds(BestShot.sTarget) &&
+				BestShot.ubOpponent != NOBODY &&
+				MercPtrs[BestShot.ubOpponent] &&
+				Chance(100 - MercPtrs[BestShot.ubOpponent]->ShockLevelPercent() / 2) &&
+				// check weapon/ammo requirements
+				IsGunAutofireCapable(&pSoldier->inv[BestShot.bWeaponIn]) &&
+				GetMagSize(&pSoldier->inv[BestShot.bWeaponIn]) >= gGameExternalOptions.ubAISuppressionMinimumMagSize &&
+				pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft >= gGameExternalOptions.ubAISuppressionMinimumAmmo &&
+				// check soldier and weapon
+				pSoldier->aiData.bOrders != SNIPER &&
+				BestShot.ubFriendlyFireChance <= MIN_CHANCE_TO_ACCIDENTALLY_HIT_SOMEONE &&
+				!AICheckIsFlanking(pSoldier) &&
+				(Chance(BestShot.ubChanceToReallyHit) || Chance(gGameExternalOptions.sSuppressionEffectiveness)) &&
+				(!gGameExternalOptions.fAISafeSuppression || CheckSuppressionDirection(pSoldier, BestShot.sTarget, BestShot.bTargetLevel)) &&
+				!pSoldier->RetreatCounterValue() &&
+				// check cover
+				(fAnyCover ||																				// safe position
+				!fCanBeSeen && NightLight() && CountFriendsFlankSameSpot(pSoldier, sClosestOpponent) && Chance(50) ||
+				ARMED_VEHICLE(pSoldier) ||																		// tanks don't need cover
+				pSoldier->aiData.bUnderFire && (pSoldier->ubPreviousAttackerID == BestShot.ubOpponent || pSoldier->ubNextToPreviousAttackerID == BestShot.ubOpponent || MercPtrs[BestShot.ubOpponent]->sLastTarget == pSoldier->sGridNo) ||	// return fire
+				Chance((BestShot.ubChanceToReallyHit + 100) / 2) ||											// 50% chance to fire without cover
+				//SoldierToSoldierLineOfSightTest(pSoldier, MercPtrs[BestShot.ubOpponent], TRUE, CALC_FROM_ALL_DIRS)) &&		// can see target after turning
+				LOS_Raised(pSoldier, MercPtrs[BestShot.ubOpponent], CALC_FROM_ALL_DIRS)) &&		// can see target after turning
+				// reduce chance to shoot if target is beyond weapon range
+				(AICheckIsMachinegunner(pSoldier) ||
+				ARMED_VEHICLE(pSoldier) ||
+				AnyCoverAtSpot(pSoldier, pSoldier->sGridNo) ||
+				pSoldier->aiData.bUnderFire && (pSoldier->ubPreviousAttackerID == BestShot.ubOpponent || pSoldier->ubNextToPreviousAttackerID == BestShot.ubOpponent || MercPtrs[BestShot.ubOpponent]->sLastTarget == pSoldier->sGridNo) ||	// return fire
+				Chance(100 * (GunRange(&pSoldier->inv[BestShot.bWeaponIn], pSoldier) / CELL_X_SIZE) / PythSpacesAway(pSoldier->sGridNo, BestShot.sTarget))) &&
+				// check that we have spare ammo
+				(fExtraClip || pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft >= gGameExternalOptions.ubAISuppressionMinimumMagSize))
+			{
+				// then do it!
+
+				// if necessary, swap the usItem from holster into the hand position
+				DebugAI(AI_MSG_INFO, pSoldier, String("suppression fire possible! target %d level %d aim %d", BestShot.sTarget, BestShot.bTargetLevel, BestShot.ubAimTime));
+
+				if (BestShot.bWeaponIn != HANDPOS)
+				{
+					DebugAI(AI_MSG_INFO, pSoldier, String("rearrange pocket"));
+					RearrangePocket(pSoldier, HANDPOS, BestShot.bWeaponIn, FOREVER);
+				}
+
+				pSoldier->bTargetLevel = BestShot.bTargetLevel;
+				pSoldier->aiData.bAimTime = BestShot.ubAimTime;
+				pSoldier->bDoAutofire = 0;
+				pSoldier->bDoBurst = 1;
+				pSoldier->bScopeMode = BestShot.bScopeMode;
+
+				INT16 ubBurstAPs = 0;
+				FLOAT dTotalRecoil = 0;
+				INT32 sActualAimAP;
+				UINT8 ubAutoPenalty;
+				INT16 sReserveAP = GetAPsProne(pSoldier, TRUE);
+				UINT8 ubMinAuto = 5;
+
+				if (BestShot.ubAimTime > 0 &&
+					!UsingNewCTHSystem() &&
+					Chance((100 - BestShot.ubChanceToReallyHit) * (100 - BestShot.ubChanceToReallyHit) / 100))
+				{
+					DebugAI(AI_MSG_INFO, pSoldier, String("set ubAimTime = 0 for OCTH suppression"));
+					BestShot.ubAimTime = 0;
+				}
+
+				// reserve APs to hide if no cover or enemy is close
+				if (!AnyCoverAtSpot(pSoldier, pSoldier->sGridNo) || PythSpacesAway(pSoldier->sGridNo, BestShot.sTarget) < DAY_VISION_RANGE / 2)
+				{
+					sReserveAP = APBPConstants[AP_MINIMUM] / 2;
+				}
+				if (PythSpacesAway(pSoldier->sGridNo, BestShot.sTarget) > DAY_VISION_RANGE || AnyCoverAtSpot(pSoldier, pSoldier->sGridNo) || pSoldier->aiData.bUnderFire)
+				{
+					ubMinAuto *= 2;
+				}
+
+				sActualAimAP = CalcAPCostForAiming(pSoldier, BestShot.sTarget, (INT8)pSoldier->aiData.bAimTime);
+
+				if (UsingNewCTHSystem() == true)
+				{
+					do
+					{
+						pSoldier->bDoAutofire++;
+						dTotalRecoil += AICalcRecoilForShot(pSoldier, &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire);
+						ubBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire, pSoldier);
+					} while (pSoldier->bActionPoints >= BestShot.ubAPCost + sActualAimAP + ubBurstAPs + sReserveAP &&
+						pSoldier->inv[pSoldier->ubAttackingHand][0]->data.gun.ubGunShotsLeft >= pSoldier->bDoAutofire &&
+						pSoldier->bDoAutofire <= 30 &&
+						(dTotalRecoil <= 20.0f || pSoldier->bDoAutofire < ubMinAuto));
+				}
+				else
+				{
+					ubAutoPenalty = GetAutoPenalty(&pSoldier->inv[pSoldier->ubAttackingHand], gAnimControl[pSoldier->usAnimState].ubEndHeight == ANIM_PRONE);
+					do
+					{
+						pSoldier->bDoAutofire++;
+						ubBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire, pSoldier);
+					} while (pSoldier->bActionPoints >= BestShot.ubAPCost + sActualAimAP + ubBurstAPs + sReserveAP &&
+						pSoldier->inv[pSoldier->ubAttackingHand][0]->data.gun.ubGunShotsLeft >= pSoldier->bDoAutofire &&
+						pSoldier->bDoAutofire <= 30 &&
+						(ubAutoPenalty * pSoldier->bDoAutofire <= 80 || pSoldier->bDoAutofire < ubMinAuto));
+				}
+
+				pSoldier->bDoAutofire--;
+
+				// Make sure we decided to fire at least one shot!
+				ubBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire, pSoldier);
+				DebugAI(AI_MSG_INFO, pSoldier, String("autofire shots %d APcost %d burst AP %d aimtime %d reserve AP %d", pSoldier->bDoAutofire, BestShot.ubAPCost, ubBurstAPs, sActualAimAP, sReserveAP));
+
+				// minimum 3 bullets
+				if (pSoldier->bDoAutofire >= 3 && pSoldier->bActionPoints >= BestShot.ubAPCost + sActualAimAP + ubBurstAPs + sReserveAP)
+				{
+					if (gAnimControl[pSoldier->usAnimState].ubEndHeight != BestShot.ubStance &&
+						IsValidStance(pSoldier, BestShot.ubStance))
+					{
+						pSoldier->aiData.bNextAction = AI_ACTION_FIRE_GUN;
+						pSoldier->aiData.usNextActionData = BestShot.sTarget;
+						pSoldier->aiData.bNextTargetLevel = BestShot.bTargetLevel;
+						pSoldier->aiData.usActionData = BestShot.ubStance;
+
+						DebugAI(AI_MSG_INFO, pSoldier, String("Change stance before shooting"));
+
+						// show "suppression fire" message only if opponent cannot be seen after turning
+						if (!LOS_Raised(pSoldier, MercPtrs[BestShot.ubOpponent], CALC_FROM_ALL_DIRS))
+							ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, New113Message[MSG113_SUPPRESSIONFIRE]);
+						
+						return(AI_ACTION_CHANGE_STANCE);
+					}
+					else
+					{
+						pSoldier->aiData.usActionData = BestShot.sTarget;
+
+						// show "suppression fire" message only if opponent cannot be seen after turning
+						if (!LOS_Raised(pSoldier, MercPtrs[BestShot.ubOpponent], CALC_FROM_ALL_DIRS))
+							ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, New113Message[MSG113_SUPPRESSIONFIRE]);
+
+						return(AI_ACTION_FIRE_GUN);
+					}
+				}
+				else
+				{
+					pSoldier->bDoBurst = 0;
+					pSoldier->bDoAutofire = 0;
+				}
 			}
 		}
+		// suppression not possible, do something else
 
 		// Flugente: trait skills
 		// if we are a radio operator
-		if ( HAS_SKILL_TRAIT( pSoldier, RADIO_OPERATOR_NT ) > 0 && pSoldier->CanUseSkill(SKILLS_RADIO_ARTILLERY, TRUE) )
+		if (HAS_SKILL_TRAIT(pSoldier, RADIO_OPERATOR_NT) > 0 &&
+			pSoldier->CanUseSkill(SKILLS_RADIO_ARTILLERY, TRUE))
 		{
 			UINT32 tmp;
 			INT32 skilltargetgridno = 0;
-			
+
 			// call reinforcements if we haven't yet done so
-			if ( !gTacticalStatus.Team[pSoldier->bTeam].bAwareOfOpposition && MoreFriendsThanEnemiesinNearbysectors(pSoldier->bTeam, pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ) )
+			if (!gTacticalStatus.Team[pSoldier->bTeam].bAwareOfOpposition && MoreFriendsThanEnemiesinNearbysectors(pSoldier->bTeam, pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ))
 			{
 				// if frequencies are jammed...
-				if ( SectorJammed() )
+				if (SectorJammed())
 				{
 					// if we are jamming, turn it off, otherwise, bad luck...
-					if ( pSoldier->IsJamming() )
+					if (pSoldier->IsJamming())
 					{
 						pSoldier->usAISkillUse = SKILLS_RADIO_TURNOFF;
 						pSoldier->aiData.usActionData = skilltargetgridno;
@@ -2960,202 +3164,21 @@ INT8 DecideActionRed(SOLDIERTYPE *pSoldier)
 					}
 				}
 				// frequencies are clear, lets call for help
-				else if ( !(pSoldier->usSoldierFlagMask & SOLDIER_RAISED_REDALERT) )
+				else if (!(pSoldier->usSoldierFlagMask & SOLDIER_RAISED_REDALERT))
 				{
 					// raise alarm!
-					return( AI_ACTION_RED_ALERT );
+					return(AI_ACTION_RED_ALERT);
 				}
 			}
 			// if we can't call in artillery, jam frequencies, so that the palyer can't use radio skills
-			else if ( !pSoldier->IsJamming() && !pSoldier->CanAnyArtilleryStrikeBeOrdered(&tmp) )
+			else if (!pSoldier->IsJamming() && !pSoldier->CanAnyArtilleryStrikeBeOrdered(&tmp))
 			{
 				pSoldier->usAISkillUse = SKILLS_RADIO_JAM;
 				pSoldier->aiData.usActionData = skilltargetgridno;
 				return(AI_ACTION_USE_SKILL);
 			}
 		}
-    }	
-
-		//RELOADING
-		// WarmSteel - Because of suppression fire, we need enough ammo to even consider suppressing
-		// This means we need to reload. Also reload if we're just plainly low on bullets.
-		if(BestShot.bWeaponIn != NO_SLOT
-			&& ((pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft < gGameExternalOptions.ubAISuppressionMinimumAmmo && GetMagSize(&pSoldier->inv[BestShot.bWeaponIn]) >= gGameExternalOptions.ubAISuppressionMinimumMagSize)
-			|| pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft < (UINT8)(GetMagSize(&pSoldier->inv[BestShot.bWeaponIn]) / 4) ))
-		{
-			// HEADROCK HAM 5: Fixed an issue where no ammo was found, leading to a crash when overloading the
-			// inventory vector (bAmmoSlot = -1...)
-			INT8 bAmmoSlot = FindAmmoToReload( pSoldier, BestShot.bWeaponIn, NO_SLOT );
-			if (bAmmoSlot > -1)
-			{
-				OBJECTTYPE * pAmmo = &(pSoldier->inv[bAmmoSlot]);
-				if((*pAmmo)[0]->data.ubShotsLeft > pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft && GetAPsToReloadGunWithAmmo( pSoldier, &(pSoldier->inv[BestShot.bWeaponIn]), pAmmo ) <= (INT16)pSoldier->bActionPoints)
-				{
-					pSoldier->aiData.usActionData = BestShot.bWeaponIn;
-					return AI_ACTION_RELOAD_GUN;
-				}
-			}
-		}
-
-		//SUPPRESSION FIRE
-		CheckIfShotPossible(pSoldier, &BestShot); //WarmSteel - No longer returns 0 when there IS actually a chance to hit.
-
-		// sevenfm: check that we have a clip to reload
-		BOOLEAN fExtraClip = FALSE;
-		if(BestShot.bWeaponIn != NO_SLOT)
-		{
-			INT8 bAmmoSlot = FindAmmoToReload( pSoldier, BestShot.bWeaponIn, NO_SLOT );
-			if (bAmmoSlot != NO_SLOT)
-			{
-				fExtraClip = TRUE;
-			}
-		}
-
-		//must have a small chance to hit and the opponent must be on the ground (can't suppress guys on the roof)
-		// HEADROCK HAM BETA2.4: Adjusted this for a random chance to suppress regardless of chance. This augments
-		// current revamp of suppression fire.
-
-		// CHRISL: Changed from a simple flag to two externalized values for more modder control over AI suppression
-		// WarmSteel - Don't *always* try to suppress when under 50 CTH
-		if (BestShot.ubPossible &&
-			BestShot.bWeaponIn != -1 &&
-			// check valid target
-			!TileIsOutOfBounds(BestShot.sTarget) &&
-			BestShot.ubOpponent != NOBODY &&
-			MercPtrs[BestShot.ubOpponent] &&
-			Chance(100 - MercPtrs[BestShot.ubOpponent]->ShockLevelPercent() / 2) &&
-			// check weapon/ammo requirements
-			IsGunAutofireCapable(&pSoldier->inv[BestShot.bWeaponIn]) &&
-			GetMagSize(&pSoldier->inv[BestShot.bWeaponIn]) >= gGameExternalOptions.ubAISuppressionMinimumMagSize &&
-			pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft >= gGameExternalOptions.ubAISuppressionMinimumAmmo &&
-			// check soldier and weapon
-			pSoldier->aiData.bOrders != SNIPER &&
-			BestShot.ubFriendlyFireChance <= MIN_CHANCE_TO_ACCIDENTALLY_HIT_SOMEONE &&			
-			!AICheckIsFlanking(pSoldier) &&
-			!pSoldier->RetreatCounterValue() &&
-			// check cover
-			(fAnyCover ||																				// safe position
-			!fCanBeSeen && NightLight() && CountFriendsFlankSameSpot(pSoldier, sClosestOpponent) && Chance(50) ||
-			ARMED_VEHICLE(pSoldier) ||																		// tanks don't need cover
-			pSoldier->aiData.bUnderFire && (pSoldier->ubPreviousAttackerID == BestShot.ubOpponent || pSoldier->ubNextToPreviousAttackerID == BestShot.ubOpponent || MercPtrs[BestShot.ubOpponent]->sLastTarget == pSoldier->sGridNo) ||	// return fire
-			Chance((BestShot.ubChanceToReallyHit + 100) / 2) ||											// 50% chance to fire without cover
-			//SoldierToSoldierLineOfSightTest(pSoldier, MercPtrs[BestShot.ubOpponent], TRUE, CALC_FROM_ALL_DIRS)) &&		// can see target after turning
-			LOS_Raised(pSoldier, MercPtrs[BestShot.ubOpponent], CALC_FROM_ALL_DIRS)) &&		// can see target after turning
-			// reduce chance to shoot if target is beyond weapon range
-			(AICheckIsMachinegunner(pSoldier) ||
-			ARMED_VEHICLE(pSoldier) ||
-			AnyCoverAtSpot(pSoldier, pSoldier->sGridNo) ||			
-			pSoldier->aiData.bUnderFire && (pSoldier->ubPreviousAttackerID == BestShot.ubOpponent || pSoldier->ubNextToPreviousAttackerID == BestShot.ubOpponent || MercPtrs[BestShot.ubOpponent]->sLastTarget == pSoldier->sGridNo) ||	// return fire
-			Chance(100 * (GunRange(&pSoldier->inv[BestShot.bWeaponIn], pSoldier) / CELL_X_SIZE) / PythSpacesAway(pSoldier->sGridNo, BestShot.sTarget))) &&
-			// check that we have spare ammo
-			(fExtraClip || pSoldier->inv[BestShot.bWeaponIn][0]->data.gun.ubGunShotsLeft >= gGameExternalOptions.ubAISuppressionMinimumMagSize) )
-		{
-			// then do it!
-
-			// if necessary, swap the usItem from holster into the hand position
-			DebugAI(AI_MSG_INFO, pSoldier, String("suppression fire possible! target %d level %d aim %d", BestShot.sTarget, BestShot.bTargetLevel, BestShot.ubAimTime));
-
-			if (BestShot.bWeaponIn != HANDPOS)
-			{
-				DebugAI(AI_MSG_INFO, pSoldier, String("rearrange pocket"));
-				RearrangePocket(pSoldier, HANDPOS, BestShot.bWeaponIn, FOREVER);
-			}
-
-			pSoldier->bTargetLevel = BestShot.bTargetLevel;
-			pSoldier->aiData.bAimTime = BestShot.ubAimTime;
-			pSoldier->bDoAutofire = 0;
-			pSoldier->bDoBurst = 1;
-			pSoldier->bScopeMode = BestShot.bScopeMode;
-
-			INT16 ubBurstAPs = 0;
-			FLOAT dTotalRecoil = 0;
-			INT32 sActualAimAP;
-			UINT8 ubAutoPenalty;
-			INT16 sReserveAP = GetAPsProne(pSoldier, TRUE);
-			UINT8 ubMinAuto = 5;
-
-			if (BestShot.ubAimTime > 0 &&
-				!UsingNewCTHSystem() &&
-				Chance((100 - BestShot.ubChanceToReallyHit) * (100 - BestShot.ubChanceToReallyHit) / 100))
-			{
-				DebugAI(AI_MSG_INFO, pSoldier, String("set ubAimTime = 0 for OCTH suppression"));
-				BestShot.ubAimTime = 0;
-			}
-
-			// reserve APs to hide if no cover or enemy is close
-			if (!AnyCoverAtSpot(pSoldier, pSoldier->sGridNo) || PythSpacesAway(pSoldier->sGridNo, BestShot.sTarget) < DAY_VISION_RANGE / 2)
-			{
-				sReserveAP = APBPConstants[AP_MINIMUM] / 2;
-			}
-			if (PythSpacesAway(pSoldier->sGridNo, BestShot.sTarget) > DAY_VISION_RANGE || AnyCoverAtSpot(pSoldier, pSoldier->sGridNo) || pSoldier->aiData.bUnderFire)
-			{
-				ubMinAuto *= 2;
-			}
-
-			sActualAimAP = CalcAPCostForAiming(pSoldier, BestShot.sTarget, (INT8)pSoldier->aiData.bAimTime);
-
-			if (UsingNewCTHSystem() == true)
-			{
-				do
-				{
-					pSoldier->bDoAutofire++;
-					dTotalRecoil += AICalcRecoilForShot(pSoldier, &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire);
-					ubBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire, pSoldier);
-				} while (pSoldier->bActionPoints >= BestShot.ubAPCost + sActualAimAP + ubBurstAPs + sReserveAP &&
-					pSoldier->inv[pSoldier->ubAttackingHand][0]->data.gun.ubGunShotsLeft >= pSoldier->bDoAutofire &&
-					pSoldier->bDoAutofire <= 30 &&
-					(dTotalRecoil <= 20.0f || pSoldier->bDoAutofire < ubMinAuto));
-			}
-			else
-			{
-				ubAutoPenalty = GetAutoPenalty(&pSoldier->inv[pSoldier->ubAttackingHand], gAnimControl[pSoldier->usAnimState].ubEndHeight == ANIM_PRONE);
-				do
-				{
-					pSoldier->bDoAutofire++;
-					ubBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire, pSoldier);
-				} while (pSoldier->bActionPoints >= BestShot.ubAPCost + sActualAimAP + ubBurstAPs + sReserveAP &&
-					pSoldier->inv[pSoldier->ubAttackingHand][0]->data.gun.ubGunShotsLeft >= pSoldier->bDoAutofire &&
-					pSoldier->bDoAutofire <= 30 &&
-					(ubAutoPenalty * pSoldier->bDoAutofire <= 80 || pSoldier->bDoAutofire < ubMinAuto));
-			}
-
-			pSoldier->bDoAutofire--;
-
-			// Make sure we decided to fire at least one shot!
-			ubBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &(pSoldier->inv[BestShot.bWeaponIn]), pSoldier->bDoAutofire, pSoldier);
-			DebugAI(AI_MSG_INFO, pSoldier, String("autofire shots %d APcost %d burst AP %d aimtime %d reserve AP %d", pSoldier->bDoAutofire, BestShot.ubAPCost, ubBurstAPs, sActualAimAP, sReserveAP));
-
-			// minimum 3 bullets
-			if (pSoldier->bDoAutofire >= 3 && pSoldier->bActionPoints >= BestShot.ubAPCost + sActualAimAP + ubBurstAPs + sReserveAP)
-			{
-				if (gAnimControl[pSoldier->usAnimState].ubEndHeight != BestShot.ubStance &&
-					IsValidStance(pSoldier, BestShot.ubStance))
-				{
-					pSoldier->aiData.bNextAction = AI_ACTION_FIRE_GUN;
-					pSoldier->aiData.usNextActionData = BestShot.sTarget;
-					pSoldier->aiData.bNextTargetLevel = BestShot.bTargetLevel;
-					pSoldier->aiData.usActionData = BestShot.ubStance;
-
-					DebugAI(AI_MSG_INFO, pSoldier, String("Change stance before shooting"));
-					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, New113Message[MSG113_SUPPRESSIONFIRE]);
-					return(AI_ACTION_CHANGE_STANCE);
-				}
-				else
-				{
-					pSoldier->aiData.usActionData = BestShot.sTarget;
-
-					ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, New113Message[MSG113_SUPPRESSIONFIRE]);
-					return(AI_ACTION_FIRE_GUN);
-				}
-			}
-			else
-			{
-				pSoldier->bDoBurst = 0;
-				pSoldier->bDoAutofire = 0;
-			}
-		}
-		// suppression not possible, do something else
-	}
+	}	
 
 	/*
 	// CALL IN AIR STRIKE & RADIO RED ALERT
@@ -4887,6 +4910,7 @@ INT16 ubMinAPCost;
 
 	// sevenfm: before deciding anything, stop cowering
 	if (SoldierAI(pSoldier) &&
+		!fCivilian &&
 		ubCanMove &&
 		pSoldier->stats.bLife >= OKLIFE &&
 		!pSoldier->bCollapsed &&
@@ -5465,9 +5489,13 @@ INT16 ubMinAPCost;
 					sCheckGridNo = NewGridNo( pSoldier->sGridNo, (UINT16)DirectionInc( gOppositeDirection[ ubOpponentDir ] ) );
 					if ( OKFallDirection( pSoldier, sCheckGridNo, pSoldier->pathing.bLevel, gOppositeDirection[ ubOpponentDir ], pSoldier->usAnimState ) )
 					{
-						pSoldier->aiData.usActionData = sCheckGridNo;
-
-						return( AI_ACTION_GET_CLOSER );
+						// sevenfm: check if we can reach this gridno
+						INT32 iPathCost = EstimatePlotPath(pSoldier, sCheckGridNo, FALSE, FALSE, FALSE, DetermineMovementMode(pSoldier, AI_ACTION_GET_CLOSER), pSoldier->bStealthMode, FALSE, 0);
+						if (iPathCost != 0 && iPathCost <= pSoldier->bActionPoints)
+						{
+							pSoldier->aiData.usActionData = sCheckGridNo;
+							return AI_ACTION_GET_CLOSER;
+						}
 					}
 				}
 			}
@@ -5540,6 +5568,26 @@ INT16 ubMinAPCost;
 
 					if (BestStab.ubPossible)
 					{
+						INT32 sAttackDist = PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget);
+						INT32 sMaxStabAttackDist = TACTICAL_RANGE / 8;
+						// sevenfm: limit stab attacks when target is not very close
+						if (sAttackDist > sMaxStabAttackDist)
+						{
+							BestStab.iAttackValue = BestStab.iAttackValue * sMaxStabAttackDist / sAttackDist;
+						}
+
+						if (!(gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT(pSoldier, MELEE_NT)) &&
+							!(!gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT(pSoldier, KNIFING_OT)))
+						{
+							BestStab.iAttackValue /= 4;
+						}
+
+						// sevenfm: reduce stab attack attractiveness depending on number of seen opponents
+						if (pSoldier->aiData.bOppCnt > 1)
+						{
+							BestStab.iAttackValue /= pSoldier->aiData.bOppCnt;
+						}
+
 						// now we KNOW FOR SURE that we will do something (stab, at least)
 						NPCDoesAct(pSoldier);
 						DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"NPC decided to stab");
@@ -5585,62 +5633,72 @@ INT16 ubMinAPCost;
 
 					if (BestStab.ubPossible)
 					{
-						// if we have not enough APs to deal at least two or three punches, 
-						// reduce the attack value as one punch ain't much
-						if( gGameOptions.fNewTraitSystem )
+						if (!(pSoldier->flags.uiStatusFlags & SOLDIER_BOXER))
 						{
-							// if we are not specialized, reduce the attack attractiveness generaly
-							if ( !HAS_SKILL_TRAIT( pSoldier, MARTIAL_ARTS_NT ) )
+							// if we have not enough APs to deal at least two or three punches, 
+							// reduce the attack value as one punch ain't much
+							if (gGameOptions.fNewTraitSystem)
 							{
-								BestStab.iAttackValue /= 4; 
-								// if too far and not having APs for at least 3 hits no way to attack
-								if (((CalcTotalAPsToAttack( pSoldier,BestStab.sTarget,ADDTURNCOST, 0 ) + (2 * (ApsToPunch( pSoldier )))) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1) ) 
+								// if we are not specialized, reduce the attack attractiveness generally
+								if (!HAS_SKILL_TRAIT(pSoldier, MARTIAL_ARTS_NT))
 								{
-									BestStab.ubPossible = 0; 
-									BestStab.iAttackValue = 0; 
+									BestStab.iAttackValue /= 4;
+									// if too far and not having APs for at least 3 hits no way to attack
+									if (((CalcTotalAPsToAttack(pSoldier, BestStab.sTarget, ADDTURNCOST, 0) + (2 * (ApsToPunch(pSoldier)))) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1))
+									{
+										BestStab.ubPossible = 0;
+										BestStab.iAttackValue = 0;
+									}
+								}
+								else
+								{
+									if (PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1)
+									{
+										BestStab.iAttackValue = (BestStab.iAttackValue * 2);
+									}
+									// if too far and not having APs for at least 2 hits
+									else if (((CalcTotalAPsToAttack(pSoldier, BestStab.sTarget, ADDTURNCOST, 0) + ApsToPunch(pSoldier)) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1))
+									{
+										BestStab.iAttackValue /= 3;
+									}
 								}
 							}
 							else
 							{
-								if (PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1)
+								if (!HAS_SKILL_TRAIT(pSoldier, MARTIALARTS_OT) && !HAS_SKILL_TRAIT(pSoldier, HANDTOHAND_OT))
 								{
-									BestStab.iAttackValue = (BestStab.iAttackValue * 2); 
+									// if we are not specialized, reduce the attack attractiveness generally
+									BestStab.iAttackValue /= 4;
+									// if too far and not having APs for at least 3 hits
+									if (((CalcTotalAPsToAttack(pSoldier, BestStab.sTarget, ADDTURNCOST, 0) + (2 * (ApsToPunch(pSoldier)))) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget <= 1)))
+									{
+										BestStab.ubPossible = 0;
+										BestStab.iAttackValue = 0;
+									}
 								}
-								// if too far and not having APs for at least 2 hits
-								else if (((CalcTotalAPsToAttack( pSoldier,BestStab.sTarget,ADDTURNCOST, 0 ) + ApsToPunch( pSoldier )) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1))
+								else
 								{
-									BestStab.iAttackValue /= 3; 
-								}
-							}
-						}
-						else 
-						{
-							if ( !HAS_SKILL_TRAIT( pSoldier, MARTIALARTS_OT ) && !HAS_SKILL_TRAIT( pSoldier, HANDTOHAND_OT ) )
-							{
-								// if we are not specialized, reduce the attack attractiveness generaly
-								BestStab.iAttackValue /= 4; 
-								// if too far and not having APs for at least 3 hits
-								if (((CalcTotalAPsToAttack( pSoldier,BestStab.sTarget,ADDTURNCOST, 0 ) + (2 * (ApsToPunch( pSoldier )))) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget <= 1)) )
-								{
-									BestStab.ubPossible = 0; 
-									BestStab.iAttackValue = 0; 
-								}
-							}
-							else
-							{
-								BestStab.iAttackValue = ((BestStab.iAttackValue * 3)/2); 
+									BestStab.iAttackValue = ((BestStab.iAttackValue * 3) / 2);
 
-								if (PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1)
-								{
-									BestStab.iAttackValue = ((BestStab.iAttackValue * 3)/2); 
-								}
-								// if too far and not having APs for at least 2 hits
-								else if (((CalcTotalAPsToAttack( pSoldier,BestStab.sTarget,ADDTURNCOST, 0 ) + ApsToPunch( pSoldier )) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget <= 1)) )
-								{
-									BestStab.iAttackValue /= 3;
+									if (PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget) <= 1)
+									{
+										BestStab.iAttackValue = ((BestStab.iAttackValue * 3) / 2);
+									}
+									// if too far and not having APs for at least 2 hits
+									else if (((CalcTotalAPsToAttack(pSoldier, BestStab.sTarget, ADDTURNCOST, 0) + ApsToPunch(pSoldier)) > pSoldier->bActionPoints) && !(PythSpacesAway(pSoldier->sGridNo, BestStab.sTarget <= 1)))
+									{
+										BestStab.iAttackValue /= 3;
+									}
 								}
 							}
-						}
+
+							// sevenfm: reduce HTH attack attractiveness depending on number of seen opponents
+							if (pSoldier->aiData.bOppCnt > 1)
+							{
+								BestStab.iAttackValue /= pSoldier->aiData.bOppCnt;
+							}
+						}						
+
 						// now we KNOW FOR SURE that we will do something (stab, at least)
 						NPCDoesAct(pSoldier);
 						DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"NPC decided to punch");
@@ -6135,12 +6193,21 @@ L_NEWAIM:
 				}
 
 				pSoldier->bDoAutofire--;
-				if(!UsingNewCTHSystem() && pSoldier->bDoAutofire < 3 && pSoldier->aiData.bAimTime > 0 && pSoldier->inv[BestAttack.bWeaponIn][0]->data.gun.ubGunShotsLeft >= 3)//dnl ch69 130913 let try increase autofire rate for aim cost
+
+				//dnl ch69 130913 let try increase autofire rate for aim cost
+				// sevenfm: LIMIT_MAX_DEVIATION option increases effectiveness of suppression
+				if ((!UsingNewCTHSystem() || gGameCTHConstants.LIMIT_MAX_DEVIATION) &&
+					pSoldier->bDoAutofire < 3 && 
+					pSoldier->aiData.bAimTime > 0 && 
+					pSoldier->inv[BestAttack.bWeaponIn][0]->data.gun.ubGunShotsLeft >= 3 &&
+					Chance(gGameExternalOptions.sSuppressionEffectiveness) &&
+					(!gGameExternalOptions.fAISafeSuppression || CheckSuppressionDirection(pSoldier, BestShot.sTarget, BestShot.bTargetLevel)))
 				{
 					pSoldier->aiData.bAimTime--;
 					sActualAimAP = CalcAPCostForAiming(pSoldier, BestAttack.sTarget, (INT8)pSoldier->aiData.bAimTime);
 					goto L_NEWAIM;
 				}
+
 				if (pSoldier->bDoAutofire > 0)
 				{
 					ubBurstAPs = CalcAPsToAutofire( pSoldier->CalcActionPoints(), &(pSoldier->inv[BestAttack.bWeaponIn]), pSoldier->bDoAutofire, pSoldier );
@@ -6201,18 +6268,27 @@ L_NEWAIM:
 							//dnl ch69 140913 return aiming for autofire with halfautofire fix
 							pSoldier->bDoBurst = 1;
 							INT16 ubHalfBurstAPs = 256;
-							if(pSoldier->inv[BestAttack.bWeaponIn][0]->data.gun.ubGunShotsLeft < 4)
+							if (pSoldier->inv[BestAttack.bWeaponIn][0]->data.gun.ubGunShotsLeft < 4)
+							{
 								iChance = 0;
+							}
 							else
 							{
-								ubHalfBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &pSoldier->inv[BestAttack.bWeaponIn], 4, pSoldier);
-								if(Weapon[pSoldier->inv[BestAttack.bWeaponIn].usItem].NoSemiAuto)
-									iChance = 35;
+								ubHalfBurstAPs = CalcAPsToAutofire(pSoldier->CalcActionPoints(), &pSoldier->inv[BestAttack.bWeaponIn], 2, pSoldier);
+								
+								if (!CheckSuppressionDirection(pSoldier, BestAttack.sTarget, BestAttack.bTargetLevel))
+									iChance = 100;
+								else
+									iChance = BestAttack.ubChanceToReallyHit / 2;
+
+								if (Weapon[pSoldier->inv[BestAttack.bWeaponIn].usItem].NoSemiAuto || pSoldier->aiData.bOppCnt > 1)
+									iChance += (100 - iChance) / 2;
 							}
-							if((INT32)PreRandom(100) < iChance && pSoldier->bActionPoints > (2 * BestAttack.ubAPCost + ubHalfBurstAPs + sActualAimAP))
+
+							if(Chance(iChance) && pSoldier->bActionPoints >= (2 * BestAttack.ubAPCost + ubHalfBurstAPs + sActualAimAP))
 							{
 								// Try short autofire to enhance chance of hitting
-								pSoldier->bDoAutofire = 4;
+								pSoldier->bDoAutofire = 2;
 								BestAttack.ubAPCost += ubHalfBurstAPs + sActualAimAP;
 							}
 							else

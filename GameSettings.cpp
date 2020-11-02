@@ -1613,6 +1613,8 @@ void LoadGameExternalOptions()
 	// HEADROCK HAM 3.5: Explosive Suppression Effectiveness alters the amount of Suppression Points you get from nearby blasts.
 	gGameExternalOptions.usExplosionSuppressionEffect			= iniReader.ReadInteger("Tactical Suppression Fire Settings","EXPLOSIVE_SUPPRESSION_EFFECTIVENESS", 100, 0, 1000);
 
+	gGameExternalOptions.ubBuckshotSuppressionEffectiveness		= iniReader.ReadInteger("Tactical Suppression Fire Settings", "BUCKSHOT_SUPPRESSION_EFFECTIVENESS", 50, 0, 100);
+
 	// HEADROCK HAM 3.1: This is a suppression tool that not everyone will like. It gives an on-screen message when any character has been suppressed so much he's lost his next turn completely!
 	gGameExternalOptions.fShowSuppressionShutdown				= iniReader.ReadBoolean("Tactical Suppression Fire Settings","NOTIFY_WHEN_PINNED_DOWN", FALSE);
 
@@ -2309,6 +2311,7 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.fAIPathTweaks = iniReader.ReadBoolean("Tactical AI Settings", "AI_PATH_TWEAKS", TRUE);
 	gGameExternalOptions.fAIDecisionInfo = iniReader.ReadBoolean("Tactical AI Settings", "AI_DECISION_INFO", FALSE);
 	gGameExternalOptions.fAIShootUnseen = iniReader.ReadBoolean("Tactical AI Settings", "AI_SHOOT_UNSEEN", FALSE);
+	gGameExternalOptions.fAISafeSuppression = iniReader.ReadBoolean("Tactical AI Settings", "AI_SAFE_SUPPRESSION", TRUE);
 }
 
 
