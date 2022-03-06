@@ -1,51 +1,37 @@
 #include "builddefines.h"
 
 #ifdef PRECOMPILEDHEADERS
-#include "TileEngine All.h"
+	#include "TileEngine All.h"
 #else
-#include "physics.h"
-#include "wcheck.h"
-#include "timer control.h"
-#include "isometric utils.h"
-#include "los.h"
-#include "worldman.h"
-#include "event pump.h"
-#include "Sound Control.h"
-//#include "soldier control.h"
-#include "interface.h"
-#include "interface items.h"
-#include "weapons.h"
-#include "explosion control.h"
-#include "Debug Control.h"
-#include "tile animation.h"
-#include "message.h"
-#include "weapons.h"
-#include "structure wrap.h"
-#include "physics.h"
-#include "overhead.h"
-#include "animation control.h"
-#include "text.h"
-#include "Random.h"
-#include "lighteffects.h"
-#include "opplist.h"
-#include "World Items.h"
-#include "environment.h"
-#include "GameSettings.h"
-#include "Buildings.h"
-#include "Dialogue Control.h"	// added by Flugente
+	#include "physics.h"
+	#include "wcheck.h"
+	#include "isometric utils.h"
+	#include "worldman.h"
+	#include "Sound Control.h"
+	#include "interface.h"
+	#include "interface items.h"
+	#include "explosion control.h"
+	#include "Debug Control.h"
+	#include "message.h"
+	#include "structure wrap.h"
+	#include "animation control.h"
+	#include "text.h"
+	#include "Random.h"
+	#include "lighteffects.h"
+	#include "opplist.h"
+	#include "Buildings.h"
+	#include "Dialogue Control.h"	// added by Flugente
+	#include "Map Information.h"	// added by Shadooow
 #endif
-
-#include "Campaign.h"
-#include "SkillCheck.h"
-
 #include "connect.h"
+#include "PATHAI.H"
 
-#include "GameInitOptionsScreen.h"
 
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
-
+extern INT16 EffectiveDexterity(SOLDIERTYPE* pSoldier, BOOLEAN fTrainer);
+extern bool GridNoOnWalkableWorldTile(INT32 sGridNo);
 
 #define NO_TEST_OBJECT												0
 #define TEST_OBJECT_NO_COLLISIONS							1
@@ -795,6 +781,31 @@ void PhysicsDeleteObject( REAL_OBJECT *pObject )
 
 INT16 gsWaterSplashSoundNum = -1;
 
+void PlaySplashSound(INT32 sGridNo)
+{
+	// sevenfm: also play sound
+	CHAR8	zFilename[512];
+	// prepare water splash sound
+	if (gsWaterSplashSoundNum < 0)
+	{
+		gsWaterSplashSoundNum = 0;
+		do
+		{
+			gsWaterSplashSoundNum++;
+			sprintf(zFilename, "sounds\\misc\\Splash%d.ogg", gsWaterSplashSoundNum);
+		} while (FileExists(zFilename));
+		gsWaterSplashSoundNum--;
+	}
+	if (gsWaterSplashSoundNum > 0)
+	{
+		sprintf(zFilename, "sounds\\misc\\Splash%d.ogg", Random(gsWaterSplashSoundNum) + 1);
+		if (FileExists(zFilename))
+		{
+			PlayJA2SampleFromFile(zFilename, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+		}
+	}
+}
+
 BOOLEAN	PhysicsCheckForCollisions( REAL_OBJECT *pObject, INT32 *piCollisionID )
 {
 	vector_3			vTemp;
@@ -991,7 +1002,6 @@ BOOLEAN	PhysicsCheckForCollisions( REAL_OBJECT *pObject, INT32 *piCollisionID )
 
 	*piCollisionID = iCollisionCode;
 
-
 	// If We hit the ground
 	if ( iCollisionCode > COLLISION_NONE )
 	{
@@ -1006,17 +1016,34 @@ BOOLEAN	PhysicsCheckForCollisions( REAL_OBJECT *pObject, INT32 *piCollisionID )
 
 		if ( iCollisionCode == COLLISION_WINDOW_NORTHWEST || iCollisionCode == COLLISION_WINDOW_NORTHEAST || iCollisionCode == COLLISION_WINDOW_SOUTHWEST || iCollisionCode == COLLISION_WINDOW_SOUTHEAST )
 		{
-			if ( !pObject->fTestObject )
+			// sevenfm: added requirements for object to break window
+			if (Item[pObject->Obj.usItem].ubWeight >= 4 &&
+				Item[pObject->Obj.usItem].sinks &&
+				!Item[pObject->Obj.usItem].unaerodynamic &&
+				(Item[pObject->Obj.usItem].metal || Item[pObject->Obj.usItem].rock))
 			{
-				// Break window!
-				PhysicsDebugMsg( String( "Object %d: Collision Window", pObject->iID ) );
+				if (!pObject->fTestObject)
+				{
+					// Break window!
+					PhysicsDebugMsg(String("Object %d: Collision Window", pObject->iID));
 
-				sGridNo = MAPROWCOLTOPOS( ( (INT16)pObject->Position.y / CELL_Y_SIZE ), ( (INT16)pObject->Position.x / CELL_X_SIZE ) );
+					sGridNo = MAPROWCOLTOPOS(((INT16)pObject->Position.y / CELL_Y_SIZE), ((INT16)pObject->Position.x / CELL_X_SIZE));
 
-				ObjectHitWindow( sGridNo, usStructureID, FALSE, TRUE );
+					ObjectHitWindow(sGridNo, usStructureID, FALSE, TRUE);
+				}
+				*piCollisionID = COLLISION_NONE;
+				return(FALSE);
 			}
-			*piCollisionID = COLLISION_NONE;
-			return( FALSE );
+			else
+			{
+				// A wall, do stuff
+				vTemp.x = dNormalX;
+				vTemp.y = dNormalY;
+				vTemp.z = dNormalZ;
+
+				fDoCollision = TRUE;
+				dElasity = (float)1.1;
+			}
 		}
 
 		// ATE: IF detonate on impact, stop now!
@@ -1113,26 +1140,15 @@ BOOLEAN	PhysicsCheckForCollisions( REAL_OBJECT *pObject, INT32 *piCollisionID )
 					pNode->pLevelNode->sRelativeZ	= (INT16)CONVERT_HEIGHTUNITS_TO_PIXELS( (INT16)pObject->Position.z );
 
 					// sevenfm: also play sound
-					CHAR8	zFilename[512];
-					// prepare water splash sound
-					if (gsWaterSplashSoundNum < 0)
-					{
-						gsWaterSplashSoundNum = 0;
-						do
-						{
-							gsWaterSplashSoundNum++;
-							sprintf(zFilename, "sounds\\misc\\Splash%d.ogg", gsWaterSplashSoundNum);
-						} while (FileExists(zFilename));
-						gsWaterSplashSoundNum--;
-					}
-					if (gsWaterSplashSoundNum > 0)
-					{
-						sprintf(zFilename, "sounds\\misc\\Splash%d.ogg", Random(gsWaterSplashSoundNum) + 1);
-						if (FileExists(zFilename))
-						{
-							PlayJA2SampleFromFile(zFilename, RATE_11025, SoundVolume(MIDVOLUME, pObject->sGridNo), 1, SoundDir(pObject->sGridNo));
-						}
-					}
+					UINT16 usItem = pObject->Obj.usItem;
+					INT32 sGridNo = pObject->sGridNo;
+
+					if (HasItemFlag(usItem, CORPSE))
+						PlayJA2Sample(ENTER_DEEP_WATER_1, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+					else if (Item[usItem].ubWeight > 10)
+						PlayJA2Sample(ENTER_WATER_1, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+					else
+						PlaySplashSound(sGridNo);
 				}
 			}
 
@@ -2113,6 +2129,95 @@ void CalculateLaunchItemBasicParams( SOLDIERTYPE *pSoldier, OBJECTTYPE *pItem, I
 	(*pdDegrees )	= dDegrees;
 }
 
+BOOLEAN GrenadeRollingPossible(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 *sXPos, INT16 *sYPos)
+{
+	if (!(pSoldier->bWeaponMode == WM_ATTACHED_GL || pSoldier->bWeaponMode == WM_ATTACHED_GL_BURST || pSoldier->bWeaponMode == WM_ATTACHED_GL_AUTO))
+	{		
+		UINT8 ubDirection = GetDirectionFromGridNo(sGridNo, pSoldier);
+		if (ubDirection % 2 == 1)//diagonal direction is disabled
+		{
+			return FALSE;
+		}
+		INT32 sTestGridNo = NewGridNo(pSoldier->sGridNo, DirectionInc(ubDirection));
+
+		if (gubWorldMovementCosts[sTestGridNo][ubDirection][pSoldier->pathing.bLevel] == TRAVELCOST_WALL)
+		{
+			BOOLEAN obstacle = FALSE;
+			INT16 newDir = (ubDirection != 2 && ubDirection != 6) ? EAST : SOUTH;
+			INT32 newLoc = NewGridNo(pSoldier->sGridNo, DirectionInc(newDir));
+			STRUCTURE *pStruct;
+			pStruct = gpWorldLevelData[newLoc].pStructureHead;
+			while (pStruct)
+			{
+				if ((pStruct->fFlags & STRUCTURE_ANYDOOR) && (pStruct->fFlags & STRUCTURE_OPEN))
+				{
+					if (gubWorldMovementCosts[newLoc][newDir][pSoldier->pathing.bLevel] >= 220)//doors are opened in a way they make an obstacle
+						return FALSE;
+					ConvertGridNoToCenterCellXY(newLoc, sXPos, sYPos);
+					return TRUE;
+				}
+				pStruct = pStruct->pNext;
+			}
+			newLoc = NewGridNo(sTestGridNo, DirectionInc(newDir));
+			pStruct = gpWorldLevelData[newLoc].pStructureHead;
+			while (pStruct)
+			{
+				if ((pStruct->fFlags & STRUCTURE_ANYDOOR) && (pStruct->fFlags & STRUCTURE_OPEN))
+				{
+					ConvertGridNoToCenterCellXY(newLoc, sXPos, sYPos);
+					return TRUE;
+				}
+				else if ((pStruct->fFlags & STRUCTURE_OBSTACLE))
+				{
+					obstacle = TRUE;
+				}
+				pStruct = pStruct->pNext;
+			}
+			if (!obstacle)
+			{
+				ConvertGridNoToCenterCellXY(newLoc, sXPos, sYPos);
+				return TRUE;
+			}
+			obstacle = FALSE;
+			newDir = (ubDirection != 2 && ubDirection != 6) ? WEST : NORTH;
+			newLoc = NewGridNo(pSoldier->sGridNo, DirectionInc(newDir));
+			pStruct = gpWorldLevelData[newLoc].pStructureHead;
+			while (pStruct)
+			{
+				if ((pStruct->fFlags & STRUCTURE_ANYDOOR) && (pStruct->fFlags & STRUCTURE_OPEN))
+				{
+					if (gubWorldMovementCosts[newLoc][newDir][pSoldier->pathing.bLevel] >= 220)//doors are opened in a way they make an obstacle
+						return FALSE;
+					ConvertGridNoToCenterCellXY(newLoc, sXPos, sYPos);
+					return TRUE;
+				}
+				pStruct = pStruct->pNext;
+			}
+			newLoc = NewGridNo(sTestGridNo, DirectionInc(newDir));
+			pStruct = gpWorldLevelData[newLoc].pStructureHead;
+			while (pStruct)
+			{
+				if ((pStruct->fFlags & STRUCTURE_ANYDOOR) && (pStruct->fFlags & STRUCTURE_OPEN))
+				{
+					ConvertGridNoToCenterCellXY(newLoc, sXPos, sYPos);
+					return TRUE;
+				}
+				else if ((pStruct->fFlags & STRUCTURE_OBSTACLE))
+				{
+					obstacle = TRUE;
+				}
+				pStruct = pStruct->pNext;
+			}
+			if (!obstacle)
+			{
+				ConvertGridNoToCenterCellXY(newLoc, sXPos, sYPos);
+				return TRUE;
+			}
+		}
+	}
+	return FALSE;
+}
+
 
 BOOLEAN CalculateLaunchItemChanceToGetThrough( SOLDIERTYPE *pSoldier, OBJECTTYPE *pItem, INT32 sGridNo, UINT8 ubLevel, INT16 sEndZ,	INT32 *psFinalGridNo, BOOLEAN fArmed, INT8 *pbLevel, BOOLEAN fFromUI )
 {
@@ -2133,6 +2238,11 @@ BOOLEAN CalculateLaunchItemChanceToGetThrough( SOLDIERTYPE *pSoldier, OBJECTTYPE
 	// Get XY from gridno
 	ConvertGridNoToCenterCellXY( sGridNo, &sDestX, &sDestY );
 	ConvertGridNoToCenterCellXY( pSoldier->sGridNo, &sSrcX, &sSrcY );
+
+	if (GrenadeRollingPossible(pSoldier, sGridNo, &sSrcX, &sSrcY))
+	{
+		dForce /= 2;
+	}
 
 	// Set position
 	vPosition.x = sSrcX;
@@ -2187,6 +2297,12 @@ FLOAT CalculateForceFromRange(UINT16 usItem, INT16 sRange, FLOAT dDegrees, INT32
 	// OK, use a fake gridno, find the new gridno based on range, use height of merc, end height of ground,
 	// 45 degrees
 	sSrcGridNo	= INT32(WORLD_COLS/2+double(WORLD_COLS)*WORLD_ROWS/5.914);
+	//shadooow: so it looks like it doesn't work in all maps afterall...
+	//note that my hack will not work in custom made maps where neither 4408 and center GridNo aren't walkable, if such map exists then we need to solve this in some other way
+	if (!GridNoOnWalkableWorldTile(sSrcGridNo))
+	{
+		sSrcGridNo = gMapInformation.sCenterGridNo;
+	}
 	sDestGridNo = sSrcGridNo + ( sRange * WORLD_COLS );
 
 //	sSrcGridNo	= 4408;
@@ -2283,6 +2399,11 @@ void CalculateLaunchItemParamsForThrow( SOLDIERTYPE *pSoldier, INT32 sGridNo, UI
 	// Get XY from gridno
 	ConvertGridNoToCenterCellXY( sGridNo, &sDestX, &sDestY );
 	ConvertGridNoToCenterCellXY( pSoldier->sGridNo, &sSrcX, &sSrcY );
+
+	if (GrenadeRollingPossible(pSoldier, sGridNo, &sSrcX, &sSrcY))
+	{
+		dForce /= 2;
+	}
 
 	// OK, get direction normal
 	vDirNormal.x = (float)(sDestX - sSrcX);

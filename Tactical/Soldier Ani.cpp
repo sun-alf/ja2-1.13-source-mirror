@@ -77,7 +77,7 @@ class SOLDIERTYPE;
 #include "connect.h"
 #include "fresh_header.h"
 #define		NO_JUMP											0
-#define		MAX_ANIFRAMES_PER_FLASH			2
+#define		MAX_ANIFRAMES_PER_FLASH			3
 //#define		TIME_FOR_RANDOM_ANIM_CHECK	10
 #define		TIME_FOR_RANDOM_ANIM_CHECK	1
 
@@ -94,7 +94,7 @@ DOUBLE		gFalloffBackwardsDist[ NUMSOLDIERBODYTYPES ] = { 1, 0.8, 1, 1 };
 DOUBLE		gClimbUpRoofDist[ NUMSOLDIERBODYTYPES ] = { 2, 0.1, 2, 2 };
 DOUBLE		gClimbUpRoofLATDist[ NUMSOLDIERBODYTYPES ] = { 0.7, 0.5, 0.7, 0.5 };
 DOUBLE		gClimbDownRoofStartDist[ NUMSOLDIERBODYTYPES ] = { 5.0, 1.0, 1, 1 };
-DOUBLE		gClimbUpRoofDistGoingLower[ NUMSOLDIERBODYTYPES ] = { 0.9, 0.1, 1, 1 };
+DOUBLE		gClimbUpRoofDistGoingLower[ NUMSOLDIERBODYTYPES ] = { 0.9, 0.0, 1, 0.9 };
 
 
 
@@ -115,6 +115,7 @@ extern UINT8 gubInterruptProvoker;
 extern UINT16 PickSoldierReadyAnimation( SOLDIERTYPE *pSoldier, BOOLEAN fEndReady, BOOLEAN fHipStance );
 
 extern bool RemoveOneTurncoat( INT16 sSectorX, INT16 sSectorY, UINT8 aSoldierClass );
+extern void PlaySplashSound(INT32 sGridNo);
 
 // Animation code explanations!
 //
@@ -242,8 +243,14 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 			case 404:
 
 				// MOVE GUY BACKWARD SOME VALUE
+				sNewGridNo = pSoldier->sGridNo;
 				// Use same function as forward, but is -ve values!
 				MoveMercFacingDirection( pSoldier , TRUE, (FLOAT)1 );
+				//shadooow: since we just moved from original grid to the jump destination, now it is proper time to change bLevel
+				if (sNewGridNo != pSoldier->sGridNo)
+				{
+					pSoldier->pathing.bLevel = 0;
+				}
 				break;
 
 			case 405:
@@ -349,8 +356,8 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				HandlePlacingRoofMarker( pSoldier, pSoldier->sGridNo, FALSE, TRUE );
 
 				pSoldier->EVENT_SetSoldierDesiredDirection( pSoldier->ubDirection );
-				// Adjust height
-				pSoldier->SetSoldierHeight( (FLOAT)gClimbDownRoofStartDist[ pSoldier->ubBodyType ] );
+				// Adjust height //shadooow: do not change bLevel yet, we are still at roof!
+				pSoldier->InternalSetSoldierHeight((FLOAT)gClimbDownRoofStartDist[pSoldier->ubBodyType], FALSE);
 				// Adjust position
 				MoveMercFacingDirection( pSoldier , TRUE, (FLOAT)3.5 );
 				break;
@@ -586,6 +593,18 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					break;
 				}
 
+				{
+					OBJECTTYPE* pObjAttHand = pSoldier->GetUsedWeapon(&pSoldier->inv[pSoldier->ubAttackingHand]);
+					if (IsFlashSuppressor(pObjAttHand, pSoldier) || (*pObjAttHand)[0]->data.gun.bGunAmmoStatus < 0)
+					{
+						pSoldier->flags.fMuzzleFlash = FALSE;
+					}
+					else
+					{
+						pSoldier->flags.fMuzzleFlash = TRUE;
+					}
+					DebugMsg(TOPIC_JA2, DBG_LEVEL_3, String("UseGun: Muzzle flash = %d", pSoldier->flags.fMuzzleFlash));
+				}
 				if ( !pSoldier->flags.fMuzzleFlash )
 				{
 					break;
@@ -1069,7 +1088,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 			case 460:
 			case 461:
 
-				//CODE: THORW ITEM
+				//CODE: THROW ITEM
 				// Launch ITem!
 				if ( pSoldier->pTempObject != NULL && pSoldier->pThrowParams != NULL )
 				{
@@ -1084,6 +1103,31 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					{
 						// ATE: Deduct points!
 						DeductPoints( pSoldier, APBPConstants[AP_TOSS_ITEM], 0, AFTERACTION_INTERRUPT );
+					}
+
+					// sevenfm: show flash light
+					UINT16 usItem = pSoldier->pTempObject->usItem;
+					UINT16 usBuddyItem = Item[usItem].usBuddyItem;
+					if (pSoldier->pThrowParams->ubActionCode == THROW_ARM_ITEM &&
+						(Item[usItem].flare ||
+						Explosive[Item[usItem].ubClassIndex].ubType == EXPLOSV_FLARE ||
+						Explosive[Item[usItem].ubClassIndex].ubType == EXPLOSV_BURNABLEGAS ||
+						usBuddyItem && (Item[usBuddyItem].usItemClass & IC_EXPLOSV) && (Item[usBuddyItem].flare || Explosive[Item[usBuddyItem].ubClassIndex].ubType == EXPLOSV_FLARE)))
+					{
+						if ((pSoldier->iMuzFlash = LightSpriteCreate("L-R03.LHT", 0)) != -1)
+						{
+							LightSpritePower(pSoldier->iMuzFlash, TRUE);
+
+							INT32	usNewGridNo;
+							INT16 sXPos, sYPos;
+
+							usNewGridNo = NewGridNo(pSoldier->sGridNo, DirectionInc(pSoldier->ubDirection));
+							ConvertGridNoToCenterCellXY(usNewGridNo, &sXPos, &sYPos);
+							LightSpritePosition(pSoldier->iMuzFlash, (INT16)(sXPos / CELL_X_SIZE), (INT16)(sYPos / CELL_Y_SIZE));
+
+							// Start count
+							pSoldier->bMuzFlashCount = 1;
+						}
 					}
 
 					INT32 iRealObjectID = CreatePhysicalObject( pSoldier->pTempObject, pSoldier->pThrowParams->dLifeSpan,	pSoldier->pThrowParams->dX, pSoldier->pThrowParams->dY, pSoldier->pThrowParams->dZ, pSoldier->pThrowParams->dForceX, pSoldier->pThrowParams->dForceY, pSoldier->pThrowParams->dForceZ, pSoldier->ubID, pSoldier->pThrowParams->ubActionCode, pSoldier->pThrowParams->uiActionData, FALSE );
@@ -1464,7 +1508,8 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				{
 					FreeUpNPCFromRoofClimb( pSoldier );
 				}
-				pSoldier->usUIMovementMode = WALKING;
+				if(pSoldier->usUIMovementMode != RUNNING)
+					pSoldier->usUIMovementMode = WALKING;
 
 				// ATE: Handle sight...
 				HandleSight( pSoldier,SIGHT_LOOK | SIGHT_RADIO | SIGHT_INTERRUPT );
@@ -1871,14 +1916,16 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 																if ( Random( 100 ) < 10 )
 																{
 																	// Play sound
-																	PlayJA2SampleFromFile(	pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+																	if (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE))
+																		PlayJA2SampleFromFile(	pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
 																}
 															}
 															else
 															{
 
 																// Play sound
-																PlayJA2SampleFromFile( pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+																if (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE))
+																	PlayJA2SampleFromFile( pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
 															}
 														}
 													}
@@ -1892,21 +1939,24 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 																if ( Random( 100 ) < 10 )
 																{
 																	// Play sound
-																	PlayJA2SampleFromFile(	pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+																	if (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE))
+																		PlayJA2SampleFromFile(	pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
 																}
 															}
 															else
 															{
 
 																// Play sound
-																PlayJA2SampleFromFile( pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+																if (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE))
+																	PlayJA2SampleFromFile( pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
 															}
 														}
 													}
 													else
 													{
 														// Play sound
-														PlayJA2SampleFromFile( pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+														if (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE))
+															PlayJA2SampleFromFile( pAnimDef->zSoundFile, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
 													}
 												}
 												else
@@ -2100,7 +2150,6 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				}
 				else
 				{
-
 					pSoldier->aiData.fAIFlags &= ~(AI_LOCK_DOOR_INCLUDES_CLOSE);
 
 					pSoldier->ubDoorOpeningNoise = DoorOpeningNoise( pSoldier );
@@ -2108,11 +2157,11 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 					if ( SoldierHandleInteractiveObject( pSoldier ) )
 					{
 						// HANDLE SIGHT!
-						//HandleSight(pSoldier,SIGHT_LOOK | SIGHT_RADIO | SIGHT_INTERRUPT );
+						HandleSight(pSoldier,SIGHT_LOOK | SIGHT_RADIO | SIGHT_INTERRUPT );
 
 						InitOpplistForDoorOpening();
-
-						MakeNoise( pSoldier->ubID, pSoldier->sGridNo, pSoldier->pathing.bLevel, gpWorldLevelData[pSoldier->sGridNo].ubTerrainID, pSoldier->ubDoorOpeningNoise, NOISE_CREAKING );
+						//shadooow: this has been moved inside HandleDoorsOpenClose
+						//MakeNoise( pSoldier->ubID, pSoldier->aiData.sPendingActionData2, pSoldier->pathing.bLevel, gpWorldLevelData[pSoldier->sGridNo].ubTerrainID, pSoldier->ubDoorOpeningNoise, NOISE_CREAKING );
 						//	gfDelayResolvingBestSighting = FALSE;
 
 						gubInterruptProvoker = pSoldier->ubID;
@@ -2124,7 +2173,6 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 					// EVENT HAS BEEN HANDLED
 					pSoldier->aiData.ubPendingAction		= NO_PENDING_ACTION;
-
 				}
 
 
@@ -2472,6 +2520,12 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 						// ATE: Now, check AI guy to cancel what he was going....
 						HandleSystemNewAISituation( pSoldier, TRUE );
+
+						// sevenfm: update tree visibility after changing stance
+						if (//pSoldier->bVisible != -1 && 
+							pSoldier->bTeam != OUR_TEAM &&
+							(pSoldier->bTeam != MILITIA_TEAM || !gGameExternalOptions.bWeSeeWhatMilitiaSeesAndViceVersa))
+							UpdateTreeVisibility();
 					}
 
 					// Have we finished opening doors?
@@ -2709,7 +2763,8 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 
 						if ( usSoundID != 0 )
 						{
-							PlayJA2Sample( usSoundID, RATE_11025, SoundVolume( HIGHVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+							if (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE))
+								PlayJA2Sample( usSoundID, RATE_11025, SoundVolume( HIGHVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
 						}
 					}
 				}
@@ -3142,7 +3197,22 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				{
 					if ( pSoldier->bVisible != -1 )
 					{
-						PlayJA2Sample( THROW_IMPACT_2, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+						if (Water(pSoldier->aiData.sPendingActionData2, pSoldier->pathing.bLevel))
+						{
+							UINT16 usItem = pSoldier->pTempObject->usItem;
+							INT32 sGridNo = pSoldier->aiData.sPendingActionData2;
+
+							if (HasItemFlag(usItem, CORPSE))
+								PlayJA2Sample(ENTER_DEEP_WATER_1, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+							else if (Item[usItem].ubWeight > 10)
+								PlayJA2Sample(ENTER_WATER_1, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+							else
+								PlaySplashSound(sGridNo);
+						}
+						else
+						{
+							PlayJA2Sample(THROW_IMPACT_2, RATE_11025, SoundVolume(MIDVOLUME, pSoldier->sGridNo), 1, SoundDir(pSoldier->sGridNo));
+						}
 					}
 
 					AddItemToPool( pSoldier->aiData.sPendingActionData2, pSoldier->pTempObject, 1, pSoldier->pathing.bLevel, 0 , -1 );
@@ -3283,7 +3353,7 @@ BOOLEAN AdjustToNextAnimationFrame( SOLDIERTYPE *pSoldier )
 				break;
 
 			case 778:
-				if ( !pSoldier->bStealthMode )
+				if (!pSoldier->bStealthMode && (pSoldier->bVisible == TRUE || TeamMemberNear(gbPlayerNum, pSoldier->sGridNo, TACTICAL_RANGE)))
 				{
 					PlaySoldierJA2Sample( pSoldier->ubID, ENTER_DEEP_WATER_1, RATE_11025, SoundVolume( HIGHVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ), TRUE );
 				}
@@ -3973,6 +4043,9 @@ BOOLEAN HandleSoldierDeath( SOLDIERTYPE *pSoldier , BOOLEAN *pfMadeCorpse )
 						// SANDRO - experimental - more specific statistics of mercs
 						switch(pSoldier->ubSoldierClass)
 						{
+							case SOLDIER_CLASS_ROBOT:
+								gMercProfiles[ MercPtrs[ ubAttacker ]->ubProfile ].records.usKillsOthers++;
+								break;
 							case SOLDIER_CLASS_ELITE :
 								gMercProfiles[ MercPtrs[ ubAttacker ]->ubProfile ].records.usKillsElites++;
 								break;
@@ -4003,7 +4076,7 @@ BOOLEAN HandleSoldierDeath( SOLDIERTYPE *pSoldier , BOOLEAN *pfMadeCorpse )
 									gMercProfiles[ MercPtrs[ ubAttacker ]->ubProfile ].records.usKillsOthers++;
 
 									// Flugente: dynamic opinions: if this guy is not hostile towards us, then some mercs will complain about killing civilians
-									if ( pSoldier->bTeam != OUR_TEAM && (pSoldier->aiData.bNeutral || pSoldier->bSide == MercPtrs[ubAttacker]->bSide) )
+									if (gGameExternalOptions.fDynamicOpinions && pSoldier->bTeam != OUR_TEAM && (pSoldier->aiData.bNeutral || pSoldier->bSide == MercPtrs[ubAttacker]->bSide) )
 									{
 										// not for killing animals though...
 										if ( pSoldier->ubBodyType != CROW && pSoldier->ubBodyType != COW )
@@ -4017,23 +4090,26 @@ BOOLEAN HandleSoldierDeath( SOLDIERTYPE *pSoldier , BOOLEAN *pfMadeCorpse )
 						gStrategicStatus.usPlayerKills++;
 
 						// Flugente: dynamic opinions: if this guy is not hostile towards us, then some mercs will complain about killing civilians
-						if ( pSoldier->bTeam != OUR_TEAM && (pSoldier->aiData.bNeutral || pSoldier->bSide == MercPtrs[ubAttacker]->bSide) )
+						if (gGameExternalOptions.fDynamicOpinions)
 						{
-							// not for killing animals though...
-							if ( pSoldier->ubBodyType != CROW && pSoldier->ubBodyType != COW )
-								HandleDynamicOpinionChange( MercPtrs[ubAttacker], OPINIONEVENT_CIVKILLER, TRUE, TRUE );
-						}
-						else
-						{
-							// if this enemy was attacking a freshly wounded merc, it is likely they posed a real threat - the merc will be thankful for saving their life
-							if ( pSoldier->ubTargetID != NOBODY && MercPtrs[pSoldier->ubTargetID]->bBleeding > 10 )
+							if (pSoldier->bTeam != OUR_TEAM && (pSoldier->aiData.bNeutral || pSoldier->bSide == MercPtrs[ubAttacker]->bSide))
 							{
-								AddOpinionEvent( MercPtrs[pSoldier->ubTargetID]->ubProfile, MercPtrs[ubAttacker]->ubProfile, OPINIONEVENT_BATTLE_SAVIOUR );
+								// not for killing animals though...
+								if (pSoldier->ubBodyType != CROW && pSoldier->ubBodyType != COW)
+									HandleDynamicOpinionChange(MercPtrs[ubAttacker], OPINIONEVENT_CIVKILLER, TRUE, TRUE);
 							}
 							else
 							{
-								// complain about a fragthief, or thank for assistance - correct event is chosen internally
-								HandleDynamicOpinionChange( MercPtrs[ubAttacker], OPINIONEVENT_FRAGTHIEF, TRUE, TRUE );
+								// if this enemy was attacking a freshly wounded merc, it is likely they posed a real threat - the merc will be thankful for saving their life
+								if (pSoldier->ubTargetID != NOBODY && MercPtrs[pSoldier->ubTargetID]->bBleeding > 10)
+								{
+									AddOpinionEvent(MercPtrs[pSoldier->ubTargetID]->ubProfile, MercPtrs[ubAttacker]->ubProfile, OPINIONEVENT_BATTLE_SAVIOUR);
+								}
+								else
+								{
+									// complain about a fragthief, or thank for assistance - correct event is chosen internally
+									HandleDynamicOpinionChange(MercPtrs[ubAttacker], OPINIONEVENT_FRAGTHIEF, TRUE, TRUE);
+								}
 							}
 						}
 					}
@@ -4495,6 +4571,12 @@ BOOLEAN CheckForAndHandleSoldierDyingNotFromHit( SOLDIERTYPE *pSoldier )
 			else if(pSoldier->bTeam <6 && ((gTacticalStatus.ubTopMessageType == PLAYER_TURN_MESSAGE) || (gTacticalStatus.ubTopMessageType == PLAYER_INTERRUPT_MESSAGE)))send_death(pSoldier);
 			else if (pSoldier->bTeam < 6 && (is_server)) send_death(pSoldier);
 		}
+
+		// Flugente: cows only have one death animation. If we're not in the proper aniamtion, enforce it, otherwise the corpse isn't created
+		if ( pSoldier->ubBodyType == COW
+			&& pSoldier->usAnimState != COW_HIT )
+			pSoldier->ChangeSoldierState( COW_DYING, 0, FALSE );
+
 		if ( gGameSettings.fOptions[ TOPTION_BLOOD_N_GORE ] )
 		{
 			switch( pSoldier->usAnimState )
@@ -4854,22 +4936,30 @@ BOOLEAN OKFallDirection( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT
 
 BOOLEAN HandleCheckForDeathCommonCode( SOLDIERTYPE *pSoldier )
 {
-	// Do we have a primary pending animation?
-	if ( pSoldier->usPendingAnimation2 != NO_PENDING_ANIMATION )
+	//shadooow: fix for going back to cower animation after collapsing
+	if (pSoldier->CheckForBreathCollapse() || pSoldier->bCollapsed)
 	{
-		pSoldier->ChangeSoldierState( pSoldier->usPendingAnimation2, 0, FALSE );
-		pSoldier->usPendingAnimation2 = NO_PENDING_ANIMATION;
-		return( TRUE );
-	}
-
-	// CHECK IF WE HAVE A PENDING ANIMATION HERE
-	if ( pSoldier->usPendingAnimation != NO_PENDING_ANIMATION )
-	{
-		pSoldier->ChangeSoldierState( pSoldier->usPendingAnimation, 0, FALSE );
 		pSoldier->usPendingAnimation = NO_PENDING_ANIMATION;
-		return( TRUE );
+		pSoldier->usPendingAnimation2 = NO_PENDING_ANIMATION;
 	}
+	else
+	{
+		// Do we have a primary pending animation?
+		if (pSoldier->usPendingAnimation2 != NO_PENDING_ANIMATION)
+		{
+			pSoldier->ChangeSoldierState(pSoldier->usPendingAnimation2, 0, FALSE);
+			pSoldier->usPendingAnimation2 = NO_PENDING_ANIMATION;
+			return(TRUE);
+		}
 
+		// CHECK IF WE HAVE A PENDING ANIMATION HERE
+		if (pSoldier->usPendingAnimation != NO_PENDING_ANIMATION)
+		{
+			pSoldier->ChangeSoldierState(pSoldier->usPendingAnimation, 0, FALSE);
+			pSoldier->usPendingAnimation = NO_PENDING_ANIMATION;
+			return(TRUE);
+		}
+	}
 	// OTHERWISE, GOTO APPROPRIATE STOPANIMATION!
 	pSoldier->bCollapsed = TRUE;
 

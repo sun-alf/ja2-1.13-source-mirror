@@ -8,13 +8,8 @@
 	#include "vehicles.h"
 #else
 	//sgp
-	#include "types.h"
-	#include "mousesystem.h"
-	#include "Button System.h"
-	#include "input.h"
 	#include "english.h"
 	#include "debug.h"
-	#include "vsurface.h"
 	#include "video.h"
 	#include "vobject_blitters.h"
 	#include "line.h"
@@ -24,15 +19,12 @@
 	#include "Overhead Map.h"
 	#include "strategicmap.h"
 	#include "Interface.h"
-	#include "Font Control.h"
 	#include "overhead.h"
 	#include "Render Dirty.h"
 	#include "sysutil.h"
 	#include "PreBattle Interface.h"
 	#include "Soldier Profile.h"
 	#include "Map Edgepoints.h"
-	#include "strategic.h"
-	#include "strategicmap.h"
 	#include "gameloop.h"
 	#include "message.h"
 	#include "Map Information.h"
@@ -40,14 +32,12 @@
 	#include "cursors.h"
 	#include "Cursor Control.h"
 	#include "MessageBoxScreen.h"
-	#include "assignments.h"
 	#include "text.h"
 	#include "WordWrap.h"
 	#include "Game Clock.h"
+	#include "Isometric Utils.h"
 #endif
 #include "connect.h"
-#include "saveloadscreen.h"
-#include "Map Edgepoints.h"
 #include "renderworld.h"//dnl ch45 051009
 #include "merc entering.h"
 #include "CampaignStats.h"		// added by Flugente
@@ -347,6 +337,7 @@ void InitTacticalPlacementGUI()
 			CurrentBattleSectorIs( MercPtrs[i]->sSectorX, MercPtrs[i]->sSectorY, MercPtrs[i]->bSectorZ ) &&
 				!( MercPtrs[ i ]->flags.uiStatusFlags & ( SOLDIER_VEHICLE ) ) && // ATE Ignore vehicles
 				MercPtrs[ i ]->bAssignment != ASSIGNMENT_POW &&
+				MercPtrs[ i ]->bAssignment != ASSIGNMENT_MINIEVENT &&
 				!( MercPtrs[i]->usSoldierFlagMask2 & SOLDIER_CONCEALINSERTION ) &&
 				MercPtrs[ i ]->bAssignment != IN_TRANSIT )
 		{
@@ -363,14 +354,16 @@ void InitTacticalPlacementGUI()
 		if( MercPtrs[ i ]->bActive && MercPtrs[ i ]->stats.bLife && !MercPtrs[ i ]->flags.fBetweenSectors &&
 			CurrentBattleSectorIs( MercPtrs[i]->sSectorX, MercPtrs[i]->sSectorY, MercPtrs[i]->bSectorZ ) &&
 				MercPtrs[ i ]->bAssignment != ASSIGNMENT_POW &&
+				MercPtrs[ i ]->bAssignment != ASSIGNMENT_MINIEVENT &&
 				!( MercPtrs[i]->usSoldierFlagMask2 & SOLDIER_CONCEALINSERTION ) &&
 				MercPtrs[ i ]->bAssignment != IN_TRANSIT &&
 				!( MercPtrs[ i ]->flags.uiStatusFlags & ( SOLDIER_VEHICLE ) ) ) // ATE Ignore vehicles
 		{
 			// Flugente: if options allow it and we entered this sector - in combat - via helicopter, then allow us free selection of our entry point, and drop us from the helicopter
-			if ( MercPtrs[ i ]->bTeam == gbPlayerNum && gGameExternalOptions.ubSkyriderHotLZ == 3 && MercPtrs[ i ]->usSoldierFlagMask & SOLDIER_AIRDROP )
+			if ( MercPtrs[ i ]->bTeam == gbPlayerNum && (gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && MercPtrs[ i ]->usSoldierFlagMask & SOLDIER_AIRDROP )
 			{
 				AddMercToHeli( MercPtrs[ i ]->ubID );
+				DisableButton(iTPButtons[SPREAD_BUTTON]);
 
 				gMercPlacement[ giPlacements ].ubStrategicInsertionCode = INSERTION_CODE_CHOPPER;
 				MercPtrs[ i ]->ubStrategicInsertionCode					= INSERTION_CODE_CHOPPER;
@@ -772,7 +765,7 @@ void RenderTacticalPlacementGUI()
 	
 		if( gbCursorMercID == -1 )
 		{
-			if ( GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE )
+			if ( GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE || (gfCenter && gGameExternalOptions.ubSkyriderHotLZ == 1))
 			{
 				INT16 sCellX = 0;
 				INT16 sCellY = 0;
@@ -944,7 +937,7 @@ void RenderTacticalPlacementGUI()
 				}
 			}
 
-			if ( GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE )
+			if ( GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE || (gfCenter && gGameExternalOptions.ubSkyriderHotLZ == 1 && gbSelectedMercID >= 0 && gMercPlacement[gbSelectedMercID].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP))
 			{
 				INT16 sCellX = 0;
 				INT16 sCellY = 0;
@@ -1033,7 +1026,7 @@ void RenderTacticalPlacementGUI()
 
 		pDestBuf = LockVideoSurface( FRAME_BUFFER, &uiDestPitchBYTES );
 		
-		if (!gfCenter || (gGameExternalOptions.ubSkyriderHotLZ == 3 && gbSelectedMercID >= 0 && !(gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP)) )
+		if (!gfCenter || ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && gbSelectedMercID >= 0 && !(gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP)) )
 			Blt16BPPBufferLooseHatchRectWithColor( (UINT16*)pDestBuf, uiDestPitchBYTES, &gTPClipRect, usHatchColor );
 		// WANNE - MP: Center
 		else
@@ -1046,7 +1039,7 @@ void RenderTacticalPlacementGUI()
 
 		SetClippingRegionAndImageWidth( uiDestPitchBYTES, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 
-		if (!gfCenter || (gGameExternalOptions.ubSkyriderHotLZ == 3 && gbSelectedMercID >= 0 && !(gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP)) )
+		if (!gfCenter || ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && gbSelectedMercID >= 0 && !(gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP)) )
 			RectangleDraw( TRUE, gTPClipRect.iLeft, gTPClipRect.iTop, gTPClipRect.iRight, gTPClipRect.iBottom, usHatchColor, pDestBuf );
 		else
 		{
@@ -1215,7 +1208,7 @@ void TacticalPlacementHandle()
 								if(islocked!=1)GroupPlacementsCallback( ButtonList[ iTPButtons[ GROUP_BUTTON ] ], MSYS_CALLBACK_REASON_LBUTTON_UP );
 								break;
 				case 's':
-								if(islocked!=1)SpreadPlacementsCallback( ButtonList[ iTPButtons[ SPREAD_BUTTON ] ], MSYS_CALLBACK_REASON_LBUTTON_UP );
+								if(islocked!=1 && ButtonList[iTPButtons[SPREAD_BUTTON]]->uiFlags & BUTTON_ENABLED) SpreadPlacementsCallback( ButtonList[ iTPButtons[ SPREAD_BUTTON ] ], MSYS_CALLBACK_REASON_LBUTTON_UP );
 								break;
 				case 'x':
 					if( InputEvent.usKeyState & ALT_DOWN )
@@ -1261,7 +1254,7 @@ void TacticalPlacementHandle()
 		// WANNE - MP: Center
 		if ( gfCenter && (is_networked || 
 			GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE ||
-			( gGameExternalOptions.ubSkyriderHotLZ == 3 && gMercPlacement[gbSelectedMercID].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )) )
+			((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && gMercPlacement[gbSelectedMercID].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )) )
 		{
 			if ( GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE )
 			{
@@ -1272,7 +1265,7 @@ void TacticalPlacementHandle()
 					gfValidCursor = TRUE;
 				}
 			}
-			else if( gMercPlacement[gbCursorMercID].ubStrategicInsertionCode == INSERTION_CODE_CENTER )
+			else if( gMercPlacement[gbCursorMercID].ubStrategicInsertionCode == INSERTION_CODE_CENTER || (gGameExternalOptions.ubSkyriderHotLZ == 1 && gMercPlacement[gbCursorMercID].ubStrategicInsertionCode == INSERTION_CODE_CHOPPER))
 			{
 				if (gusMouseYPos >= (iOffsetVertical + CENTERENTRYPTS_TOP_Y) &&		// N
 					gusMouseYPos <= (iOffsetVertical + CENTERENTRYPTS_BOTTOM_Y) &&	// S
@@ -1451,9 +1444,20 @@ void PlaceMercs()
 			{
 				PickUpMercPiece( i );
 			}
-			gubSelectedGroupID = 0;
-			gbSelectedMercID = 0;
-			SetCursorMerc( 0 );
+			if (ButtonList[iTPButtons[SPREAD_BUTTON]]->uiFlags & BUTTON_ENABLED)
+			{
+				gubSelectedGroupID = 0;
+				gbSelectedMercID = 0;
+				SetCursorMerc(0);
+			}
+			else//spread button disabled mean hotdrop
+			{
+				gubSelectedGroupID = gMercPlacement[0].pSoldier->ubGroupID;
+				ButtonList[iTPButtons[GROUP_BUTTON]]->uiFlags |= BUTTON_CLICKED_ON | BUTTON_DIRTY;
+				gubDefaultButton = GROUP_BUTTON;
+				gbSelectedMercID = 0;
+				SetCursorMerc(gbSelectedMercID);
+			}
 			gfEveryonePlaced = FALSE;
 			break;
 		default:
@@ -1492,8 +1496,18 @@ void GroupPlacementsCallback( GUI_BUTTON *btn, INT32 reason )
 		{
 			btn->uiFlags &= ~BUTTON_CLICKED_ON;
 			btn->uiFlags |= BUTTON_DIRTY;
-			gubDefaultButton = CLEAR_BUTTON;
-			gubSelectedGroupID = 0;
+			if (ButtonList[iTPButtons[SPREAD_BUTTON]]->uiFlags & BUTTON_ENABLED)
+			{
+				gubDefaultButton = CLEAR_BUTTON;
+				gubSelectedGroupID = 0;
+			}
+			else//spread button disabled mean hotdrop
+			{
+				gubDefaultButton = CLEAR_BUTTON;
+				gubSelectedGroupID = 0;
+				gbSelectedMercID = -1;
+				SetCursorMerc(gbSelectedMercID);
+			}
 		}
 		else
 		{
@@ -1553,7 +1567,7 @@ void MercClickCallback( MOUSE_REGION *reg, INT32 reason )
 				{
 					if( gbSelectedMercID != i )
 					{
-						if ( gGameExternalOptions.ubSkyriderHotLZ == 3 && gMercPlacement[ i ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
+						if ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && gMercPlacement[ i ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
 							gubDefaultButton = GROUP_BUTTON;
 
 						gbSelectedMercID = i;
@@ -1576,7 +1590,7 @@ void SelectNextUnplacedUnit()
 	if( gbSelectedMercID == -1 )
 		return;
 
-	if ( gGameExternalOptions.ubSkyriderHotLZ == 3 && gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
+	if ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
 		gubDefaultButton = GROUP_BUTTON;
 
 	for( i = gbSelectedMercID; i < giPlacements; ++i )
@@ -1632,7 +1646,7 @@ void HandleTacticalPlacementClicksInOverheadMap( MOUSE_REGION *reg, INT32 reason
 		{
 			if( gbSelectedMercID != -1 )
 			{
-				if ( gGameExternalOptions.ubSkyriderHotLZ == 3 && gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
+				if ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && gMercPlacement[ gbSelectedMercID ].pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
 					gubDefaultButton = GROUP_BUTTON;
 
 				if( GetOverheadMouseGridNo( &sGridNo ) )
@@ -1781,7 +1795,7 @@ void PutDownMercPiece( INT32 iPlacement )
 	if(!TileIsOutOfBounds(sGridNo))
 	{
 		// Flugente: initiate airdrop, place merc on roof if necessary
-		if ( gGameExternalOptions.ubSkyriderHotLZ == 3 && pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
+		if ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3) && pSoldier->usSoldierFlagMask & SOLDIER_AIRDROP )
 		{
 			// hideous hack
 			gfTacticalDoHeliRun = TRUE;
@@ -1810,11 +1824,11 @@ void PutDownMercPiece( INT32 iPlacement )
 
 		if ( GetEnemyEncounterCode() == ENEMY_AMBUSH_DEPLOYMENT_CODE )
 		{
-			ubDirection = (UINT8)GetDirectionToGridNoFromGridNo( gMapInformation.sCenterGridNo, sGridNo ) + 100;
+			ubDirection = (UINT8)GetDirectionToGridNoFromGridNo( gMapInformation.sCenterGridNo, sGridNo );
 		}
-		
 		pSoldier->EVENT_SetSoldierDirection( ubDirection );
-		pSoldier->ubInsertionDirection = pSoldier->ubDirection;
+		ubDirection += 100;
+		pSoldier->ubInsertionDirection = ubDirection;
 
 		gMercPlacement[ iPlacement ].fPlaced = TRUE;
 		gMercPlacement[ iPlacement ].pSoldier->bInSector = TRUE;

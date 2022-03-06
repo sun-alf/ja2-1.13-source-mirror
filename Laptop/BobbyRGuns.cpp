@@ -338,6 +338,9 @@ UINT16 DisplayExplosiveDamage(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight
 UINT16 DisplayExplosiveStunDamage(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight);
 UINT16 DisplayProtection(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight);
 UINT16 DisplayCamo(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight);
+UINT16 DisplayAmmoArmourPierceModifier(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight);
+UINT16 DisplayAmmoDamageModifier(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight);
+UINT16 DisplayAmmoProjectileCount(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight);
 void CreateMouseRegionForBigImage(UINT16 usPosY, UINT8 ubCount, INT16 *pItemNumbers );
 // HEADROCK HAM 4: Now can purchase ALL items available.
 void PurchaseBobbyRayItem(UINT16	usItemNumber, BOOLEAN fAllItems );
@@ -361,6 +364,7 @@ void GetHelpTextForItemInLaptop( STR16 pzStr, UINT16 usItemNumber );
 
 //Hotkey Assignment
 void HandleBobbyRGunsKeyBoardInput();
+void HandleBobbyRayMouseWheel(void);
 
 void GameInitBobbyRGuns()
 {
@@ -444,6 +448,7 @@ void HandleBobbyRGuns()
 {
 	//Hotkey Assignment
 	HandleBobbyRGunsKeyBoardInput();
+	HandleBobbyRayMouseWheel();
 }
 
 void RenderBobbyRGuns()
@@ -1869,6 +1874,11 @@ BOOLEAN DisplayAmmoInfo(UINT16 usIndex, UINT16 usTextPosY, BOOLEAN fUsed, UINT16
 	//Magazine
 	usHeight = DisplayMagazine(usHeight, usIndex, usFontHeight);
 
+	// rftr: display ammo stats
+	usHeight = DisplayAmmoArmourPierceModifier(usHeight, usIndex, usFontHeight);
+	usHeight = DisplayAmmoDamageModifier(usHeight, usIndex, usFontHeight);
+	usHeight = DisplayAmmoProjectileCount(usHeight, usIndex, usFontHeight);
+
 	//Display the Cost and the qty bought and on hand
 	usHeight = DisplayCostAndQty(usTextPosY, usIndex, usFontHeight, usBobbyIndex, fUsed);
 
@@ -2327,6 +2337,59 @@ UINT16 DisplayCamo(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight)
 	swprintf(sTemp, L"%d", Item[ usIndex ].camobonus);
 	wcscat( sTemp, L"%%" );
 	DrawTextToScreen(sTemp, BOBBYR_ITEM_WEIGHT_NUM_X, (UINT16)usPosY, BOBBYR_ITEM_WEIGHT_NUM_WIDTH, BOBBYR_ITEM_DESC_TEXT_FONT, BOBBYR_ITEM_DESC_TEXT_COLOR_ALT, FONT_MCOLOR_BLACK, FALSE, RIGHT_JUSTIFIED);
+	usPosY += usFontHeight + 2;
+	return(usPosY);
+}
+
+UINT16 DisplayAmmoArmourPierceModifier(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight)
+{
+	CHAR16 sTemp[10];
+
+	DrawTextToScreen(BobbyRText[BOBBYR_GUNS_ARMOUR_PIERCING_MODIFIER], BOBBYR_ITEM_WEIGHT_TEXT_X, (UINT16)usPosY, 0, BOBBYR_ITEM_DESC_TEXT_FONT, BOBBYR_STATIC_TEXT_COLOR, FONT_MCOLOR_BLACK, FALSE, LEFT_JUSTIFIED);
+	// armour piercing modifier
+	const FLOAT armourImpactReductionModifier = (FLOAT)AmmoTypes[Magazine[Item[usIndex].ubClassIndex].ubAmmoType].armourImpactReductionMultiplier / (FLOAT)AmmoTypes[Magazine[Item[usIndex].ubClassIndex].ubAmmoType].armourImpactReductionDivisor;
+	swprintf(sTemp, L"%1.2f", armourImpactReductionModifier);
+	UINT8 color = BOBBYR_ITEM_DESC_TEXT_COLOR_ALT;
+	if (armourImpactReductionModifier > 1.0f)
+		color = FONT_MCOLOR_DKRED;
+	else if (armourImpactReductionModifier < 1.0f)
+		color = FONT_MCOLOR_LTGREEN;
+	DrawTextToScreen(sTemp, BOBBYR_ITEM_WEIGHT_NUM_X, (UINT16)usPosY, BOBBYR_ITEM_WEIGHT_NUM_WIDTH, BOBBYR_ITEM_DESC_TEXT_FONT, color, FONT_MCOLOR_BLACK, FALSE, RIGHT_JUSTIFIED);
+
+	usPosY += usFontHeight + 2;
+	return(usPosY);
+}
+
+UINT16 DisplayAmmoDamageModifier(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight)
+{
+	CHAR16 sTemp[10];
+
+	DrawTextToScreen(BobbyRText[BOBBYR_GUNS_BULLET_TUMBLE_MODIFIER], BOBBYR_ITEM_WEIGHT_TEXT_X, (UINT16)usPosY, 0, BOBBYR_ITEM_DESC_TEXT_FONT, BOBBYR_STATIC_TEXT_COLOR, FONT_MCOLOR_BLACK, FALSE, LEFT_JUSTIFIED);
+	// body damage modifier (bullet tumble)
+	const FLOAT afterArmourDamageModifier = (FLOAT)AmmoTypes[Magazine[Item[usIndex].ubClassIndex].ubAmmoType].afterArmourDamageMultiplier / (FLOAT)AmmoTypes[Magazine[Item[usIndex].ubClassIndex].ubAmmoType].afterArmourDamageDivisor;
+	swprintf(sTemp, L"%1.2f", afterArmourDamageModifier);
+	UINT8 color = BOBBYR_ITEM_DESC_TEXT_COLOR_ALT;
+	if (afterArmourDamageModifier > 1.0f)
+		color = FONT_MCOLOR_LTGREEN;
+	else if (afterArmourDamageModifier < 1.0f)
+		color = FONT_MCOLOR_DKRED;
+	DrawTextToScreen(sTemp, BOBBYR_ITEM_WEIGHT_NUM_X, (UINT16)usPosY, BOBBYR_ITEM_WEIGHT_NUM_WIDTH, BOBBYR_ITEM_DESC_TEXT_FONT, color, FONT_MCOLOR_BLACK, FALSE, RIGHT_JUSTIFIED);
+
+	usPosY += usFontHeight + 2;
+	return(usPosY);
+}
+
+UINT16 DisplayAmmoProjectileCount(UINT16 usPosY, UINT16 usIndex, UINT16 usFontHeight)
+{
+	const UINT8 numProjectiles = AmmoTypes[Magazine[Item[usIndex].ubClassIndex].ubAmmoType].numberOfBullets;
+	if (numProjectiles == 1)
+		return(usPosY);
+
+	CHAR16 sTemp[4];
+	DrawTextToScreen(BobbyRText[BOBBYR_GUNS_NUM_PROJECTILES], BOBBYR_ITEM_WEIGHT_TEXT_X, (UINT16)usPosY, 0, BOBBYR_ITEM_DESC_TEXT_FONT, BOBBYR_STATIC_TEXT_COLOR, FONT_MCOLOR_BLACK, FALSE, LEFT_JUSTIFIED);
+	swprintf(sTemp, L"%d", numProjectiles);
+	DrawTextToScreen(sTemp, BOBBYR_ITEM_WEIGHT_NUM_X, (UINT16)usPosY, BOBBYR_ITEM_WEIGHT_NUM_WIDTH, BOBBYR_ITEM_DESC_TEXT_FONT, BOBBYR_ITEM_DESC_TEXT_COLOR_ALT, FONT_MCOLOR_BLACK, FALSE, RIGHT_JUSTIFIED);
+
 	usPosY += usFontHeight + 2;
 	return(usPosY);
 }
@@ -3966,6 +4029,67 @@ void HandleBobbyRGunsKeyBoardInput()
 	}
 }
 
+void HandleBobbyRayMouseWheel(void)
+{
+	// Purchase and unpurchase via mousewheel if pressing ctrl
+	for (size_t i = 0; i < BOBBYR_NUM_WEAPONS_ON_PAGE; i++)
+	{
+		auto &mouseRegion = gSelectedBigImageRegion[i];
+		auto wheelState = mouseRegion.WheelState * (gGameSettings.fOptions[TOPTION_INVERT_WHEEL] ? -1 : 1);
+		if (mouseRegion.uiFlags & MSYS_MOUSE_IN_AREA)
+		{
+			if (_KeyDown(17)) // CTRL
+			{
+				UINT16 usItemNum = (UINT16)MSYS_GetRegionUserData(&mouseRegion, 0);
+				if (wheelState < 0)
+				{
+					PurchaseBobbyRayItem(gusItemNumberForItemsOnScreen[usItemNum], FALSE);
+				}
+				else if (wheelState > 0)
+				{
+					UnPurchaseBobbyRayItem(gusItemNumberForItemsOnScreen[usItemNum], FALSE);
+				}
+				ResetWheelState(&mouseRegion);
+
+				fReDrawScreenFlag = TRUE;
+				fPausedReDrawScreenFlag = TRUE;
+			}
+		}
+	}
+
+	// Scroll through pages with regular mouse wheel
+	SGPPoint	MousePos;
+	GetMousePos(&MousePos);
+	const auto x = MousePos.iX;
+	const auto y = MousePos.iY;
+	if ( (LAPTOP_SCREEN_UL_X < x && x < LAPTOP_SCREEN_LR_X) && (LAPTOP_SCREEN_WEB_UL_Y < y && y < LAPTOP_SCREEN_WEB_LR_Y) )
+	{
+		if (!_KeyDown(17)) // CTRL
+		{
+			const auto Wheelstate = _WheelValue * (gGameSettings.fOptions[TOPTION_INVERT_WHEEL] ? -1 : 1);
+			if (Wheelstate < 0)
+			{
+				if (gubCurPage < gubNumPages - 1)
+				{
+					gubCurPage++;
+					fReDrawScreenFlag = TRUE;
+					fPausedReDrawScreenFlag = TRUE;
+				}
+			}
+			else if (Wheelstate > 0)
+			{
+				if (gubCurPage > 0)
+				{
+					gubCurPage--;
+					fReDrawScreenFlag = TRUE;
+					fPausedReDrawScreenFlag = TRUE;
+				}
+			}
+		}
+		_WheelValue = 0;
+	}
+}
+
 void GetHelpTextForItemInLaptop( STR16 pzStr, UINT16 usItemNumber )
 {		
 	CHAR16	zItemName[ SIZE_ITEM_NAME ];
@@ -4328,6 +4452,138 @@ void GetHelpTextForItemInLaptop( STR16 pzStr, UINT16 usItemNumber )
 				);
 		}
 		break;
+
+	// rftr: better LBE tooltips
+	case IC_LBEGEAR:
+		if(gGameExternalOptions.fBobbyRayTooltipsShowLBEDetails)
+		{
+			CHAR16 lbeStr[1000];
+			CHAR16 temp[1000];
+
+			swprintf(lbeStr, L"");
+			swprintf(temp, L"");
+
+			if (UsingNewInventorySystem())
+			{
+				INVTYPE item = Item[usItemNumber];
+				LBETYPE lbe = LoadBearingEquipment[item.ubClassIndex];
+
+				if (lbe.lbeAvailableVolume > 0) // if this item is a MOLLE carrier (thigh rig, vest, combat pack, backpack)
+				{
+					swprintf(temp, L"\n \n%s\n%s %d", gLbeStatsDesc[6 + lbe.lbeClass], gLbeStatsDesc[0], lbe.lbeAvailableVolume);
+					wcscat(lbeStr, temp);
+
+					UINT8 molleSmallCount = 0;
+					UINT8 molleMediumCount = 0;
+
+					for (UINT32 sCount = 1; sCount < gMAXITEMS_READ; ++sCount)
+					{
+						AttachmentSlotStruct attachmentSlot = AttachmentSlots[sCount];
+						if (attachmentSlot.uiSlotIndex == 0)
+							break;
+
+						// count MOLLE slots for this carrier
+						if (attachmentSlot.nasLayoutClass == ((UINT64)1 << (lbe.lbeClass + 1)))
+						{
+							if (lbe.lbePocketsAvailable & (1 << (attachmentSlot.ubPocketMapping - 1)))
+							{
+								// seems to be equivalent to checking attachmentSlot.fBigSlot
+								if (attachmentSlot.nasAttachmentClass == MOLLE_SMALL)
+								{
+									molleSmallCount++;
+								}
+								else if (attachmentSlot.nasAttachmentClass == MOLLE_MEDIUM)
+								{
+									molleMediumCount++;
+								}
+							}
+						}
+					}
+
+					if (molleSmallCount > 0)
+					{
+						swprintf(temp, L"\n%s %d", gLbeStatsDesc[2], molleSmallCount);
+						wcscat(lbeStr, temp);
+					}
+
+					if (molleMediumCount > 0)
+					{
+						swprintf(temp, L"\n%s %d", gLbeStatsDesc[3], molleMediumCount);
+						wcscat(lbeStr, temp);
+					}
+				}
+				else if (item.nasAttachmentClass == MOLLE_SMALL)
+				{
+					swprintf(temp, L"\n \n%s\n%s\n%s %d", gLbeStatsDesc[11], gLbeStatsDesc[4], gLbeStatsDesc[1], LBEPocketType[GetFirstPocketOnItem(usItemNumber)].pVolume);
+					wcscat(lbeStr, temp);
+				}
+				else if (item.nasAttachmentClass == MOLLE_MEDIUM)
+				{
+					// special case for hydration pack (see AttachmentPoint.xml)
+					swprintf(temp, L"\n \n%s\n%s\n%s %d", gLbeStatsDesc[11], item.ulAttachmentPoint == 4 ? gLbeStatsDesc[6] : gLbeStatsDesc[5], gLbeStatsDesc[1], LBEPocketType[GetFirstPocketOnItem(usItemNumber)].pVolume);
+					wcscat(lbeStr, temp);
+				}
+				else // non-MOLLE LBE
+				{
+					swprintf(temp, L"\n \n%s", gLbeStatsDesc[6 + lbe.lbeClass]);
+					wcscat(lbeStr, temp);
+				}
+
+				// check for combat pack/backpack combos
+				if (lbe.lbeCombo > 0)
+				{
+					bool foundCombo = false;
+					CHAR16 lbeComboStr[1000];
+					swprintf(lbeComboStr, L"");
+					for (UINT32 itemIndex = 0; itemIndex < gMAXITEMS_READ; ++itemIndex)
+					{
+						INVTYPE otherItem = Item[itemIndex];
+
+						if (otherItem.usItemClass != IC_LBEGEAR)
+							continue;
+
+						if (itemIndex == usItemNumber)
+							continue;
+
+						LBETYPE otherLbe = LoadBearingEquipment[otherItem.ubClassIndex];
+
+						if (lbe.lbeClass == otherLbe.lbeClass)
+							continue;
+
+						if (lbe.lbeCombo == otherLbe.lbeCombo)
+						{
+							foundCombo = true;
+							if (wcslen(lbeComboStr) + wcslen(otherItem.szBRName) < 800)
+							{
+								swprintf(temp, L"\n%s", otherItem.szBRName);
+								wcscat(lbeComboStr, temp);
+							}
+							else
+							{
+								wcscat(lbeComboStr, L"\n...");
+								break;
+							}
+						}
+					}
+
+					if (foundCombo)
+					{
+						// only combat packs and backpacks will have lbeCombo
+						swprintf(temp, L"\n \n%s\n%s", gLbeStatsDesc[lbe.lbeClass == COMBAT_PACK ? 12 : 13], lbeComboStr);
+						wcscat(lbeStr, temp);
+					}
+				}
+			}
+
+			swprintf(pzStr, L"%s\n%s %1.1f %s%s",
+				ItemNames[usItemNumber],	//Item long name
+				gWeaponStatsDesc[12],		//Weight String
+				fWeight,					//Weight
+				GetWeightUnitString(),		//Weight units
+				lbeStr
+			);
+		}
+	break;
 
 	case IC_MISC:
 	case IC_MEDKIT:

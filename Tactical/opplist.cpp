@@ -77,7 +77,7 @@ extern void SetSoldierAniSpeed( SOLDIERTYPE *pSoldier );
 void OurNoise( UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrType, UINT8 ubVolume,	UINT8 ubNoiseType, STR16 zNoiseMessage );
 void TheirNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrType, UINT8 ubVolume, UINT8 ubNoiseType, STR16 zNoiseMessage = NULL );
 void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrType, UINT8 ubBaseVolume, UINT8 ubNoiseType, STR16 zNoiseMessage = NULL );
-UINT8 CalcEffVolume(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT8 ubNoiseType, UINT8 ubBaseVolume, UINT8 bCheckTerrain, UINT8 ubTerrType1, UINT8 ubTerrType2);
+UINT8 CalcEffVolume(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT8 ubNoiseType, UINT8 ubBaseVolume, UINT8 ubTerrType1, UINT8 ubTerrType2);
 void HearNoise(SOLDIERTYPE *pSoldier, UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubVolume, UINT8 ubNoiseType, UINT8 *ubSeen);
 void TellPlayerAboutNoise(SOLDIERTYPE *pSoldier, UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubVolume, UINT8 ubNoiseType, UINT8 ubNoiseDir,  STR16 zNoiseMessage = NULL );
 void OurTeamSeesSomeone( SOLDIERTYPE * pSoldier, INT8 bNumReRevealed, INT8 bNumNewEnemies );
@@ -1182,10 +1182,10 @@ INT16 SOLDIERTYPE::GetMaxDistanceVisible(INT32 sGridNo, INT8 bLevel, int calcAsT
 
 	if (calcAsType == CALC_FROM_ALL_DIRS)
 	{
-		return DistanceVisible( this, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, bLevel, CoweringShockLevel(this), GetPercentTunnelVision(this) );
+		return DistanceVisible( this, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sGridNo, bLevel, this->IsCowering(), GetPercentTunnelVision(this) );
 	}
 
-	return DistanceVisible( this, (SoldierHasLimitedVision(this) ? this->pathing.bDesiredDirection : DIRECTION_IRRELEVANT), DIRECTION_IRRELEVANT, sGridNo, bLevel, CoweringShockLevel(this), GetPercentTunnelVision(this));
+	return DistanceVisible( this, (SoldierHasLimitedVision(this) ? this->pathing.bDesiredDirection : DIRECTION_IRRELEVANT), DIRECTION_IRRELEVANT, sGridNo, bLevel, this->IsCowering(), GetPercentTunnelVision(this));
 }
 
 INT16 DistanceVisible(SOLDIERTYPE *pSoldier, INT8 bFacingDir, INT8 bSubjectDir, INT32 sSubjectGridNo, INT8 bLevel, const BOOLEAN& isCowering, const UINT8& tunnelVision)
@@ -1561,7 +1561,7 @@ INT8 DecideHearing( SOLDIERTYPE * pSoldier )
 	// calculate the hearing value for the merc...
 	INT8		bHearing;
 
-	if ( ARMED_VEHICLE( pSoldier ) )
+	if ( ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) )
 	{
 		return( -5 );
 	}
@@ -2097,7 +2097,7 @@ INT16 ManLooksForMan(SOLDIERTYPE *pSoldier, SOLDIERTYPE *pOpponent, UINT8 ubCall
 		// BIG NOTE: must use desdir instead of direction, since in a projected
 		// situation, the direction may still be changing if it's one of the first
 		// few animation steps when this guy's turn to do his stepped look comes up
-		sDistVisible = DistanceVisible(pSoldier, pSoldier->pathing.bDesiredDirection, bDir, pOpponent->sGridNo, pOpponent->pathing.bLevel, CoweringShockLevel(pSoldier), GetPercentTunnelVision(pSoldier));
+		sDistVisible = DistanceVisible(pSoldier, pSoldier->pathing.bDesiredDirection, bDir, pOpponent->sGridNo, pOpponent->pathing.bLevel, pSoldier->IsCowering(), GetPercentTunnelVision(pSoldier));
 		//if (pSoldier->ubID == 0)
 		//sprintf(gDebugStr,"dist visible %d: my dir %d to him %d",sDistVisible,pSoldier->bDesiredDirection,bDir);
 	}
@@ -4885,6 +4885,7 @@ void DebugSoldierPage4( )
 			case SOLDIER_CLASS_MINER:				gprintf( 320, LINE_HEIGHT * ubLine, L"(Miner)" );			break;
 			case SOLDIER_CLASS_ZOMBIE:				gprintf( 320, LINE_HEIGHT * ubLine, L"(Zombie)" );			break;
 			case SOLDIER_CLASS_BANDIT:				gprintf( 320, LINE_HEIGHT * ubLine, L"(Bandit)" );			break;
+			case SOLDIER_CLASS_ROBOT:				gprintf( 320, LINE_HEIGHT * ubLine, L"(Army Robot)" );		break;
 
 			default:	break; //don't care (don't write anything)
 		}
@@ -5516,32 +5517,83 @@ UINT8 MovementNoise(SOLDIERTYPE *pSoldier)
 
 UINT8 DoorOpeningNoise( SOLDIERTYPE *pSoldier )
 {
-	INT32 sGridNo;
-	DOOR_STATUS	*		pDoorStatus;
-	UINT8						ubDoorNoise;
-
 	// door being opened gridno is always the pending-action-data2 value
-	sGridNo					= pSoldier->aiData.sPendingActionData2;
-	pDoorStatus = GetDoorStatus( sGridNo );
+	INT32 sGridNo = pSoldier->aiData.sPendingActionData2;
+	DOOR_STATUS	*pDoorStatus = GetDoorStatus( sGridNo );
+	UINT8 ubDoorNoise = 0;
 
-	if ( pDoorStatus && pDoorStatus->ubFlags & DOOR_HAS_TIN_CAN )
+	// Find the base tile for the door structure and use that gridno
+	STRUCTURE *pStructure = FindStructure(sGridNo, STRUCTURE_ANYDOOR);
+	if (pStructure)
 	{
-		// double noise possible!
-		ubDoorNoise = DOOR_NOISE_VOLUME * 3;
-	}
-	else
-	{
-		ubDoorNoise = DOOR_NOISE_VOLUME;
+		ubDoorNoise = 8;//shadooow: this indicates at how many tiles can be the noise heard (was 2 originally)
+		// OK, check if this door is sliding and is multi-tiled...
+		if (pStructure->fFlags & STRUCTURE_SLIDINGDOOR)
+		{
+			// Get database value...
+			if (pStructure->pDBStructureRef->pDBStructure->ubNumberOfTiles > 1)
+			{
+				// garage doors
+				ubDoorNoise += 4;
+			}
+			else if (pStructure->pDBStructureRef->pDBStructure->ubArmour == MATERIAL_CLOTH)
+			{
+				// curtains
+				ubDoorNoise -= 4;
+			}
+		}
+		else if (pStructure->pDBStructureRef->pDBStructure->ubArmour == MATERIAL_LIGHT_METAL ||
+			pStructure->pDBStructureRef->pDBStructure->ubArmour == MATERIAL_THICKER_METAL ||
+			pStructure->pDBStructureRef->pDBStructure->ubArmour == MATERIAL_HEAVY_METAL)
+		{
+			// metal doors
+			ubDoorNoise += 2;
+		}
+
+		if (pDoorStatus && pDoorStatus->ubFlags & DOOR_HAS_TIN_CAN)
+		{
+			//shadooow: do not allow stealth to work if there is can attached to doors
+			ubDoorNoise += 4;
+		}
+		else if (pSoldier->bStealthMode)
+		{
+			// CHANGED BY SANDRO - LET'S MAKE THE STEALTH BASED ON AGILITY LIKE IT SHOULD BE
+			INT32 iStealthSkill = 20 + 4 * EffectiveExpLevel(pSoldier) + ((EffectiveAgility(pSoldier, FALSE) * 4) / 10); // 24-100
+
+			INT8 bEffLife = pSoldier->stats.bLife + ((pSoldier->stats.bLifeMax - pSoldier->stats.bLife - pSoldier->bBleeding) / 2);
+
+			// IF "SNEAKER'S" "EFFECTIVE LIFE" IS AT LESS THAN 50
+			if (bEffLife < 50)
+			{
+				// reduce effective stealth skill by up to 50% for low life
+				iStealthSkill -= (iStealthSkill * (50 - bEffLife)) / 100;
+			}
+
+			// if breath is below 50%
+			if (pSoldier->bBreath < 50)
+			{
+				// reduce effective stealth skill by up to 50%
+				iStealthSkill -= (iStealthSkill * (50 - pSoldier->bBreath)) / 100;
+			}
+
+			iStealthSkill = __max(iStealthSkill, 0);
+
+			INT32 iRoll = (INT32)PreRandom(100);	// roll them bones!
+
+			if (iRoll >= iStealthSkill)	// v1.13 modification: give a second chance!
+			{
+				iRoll = (INT32)PreRandom(100);
+			}
+
+			// succeeded in being stealthy!
+			if (iRoll < iStealthSkill)
+			{
+				ubDoorNoise = 0;
+			}
+		}
 	}
 
-	if ( MovementNoise( pSoldier ) )
-	{
-		// failed any stealth checks
-		return( ubDoorNoise );
-	}
-
-	// succeeded in being stealthy!
-	return( 0 );
+	return( ubDoorNoise );
 }
 
 void MakeNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrType, UINT8 ubVolume, UINT8 ubNoiseType,  STR16 zNoiseMessage )
@@ -5732,15 +5784,12 @@ void TheirNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrType
 	// else if noiseMaker's NOBODY, no opplist changes or interrupts are possible
 }
 
-
-
 void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrType, UINT8 ubBaseVolume, UINT8 ubNoiseType, STR16 zNoiseMessage )
 {
 	SOLDIERTYPE *pSoldier;
 	UINT8 bLoop, bTeam;
 	UINT8 ubLoudestEffVolume, ubEffVolume;
 //	UINT8 ubPlayVolume;
-	INT8 bCheckTerrain = FALSE;
 	UINT8 ubSourceTerrType, ubSource;
 	INT8 bTellPlayer = FALSE, bHeard, bSeen;
 	UINT8 ubHeardLoudestBy = NOBODY, ubNoiseDir = 0xff, ubLoudestNoiseDir = 0xff;
@@ -5799,15 +5848,6 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 		ubSourceTerrType = TTypeList[Terrain(sGridNo)];
 	}
 	*/
-
-	// if we have now somehow obtained a valid terrain type
-	if ((ubSourceTerrType >= FLAT_GROUND) || (ubSourceTerrType <= DEEP_WATER))
-	{
-		//NumMessage("Source Terrain Type = ",ubSourceTerrType);
-		bCheckTerrain = TRUE;
-	}
-	// else give up trying to get terrain type, just assume sound isn't muffled
-
 
 	// DETERMINE THE *PERCEIVED* SOURCE OF THE NOISE
 	switch (ubNoiseType)
@@ -5902,6 +5942,7 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 					break;
 
 				case NOISE_SILENT_ALARM:
+				case NOISE_CREAKING://shadooow: doors will make sound of being opened/closed so I see no reason to write it to player
 					bTellPlayer = FALSE;
 					break;
 			}
@@ -5960,11 +6001,14 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 				continue; // skip
 			}
 
-			if ( bTeam == gbPlayerNum && pSoldier->bAssignment == ASSIGNMENT_POW )
+			if ( bTeam == gbPlayerNum && (pSoldier->bAssignment == ASSIGNMENT_POW || pSoldier->bAssignment == ASSIGNMENT_MINIEVENT) )
 			{
 				// POWs should not be processed for noise
 				continue;
 			}
+
+			// Can the listener hear noise of that volume given his circumstances?
+			ubEffVolume = CalcEffVolume(pSoldier, sGridNo, bLevel, ubNoiseType, ubBaseVolume, pSoldier->bOverTerrainType, ubSourceTerrType);
 
 			// if a the noise maker is a person, not just NOBODY
 			if (ubNoiseMaker < TOTAL_SOLDIERS)
@@ -6094,14 +6138,10 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 				pSoldier->ubMiscSoldierFlags |= SOLDIER_MISC_HEARD_GUNSHOT;
 			}
 
-			// Can the listener hear noise of that volume given his circumstances?
-			ubEffVolume = CalcEffVolume(pSoldier,sGridNo,bLevel,ubNoiseType,ubBaseVolume,bCheckTerrain,pSoldier->bOverTerrainType,ubSourceTerrType);
-
 #ifdef RECORDOPPLIST
-			fprintf(OpplistFile,"PN: guy %d - effVol=%d,chkTer=%d,pSoldier->tType=%d,srcTType=%d\n",
-			bLoop,effVolume,bCheckTerrain,pSoldier->terrtype,ubSourceTerrType);
+			fprintf(OpplistFile,"PN: guy %d - effVol=%d,pSoldier->tType=%d,srcTType=%d\n",
+			bLoop,effVolume,pSoldier->terrtype,ubSourceTerrType);
 #endif
-
 
 			if (ubEffVolume > 0)
 			{
@@ -6126,8 +6166,8 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 			}
 			else
 			{
-		//NameMessage(pSoldier," can't hear this noise",2500);
-			ubEffVolume = 0;
+				//NameMessage(pSoldier," can't hear this noise",2500);
+				ubEffVolume = 0;
 			}
 		}
 
@@ -6154,6 +6194,13 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 					}
 
 				}
+				else if (ubNoiseType == NOISE_CREAKING)
+				{
+					DOOR_STATUS	*pDoorStatus = GetDoorStatus(sGridNo);
+					//shadooow: show locator when there is can with string attached to doors
+					if (pDoorStatus && pDoorStatus->ubFlags & DOOR_HAS_TIN_CAN)
+						BeginMultiPurposeLocator(sGridNo, bLevel, (INT8)((gTacticalStatus.uiFlags & TURNBASED) && (gTacticalStatus.uiFlags & INCOMBAT)));
+				}
 				//if ( !(pSoldier->ubMovementNoiseHeard & (1 << ubNoiseDir) ) )
 			}
 #ifdef REPORTTHEIRNOISE
@@ -6166,7 +6213,11 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 			}
 #endif
 		}
-
+		else if(bTeam == OUR_TEAM && ubNoiseType == NOISE_CREAKING)
+		{
+			//shadooow: this will indicate doors not to make animation/sound of doors opening or closing
+			Menptr[ubNoiseMaker].ubDoorOpeningNoise = 0;
+		}
 		// if the listening team is human-controlled AND
 		// the noise's source is another soldier
 		// (computer-controlled teams don't radio or automatically report NOISE)
@@ -6223,8 +6274,7 @@ void ProcessNoise(UINT8 ubNoiseMaker, INT32 sGridNo, INT8 bLevel, UINT8 ubTerrTy
 
 
 
-UINT8 CalcEffVolume(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT8 ubNoiseType, UINT8 ubBaseVolume,
-			UINT8 bCheckTerrain, UINT8 ubTerrType1, UINT8 ubTerrType2)
+UINT8 CalcEffVolume(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT8 ubNoiseType, UINT8 ubBaseVolume, UINT8 ubTerrType1, UINT8 ubTerrType2)
 {
 	INT32 iEffVolume, iDistance;
 
@@ -6345,24 +6395,20 @@ UINT8 CalcEffVolume(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT8 ubN
 	// if we still have a chance of hearing this, and the terrain types are known
 	if (iEffVolume > 0)
 	{
-		if (bCheckTerrain)
+		// if, between noise and listener, one is outside and one is inside
+
+		// NOTE: This is a pretty dumb way of doing things, since it won't detect
+		// the presence of walls between 2 spots both inside or both outside, but
+		// given our current system it's the best that we can do
+
+		if (((ubTerrType1 == FLAT_FLOOR) && (ubTerrType2 != FLAT_FLOOR)) ||
+			((ubTerrType1 != FLAT_FLOOR) && (ubTerrType2 == FLAT_FLOOR)))
 		{
-			// if, between noise and listener, one is outside and one is inside
+			//PopMessage("Sound is muffled by wall(s)");
 
-			// NOTE: This is a pretty dumb way of doing things, since it won't detect
-			// the presence of walls between 2 spots both inside or both outside, but
-			// given our current system it's the best that we can do
-
-			if (((ubTerrType1 == FLAT_FLOOR) && (ubTerrType2 != FLAT_FLOOR)) ||
-				((ubTerrType1 != FLAT_FLOOR) && (ubTerrType2 == FLAT_FLOOR)))
-			{
-				//PopMessage("Sound is muffled by wall(s)");
-
-				// sound is muffled, reduce the effective volume of the noise
-				iEffVolume -= 5;
-			}
+			// sound is muffled, reduce the effective volume of the noise
+			iEffVolume -= 5;
 		}
-
 	}
 
 	//NumMessage("effVolume = ",ubEffVolume);
@@ -7479,7 +7525,7 @@ void CheckForAlertWhenEnemyDies( SOLDIERTYPE * pDyingSoldier )
 
 			// distance we "see" then depends on the direction he is located from us
 			bDir = atan8(pSoldier->sX,pSoldier->sY,pDyingSoldier->sX,pDyingSoldier->sY);
-			sDistVisible = DistanceVisible( pSoldier, pSoldier->pathing.bDesiredDirection, bDir, pDyingSoldier->sGridNo, pDyingSoldier->pathing.bLevel, CoweringShockLevel(pSoldier), GetPercentTunnelVision(pSoldier));
+			sDistVisible = DistanceVisible( pSoldier, pSoldier->pathing.bDesiredDirection, bDir, pDyingSoldier->sGridNo, pDyingSoldier->pathing.bLevel, pSoldier->IsCowering(), GetPercentTunnelVision(pSoldier));
 			sDistAway = PythSpacesAway( pSoldier->sGridNo, pDyingSoldier->sGridNo );
 
 			// if we see close enough to see the soldier

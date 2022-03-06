@@ -475,7 +475,7 @@ void ProfileUpdateStats( MERCPROFILESTRUCT *pProfile, UINT8 ubReason )
 }
 
 
-void ChangeStat( MERCPROFILESTRUCT *pProfile, SOLDIERTYPE *pSoldier, UINT8 ubStat, INT16 sPtsChanged, UINT8 ubReason = 0 )
+void ChangeStat( MERCPROFILESTRUCT *pProfile, SOLDIERTYPE *pSoldier, UINT8 ubStat, INT16 sPtsChanged, UINT8 ubReason )
 {
 	// this function changes the stat a given amount...
 	INT16 *psStatGainPtr = NULL;
@@ -850,7 +850,7 @@ void ChangeStat( MERCPROFILESTRUCT *pProfile, SOLDIERTYPE *pSoldier, UINT8 ubSta
 		}
 
 		// Flugente: dynamic opinions
-		if ( FROM_TRAINING == ubReason )
+		if (gGameExternalOptions.fDynamicOpinions && FROM_TRAINING == ubReason )
 			HandleDynamicOpinionTeaching( pSoldier, ubStat );
 	}
 }

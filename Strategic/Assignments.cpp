@@ -75,6 +75,8 @@
 	#include "Militia Control.h"	// added by Flugente
 	#include "ASD.h"				// added by Flugente
 	#include "Strategic AI.h"
+	#include "MiniEvents.h"
+	#include "Rebel Command.h"
 #endif
 #include <vector>
 #include <queue>
@@ -86,6 +88,8 @@
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
+extern int POP_UP_BOX_X;
+extern WorldItems gAllWorldItems;
 
 #include "MilitiaSquads.h"
 // HEADROCK HAM 3.5: Include Facility data
@@ -284,6 +288,7 @@ BOOLEAN fFirstClickInAssignmentScreenMask = FALSE;
 extern BOOLEAN gfRenderPBInterface;
 extern BOOLEAN fMapScreenBottomDirty;
 extern SOLDIERTYPE *pMilitiaTrainerSoldier;
+extern BOOLEAN gfCantRetreatInPBI;
 
 // in the mapscreen?
 extern BOOLEAN fInMapMode;
@@ -483,7 +488,7 @@ void HandlePrisonerProcessingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ );
 // Flugente: prisons can riot if there aren't enough guards around
 void HandlePrison( INT16 sMapX, INT16 sMapY, INT8 bZ );
 
-// Flugente: assigned mercs can move equipemnt in city sectors
+// Flugente: assigned mercs can move equipment in city sectors
 void HandleEquipmentMove( INT16 sMapX, INT16 sMapY, INT8 bZ );
 
 void HandleTrainWorkers( );
@@ -515,7 +520,9 @@ void HandleAdministrationAssignments();
 // Flugente: handle exploration assignements
 void HandleExplorationAssignments();
 
-// is the character between secotrs in mvt
+void HandleMiniEventAssignments();
+
+// is the character between sectors in mvt
 BOOLEAN CharacterIsBetweenSectors( SOLDIERTYPE *pSoldier );
 
 // update soldier life
@@ -664,7 +671,7 @@ BOOLEAN BasicCanCharacterDrillMilitia( SOLDIERTYPE *pSoldier );
 // Can this character EVER work in any facility?
 BOOLEAN BasicCanCharacterFacility( SOLDIERTYPE *pSoldier );
 
-SOLDIERTYPE *GetSelectedAssignSoldier( BOOLEAN fNullOK );
+SOLDIERTYPE *GetSelectedAssignSoldier( BOOLEAN fNullOK, BOOLEAN fReturnVehicleDriver = TRUE );
 
 BOOLEAN RepairObject( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pOwner, OBJECTTYPE * pObj, UINT8 * pubRepairPtsLeft );
 BOOLEAN CleanObject( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pOwner, OBJECTTYPE * pObj, UINT8 * pubCleaningPtsLeft );
@@ -792,6 +799,16 @@ BOOLEAN BasicCanCharacterAssignment( SOLDIERTYPE * pSoldier, BOOLEAN fNotInComba
 	}
 
 	if ( fNotInCombat && pSoldier->bActive && pSoldier->bInSector && gTacticalStatus.fEnemyInSector )
+	{
+		return( FALSE );
+	}
+
+	//shadooow: disable changing assignment on POW mercs to prevent to break them free improperly
+	// Asdow: Prevent changing assignment for mercs in transit
+	if (pSoldier->bAssignment == ASSIGNMENT_POW || pSoldier->bAssignment == IN_TRANSIT)
+		return(FALSE);
+
+	if ( pSoldier->bAssignment == ASSIGNMENT_MINIEVENT && pSoldier->ubHoursRemainingOnMiniEvent > 0 )
 	{
 		return( FALSE );
 	}
@@ -1029,6 +1046,9 @@ BOOLEAN  CanCharacterTreatSectorDisease( SOLDIERTYPE *pSoldier )
 
 BOOLEAN CanCharacterFortify( SOLDIERTYPE *pSoldier )
 {
+	if (pSoldier->bAssignment == ASSIGNMENT_POW)
+		return(FALSE);
+
 	// Flugente: we can't perform most assignments while concealed
 	if ( SPY_LOCATION( pSoldier->bAssignment ) )
 		return( FALSE );
@@ -1458,7 +1478,7 @@ BOOLEAN CanCharacterRepair( SOLDIERTYPE *pSoldier )
 	}
 
 	// anything around to clean?
-	if ( pSoldier->GetObjectWithFlag( CLEANING_KIT ) != NULL && IsAnythingAroundForSoldierToClean( pSoldier ) )
+	if ( pSoldier->GetObjectWithFlag( CLEANING_KIT ) != NULL && IsAnythingAroundForSoldierToClean( pSoldier ) )//todo shadooow: not if dirty system is disabled
 	{
 		return( TRUE );
 	}
@@ -2471,7 +2491,7 @@ BOOLEAN CanCharacterSleep( SOLDIERTYPE *pSoldier, BOOLEAN fExplainWhyNot )
 	}
 
 	// POW?
-	if( pSoldier->bAssignment == ASSIGNMENT_POW )
+	if( pSoldier->bAssignment == ASSIGNMENT_POW || pSoldier->bAssignment == ASSIGNMENT_MINIEVENT )
 	{
 		return( FALSE );
 	}
@@ -2689,7 +2709,7 @@ INT8 CanCharacterSquad( SOLDIERTYPE *pSoldier, INT8 bSquadValue )
 		return ( CHARACTER_CANT_JOIN_SQUAD );
 	}
 
-	if ( pSoldier->bAssignment == ASSIGNMENT_POW )
+	if ( pSoldier->bAssignment == ASSIGNMENT_POW || (pSoldier->bAssignment == ASSIGNMENT_MINIEVENT && pSoldier->ubHoursRemainingOnMiniEvent > 0))
 	{
 		// not allowed to be put on a squad
 		return( CHARACTER_CANT_JOIN_SQUAD );
@@ -2746,6 +2766,56 @@ INT8 CanCharacterSquad( SOLDIERTYPE *pSoldier, INT8 bSquadValue )
 BOOLEAN CanCharacterSnitch( SOLDIERTYPE *pSoldier )
 {
 	AssertNotNIL(pSoldier);
+
+	// sevenfm: added basic requirements
+	if (!BasicCanCharacterAssignment(pSoldier, TRUE))
+	{
+		return(FALSE);
+	}
+
+	// only need to be alive and well to do so right now
+	// alive and conscious
+	if (pSoldier->stats.bLife < OKLIFE)
+	{
+		// dead or unconscious...
+		return (FALSE);
+	}
+
+	if (pSoldier->bSectorZ != 0)
+	{
+		return(FALSE);
+	}
+
+	// in transit?
+	if (IsCharacterInTransit(pSoldier) == TRUE)
+	{
+		return (FALSE);
+	}
+
+	// character on the move?
+	if (CharacterIsBetweenSectors(pSoldier))
+	{
+		return(FALSE);
+	}
+
+	// check in helicopter in hostile sector
+	if (pSoldier->bAssignment == VEHICLE)
+	{
+		if ((iHelicopterVehicleId != -1) && (pSoldier->iVehicleId == iHelicopterVehicleId))
+		{
+			// enemies in sector
+			if (NumNonPlayerTeamMembersInSector(pSoldier->sSectorX, pSoldier->sSectorY, ENEMY_TEAM) > 0)
+			{
+				return(FALSE);
+			}
+		}
+	}
+
+	if (pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__EPC)
+	{
+		// epcs can't do this
+		return(FALSE);
+	}
 
 	// Flugente: we can't perform most assignments while concealed
 	if ( SPY_LOCATION( pSoldier->bAssignment ) )
@@ -2992,6 +3062,8 @@ void UpdateAssignments()
 
 	// handle exploration
 	HandleExplorationAssignments();
+
+	HandleMiniEventAssignments();
 
 	// check to see if anyone is done healing?
 	UpdatePatientsWhoAreDoneHealing( );
@@ -5758,7 +5830,7 @@ void FatigueCharacter( SOLDIERTYPE *pSoldier )
 	}
 
 	// POW?
-	if( pSoldier->bAssignment == ASSIGNMENT_POW )
+	if( pSoldier->bAssignment == ASSIGNMENT_POW || pSoldier->bAssignment == ASSIGNMENT_MINIEVENT )
 	{
 		return;
 	}
@@ -5813,7 +5885,10 @@ void FatigueCharacter( SOLDIERTYPE *pSoldier )
 			bMaxBreathLoss = (float)min( 127, iBreathLoss );
 
 			// Flugente: dynamic opinions: other mercs might get annoyed, because we are slowing down the team
-			HandleDynamicOpinionChange( pSoldier, OPINIONEVENT_SLOWSUSDOWN, TRUE, TRUE );
+			if (gGameExternalOptions.fDynamicOpinions)
+			{
+				HandleDynamicOpinionChange(pSoldier, OPINIONEVENT_SLOWSUSDOWN, TRUE, TRUE);
+			}
 		}
 	}
 
@@ -6144,7 +6219,7 @@ void HandleTrainingInSector( INT16 sMapX, INT16 sMapY, INT8 bZ )
 			// a normal training session costs gGameExternalOptions.iMilitiaTrainingCost * gGameExternalOptions.iRegularCostModifier
 			// it promotes gGameExternalOptions.iTrainingSquadSize militia with gGameExternalOptions.usIndividualMilitia_PromotionPoints_To_Regular points each
 			// thus a point costs gGameExternalOptions.iMilitiaTrainingCost * gGameExternalOptions.iRegularCostModifier / ( gGameExternalOptions.iTrainingSquadSize * gGameExternalOptions.usIndividualMilitia_PromotionPoints_To_Regular) points
-			FLOAT costperpoint = (FLOAT)( gGameExternalOptions.iMilitiaTrainingCost * gGameExternalOptions.iRegularCostModifier / ( gGameExternalOptions.iTrainingSquadSize * gGameExternalOptions.usIndividualMilitia_PromotionPoints_To_Regular ) );
+			FLOAT costperpoint = (FLOAT)( RebelCommand::GetMilitiaTrainingCostModifier() * gGameExternalOptions.iMilitiaTrainingCost * gGameExternalOptions.iRegularCostModifier / ( gGameExternalOptions.iTrainingSquadSize * gGameExternalOptions.usIndividualMilitia_PromotionPoints_To_Regular ) );
 
 			FLOAT totalcost = drillpoints * costperpoint;
 
@@ -7010,6 +7085,29 @@ void HandleExplorationAssignments()
 				StatChange( pSoldier, AGILAMT, 1, FROM_TRAINING );
 				StatChange( pSoldier, WISDOMAMT, 1, FROM_TRAINING );
 				StatChange( pSoldier, EXPERAMT, 1, FROM_TRAINING );
+			}
+		}
+	}
+}
+
+void HandleMiniEventAssignments()
+{
+	SOLDIERTYPE *pSoldier = NULL;
+	UINT32 uiCnt = 0;
+	const UINT32 firstid = gTacticalStatus.Team[gbPlayerNum].bFirstID;
+	const UINT32 lastid = gTacticalStatus.Team[gbPlayerNum].bLastID;
+
+	for ( uiCnt = firstid, pSoldier = MercPtrs[uiCnt]; uiCnt <= lastid; ++uiCnt, ++pSoldier )
+	{
+		if ( pSoldier && pSoldier->bAssignment == ASSIGNMENT_MINIEVENT && EnoughTimeOnAssignment( pSoldier ) )
+		{
+			if (--pSoldier->ubHoursRemainingOnMiniEvent == 0)
+			{
+				pSoldier->bSectorZ -= MINI_EVENT_Z_OFFSET;
+				pSoldier->ubInsertionDirection = DIRECTION_IRRELEVANT;
+				pSoldier->ubStrategicInsertionCode = INSERTION_CODE_CENTER;
+				AssignmentDone(pSoldier, TRUE, FALSE);
+				AddCharacterToAnySquad(pSoldier);
 			}
 		}
 	}
@@ -8671,7 +8769,7 @@ void HandlePrison( INT16 sMapX, INT16 sMapY, INT8 bZ )
 	}
 }
 
-// Flugente: assigned mercs can move equipemnt in city sectors
+// Flugente: assigned mercs can move equipment in city sectors
 void HandleEquipmentMove( INT16 sMapX, INT16 sMapY, INT8 bZ )
 {
 	// no underground
@@ -8794,17 +8892,17 @@ void HandleEquipmentMove( INT16 sMapX, INT16 sMapY, INT8 bZ )
 		else
 		{
 			// not loaded, load
-			// get total number, visable and invisible
-			BOOLEAN fReturn = GetNumberOfWorldItemsFromTempItemFile( targetX, targetY, bZ, &( uiTotalNumberOfRealItems_Target ), FALSE );
-			Assert( fReturn );
-
-			if( uiTotalNumberOfRealItems_Target > 0 )
 			{
-				// allocate space for the list
-				pWorldItem_Target.resize(uiTotalNumberOfRealItems_Target);//dnl ch75 271013
-
-				// now load into mem
-				LoadWorldItemsFromTempItemFile(  targetX,  targetY, bZ, pWorldItem_Target );
+				const auto i = FindWorldItemSector(targetX, targetY, bZ);
+				if (i != -1)
+				{
+					uiTotalNumberOfRealItems_Target = gAllWorldItems.NumItems[i];
+					pWorldItem_Target = gAllWorldItems.Items[i];
+				}
+				else
+				{
+					uiTotalNumberOfRealItems_Target = 0;
+				}
 			}
 		}
 		
@@ -8930,8 +9028,7 @@ void HandleEquipmentMove( INT16 sMapX, INT16 sMapY, INT8 bZ )
 		}
 		else
 		{
-			//Save the Items to the the file
-			SaveWorldItemsToTempItemFile( targetX, targetY, bZ, uiTotalNumberOfRealItems_Target, pWorldItem_Target );
+			UpdateWorldItems(targetX, targetY, bZ, uiTotalNumberOfRealItems_Target, pWorldItem_Target);
 		}
 
 		// award a bit of experience to the movers
@@ -9115,6 +9212,9 @@ INT16 GetTownTrainPtsForCharacter( SOLDIERTYPE *pTrainer, UINT16 *pusMaxPts )
 	{
 		sTrainingBonus += gGameExternalOptions.ubRpcBonusToTrainMilitia;
 	}
+
+	// apply training bonus from rebel command
+	sTrainingBonus += RebelCommand::GetMilitiaTrainingSpeedBonus();
 
 	// HEADROCK HAM 3.5: Training bonus given by local facilities
 	if (pTrainer->bSectorZ == 0)
@@ -10379,10 +10479,10 @@ BOOLEAN MakeSureToolKitIsInHand( SOLDIERTYPE *pSoldier )
 	return TRUE;
 }
 
-BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier )
+BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier , bool bAllow1stAidKit)
 {
 	INT8 bPocket = 0;
-
+	bool can_swap = true, medkit_found = false;
 	fTeamPanelDirty = TRUE;
 
 	// if there is a MEDICAL BAG in his hand, we're set
@@ -10392,29 +10492,68 @@ BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier )
 	}
 
 	// run through rest of inventory looking 1st for MEDICAL BAGS, swap the first one into hand if found
-	// CHRISL: Changed to dynamically determine max inventory locations.
 	for (bPocket = SECONDHANDPOS; bPocket < NUM_INV_SLOTS; ++bPocket)
 	{
 		if ( Item[pSoldier->inv[ bPocket ].usItem].medicalkit )
 		{
+			medkit_found = true;
+			can_swap = true;
 			fCharacterInfoPanelDirty = TRUE;
-			// HEADROCK HAM B2.8: These new conditions will create a bias for swapping an item out of
-			// our hand. 
-			
-			//If the second hand is free, the item will go to the SECONDHANDPOS while the medikit
-			// goes into the HANDPOS
-			if( Item[pSoldier->inv[HANDPOS].usItem].usItemClass & (IC_WEAPON | IC_PUNCH) && !pSoldier->inv[SECONDHANDPOS].exists())
-				SwapObjs(pSoldier, HANDPOS, SECONDHANDPOS, TRUE);
-			// Else, if the gun sling slot is free, and the item can go there, it will.
-			else if(UsingNewInventorySystem() && !pSoldier->inv[GUNSLINGPOCKPOS].exists() && CanItemFitInPosition(pSoldier, &pSoldier->inv[HANDPOS], GUNSLINGPOCKPOS, FALSE))
-				SwapObjs(pSoldier, HANDPOS, GUNSLINGPOCKPOS, TRUE);
-			else if(!CanItemFitInPosition(pSoldier, &pSoldier->inv[HANDPOS], bPocket, FALSE))
-				SwapObjs(pSoldier, HANDPOS, SECONDHANDPOS, TRUE);
 
-			SwapObjs( pSoldier, HANDPOS, bPocket, TRUE );
-			return(TRUE);
+			//shadooow: rules for item swapping rewritten to honor pocket restrictions
+			//nothing in main hand
+			if (!pSoldier->inv[HANDPOS].exists())
+			{				
+				SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);//todo: this should probably be more robust and handle potentional custom medical kit that uses both hands
+				return(TRUE);
+			}
+			//nothing in offhand
+			else if (!pSoldier->inv[SECONDHANDPOS].exists())
+			{
+				SwapObjs(pSoldier, HANDPOS, SECONDHANDPOS, TRUE);
+				SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);
+				return(TRUE);
+			}
+			else if (UsingNewInventorySystem())
+			{
+				// Else, if the gun sling slot is free, and the item can go there, it will.
+				if (!pSoldier->inv[GUNSLINGPOCKPOS].exists() && CanItemFitInPosition(pSoldier, &pSoldier->inv[HANDPOS], GUNSLINGPOCKPOS, FALSE))
+					SwapObjs(pSoldier, HANDPOS, GUNSLINGPOCKPOS, TRUE);
+				else if (!pSoldier->inv[GUNSLINGPOCKPOS].exists() && CanItemFitInPosition(pSoldier, &pSoldier->inv[SECONDHANDPOS], GUNSLINGPOCKPOS, FALSE))
+					SwapObjs(pSoldier, SECONDHANDPOS, GUNSLINGPOCKPOS, TRUE);
+				else if (CanItemFitInPosition(pSoldier, &pSoldier->inv[HANDPOS], bPocket, FALSE))
+					SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);
+				else if (CanItemFitInPosition(pSoldier, &pSoldier->inv[SECONDHANDPOS], bPocket, FALSE))
+					SwapObjs(pSoldier, SECONDHANDPOS, bPocket, TRUE);
+				else if (!AutoPlaceObject(pSoldier, &pSoldier->inv[HANDPOS], FALSE, GUNSLINGPOCKPOS, FALSE) && !AutoPlaceObject(pSoldier, &pSoldier->inv[SECONDHANDPOS], FALSE, GUNSLINGPOCKPOS, FALSE))
+					can_swap = false;
+			}
+			else
+			{
+				if (CanItemFitInPosition(pSoldier, &pSoldier->inv[HANDPOS], bPocket, FALSE))
+					SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);
+				else if (CanItemFitInPosition(pSoldier, &pSoldier->inv[SECONDHANDPOS], bPocket, FALSE))
+					SwapObjs(pSoldier, SECONDHANDPOS, bPocket, TRUE);
+				else if (!AutoPlaceObject(pSoldier, &pSoldier->inv[HANDPOS], FALSE, GUNSLINGPOCKPOS, FALSE) && !AutoPlaceObject(pSoldier, &pSoldier->inv[SECONDHANDPOS], FALSE, GUNSLINGPOCKPOS, FALSE))
+					can_swap = false;
+			}
+
+			if (can_swap && (!pSoldier->inv[HANDPOS].exists() || !pSoldier->inv[SECONDHANDPOS].exists()))
+			{
+				if (pSoldier->inv[HANDPOS].exists())
+				{
+					SwapObjs(pSoldier, HANDPOS, SECONDHANDPOS, TRUE);
+				}
+				SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);
+				return(TRUE);
+			}
 		}
 	}
+	//if we came here it means we don't have medical kit or we cannot place it into hand due to no suitable pockets for whatever merc carries in them
+	if(medkit_found)
+		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, TacticalStr[QUICK_ITEMS_NOWHERE_TO_PLACE]);
+	if(!bAllow1stAidKit)
+		return FALSE;
 
 	// we didn't find a medical bag, so settle for a FIRST AID KIT
 	if ( Item[pSoldier->inv[ HANDPOS ].usItem].firstaidkit )
@@ -10422,7 +10561,7 @@ BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier )
 		return(TRUE);
 	}
 
-	// run through rest of inventory looking 1st for MEDICAL BAGS, swap the first one into hand if found
+	// run through rest of inventory looking for 1st aid kits, swap the first one into hand if found
 	// CHRISL: Changed to dynamically determine max inventory locations.
 	for (bPocket = SECONDHANDPOS; bPocket < NUM_INV_SLOTS; ++bPocket)
 	{
@@ -12476,7 +12615,7 @@ void SquadMenuMvtCallBack(MOUSE_REGION * pRegion, INT32 iReason )
 void RemoveMercMenuBtnCallback( MOUSE_REGION * pRegion, INT32 iReason )
 {
 	// btn callback handler for contract region
-	SOLDIERTYPE* pSoldier = GetSelectedAssignSoldier( FALSE );
+	SOLDIERTYPE* pSoldier = GetSelectedAssignSoldier( FALSE, FALSE );
 	INT32 iValue = MSYS_GetRegionUserData( pRegion, 0 );
 
 	if (iReason & MSYS_CALLBACK_REASON_LBUTTON_UP)
@@ -12556,12 +12695,19 @@ void BeginRemoveMercFromContract( SOLDIERTYPE *pSoldier )
 			return;
 		}
 #endif
+		//shadooow: it makes no sense, but if someone wants to dismiss vehicle then do not popup the department box and drop its items in current sector without asking
+		if (pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE)
+		{
+			StrategicRemoveMerc(pSoldier);
+			HandleLeavingOfEquipmentInCurrentSector(pSoldier->ubID);
+			return;
+		}
 
 		// WANNE: Nothing to do here, when we want to dismiss the robot
 		BOOLEAN	fAmIaRobot = AM_A_ROBOT( pSoldier );
 
 		// Flugente: If merc is unconscious, just fire him anyway (if talking stuff is called, this leads to a geme lock)
-		if (!fAmIaRobot && pSoldier->stats.bLife > CONSCIOUSNESS )		
+		if (!fAmIaRobot && pSoldier->stats.bLife > CONSCIOUSNESS )
 		{
 			if( ( pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__MERC ) || ( pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__NPC ) )
 			{
@@ -12893,6 +13039,7 @@ void SquadMenuBtnCallback( MOUSE_REGION * pRegion, INT32 iReason )
 				if ( pSoldier->bOldAssignment == VEHICLE && pSoldier->iVehicleId == iHelicopterVehicleId && NumNonPlayerTeamMembersInSector( pSoldier->sSectorX, pSoldier->sSectorY, ENEMY_TEAM ) > 0 )
 				{
 					UINT8 ubGroupID = MoveAllInHelicopterToFootMovementGroup( iValue );
+					if(gGameExternalOptions.ubSkyriderHotLZ == 1) gfCantRetreatInPBI = TRUE;//shadooow: disable retreat if hotdrops can only be done in center of the map
 					CheckConditionsForBattle( GetGroup( ubGroupID ) );
 				}
 				// old normal handling
@@ -13429,6 +13576,9 @@ void SnitchSectorMenuBtnCallback( MOUSE_REGION * pRegion, INT32 iReason )
 		{
 			if ( CanCharacterSpreadPropaganda( pSoldier ) )
 			{
+				// VR r2698 fix:  snitch assignments were not properly taking mercs out of vehicles
+				pSoldier->bOldAssignment = pSoldier->bAssignment;
+
 				fShowSnitchSectorMenu = FALSE;
 
 				// stop showing menu
@@ -13459,6 +13609,9 @@ void SnitchSectorMenuBtnCallback( MOUSE_REGION * pRegion, INT32 iReason )
 		{
 			if ( CanCharacterGatherInformation( pSoldier ) )
 			{
+				// VR r2698 fix:  snitch assignments were not properly taking mercs out of vehicles
+				pSoldier->bOldAssignment = pSoldier->bAssignment;
+
 				fShowSnitchSectorMenu = FALSE;
 
 				// stop showing menu
@@ -14097,7 +14250,8 @@ void AssignmentMenuBtnCallback( MOUSE_REGION * pRegion, INT32 iReason )
 				break;
 
 				case( ASSIGN_MENU_MOVE_ITEMS ):
-					if( 1 )
+					if (CanCharacterPractise(pSoldier))
+					//if( 1 )
 					{
 						gAssignMenuState = ASMENU_NONE;
 
@@ -14115,14 +14269,14 @@ void AssignmentMenuBtnCallback( MOUSE_REGION * pRegion, INT32 iReason )
 							DetermineBoxPositions();
 						}
 					}
-					else if( 0 )
+					/*else if( 0 )
 					{
 						fTeamPanelDirty = TRUE;
 						fMapScreenBottomDirty = TRUE;
 						swprintf( sString, zMarksMapScreenText[ 18 ], pSoldier->GetName() );
 
 						DoScreenIndependantMessageBox( sString , MSG_BOX_FLAG_OK, NULL );
-					}
+					}*/
 					break;
 
 				case ASSIGN_MENU_FORTIFY:
@@ -15267,7 +15421,7 @@ void CreateAssignmentsBox( void )
 
  // will create attribute pop up menu for mapscreen assignments
 
-	AssignmentPosition.iX = (SCREEN_WIDTH - INTERFACE_WIDTH)/2 + OrigAssignmentPosition.iX;
+ AssignmentPosition.iX = POP_UP_BOX_X;
 
 	if( giBoxY != 0 )
 	{
@@ -16145,7 +16299,7 @@ void HandleRestFatigueAndSleepStatus( void )
 				continue;
 			}
 
-			if( ( pSoldier->bAssignment == ASSIGNMENT_POW ) || ( pSoldier->bAssignment == IN_TRANSIT ) )
+			if( ( pSoldier->bAssignment == ASSIGNMENT_POW ) || ( pSoldier->bAssignment == IN_TRANSIT ) || ( pSoldier->bAssignment == ASSIGNMENT_MINIEVENT ) )
 			{
 				continue;
 			}
@@ -16294,7 +16448,7 @@ void HandleRestFatigueAndSleepStatus( void )
 				continue;
 			}
 
-			if( ( pSoldier->bAssignment == ASSIGNMENT_POW ) || ( pSoldier->bAssignment == IN_TRANSIT ) )
+			if( ( pSoldier->bAssignment == ASSIGNMENT_POW ) || ( pSoldier->bAssignment == IN_TRANSIT ) || ( pSoldier->bAssignment == ASSIGNMENT_MINIEVENT ) )
 			{
 				continue;
 			}
@@ -19274,7 +19428,8 @@ BOOLEAN CanCharacterRepairAnotherSoldiersStuff( SOLDIERTYPE *pSoldier, SOLDIERTY
 		( pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE ) ||
 		( AM_A_ROBOT( pSoldier ) ) ||
 		( pSoldier->ubWhatKindOfMercAmI == MERC_TYPE__EPC ) ||
-		( pOtherSoldier->bAssignment == ASSIGNMENT_DEAD ) )
+		( pOtherSoldier->bAssignment == ASSIGNMENT_DEAD ) ||
+		( pOtherSoldier->bAssignment == ASSIGNMENT_MINIEVENT ) )
 	{
 		return( FALSE );
 	}
@@ -19282,7 +19437,7 @@ BOOLEAN CanCharacterRepairAnotherSoldiersStuff( SOLDIERTYPE *pSoldier, SOLDIERTY
 	return( TRUE );
 }
 
-SOLDIERTYPE *GetSelectedAssignSoldier( BOOLEAN fNullOK )
+SOLDIERTYPE *GetSelectedAssignSoldier( BOOLEAN fNullOK, BOOLEAN fReturnVehicleDriver )
 {
 	SOLDIERTYPE *pSoldier = NULL;
 
@@ -19312,7 +19467,7 @@ SOLDIERTYPE *GetSelectedAssignSoldier( BOOLEAN fNullOK )
 		Assert( pSoldier->bActive );
 		// anv: don't assert, handle...
 		//Assert( !( pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE ) );
-		if( pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE )
+		if(fReturnVehicleDriver && pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE )
 		{
 			pSoldier = GetDriver( pSoldier->iVehicleId );
 		}
@@ -19814,6 +19969,9 @@ BOOLEAN CanCharacterTrainWorkers( SOLDIERTYPE *pSoldier )
 
 	if ( !gGameExternalOptions.fMineRequiresWorkers )
 		return FALSE;
+
+	if (pSoldier->bAssignment == ASSIGNMENT_POW)
+		return(FALSE);
 
 	// Flugente: we can't perform most assignments while concealed
 	if ( SPY_LOCATION( pSoldier->bAssignment ) )

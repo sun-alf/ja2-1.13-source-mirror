@@ -52,6 +52,7 @@
 #include "Queen Command.h"
 #include "points.h"
 #include "Soldier Functions.h" // added by SANDRO
+#include "Text.h"	// sevenfm
 #endif
 
 #include "connect.h"
@@ -80,9 +81,6 @@ extern UINT8 gubElementsOnExplosionQueue;
 extern BOOLEAN gfWaitingForTriggerTimer;
 
 UINT8 gubAICounter;
-
-extern STR16 gStrAction[];
-extern STR szAction[];
 
 //
 // Commented out/ to fix:
@@ -216,6 +214,7 @@ STR szAction[] = {
 // sevenfm
 UINT32 guiAIStartCounter = 0, guiAILastCounter = 0;
 //UINT8 gubAISelectedSoldier = NOBODY;
+BOOLEAN gfLogsEnabled = TRUE;
 
 void DebugAI( INT8 bMsgType, SOLDIERTYPE *pSoldier, STR szOutput, INT8 bAction )
 {
@@ -223,10 +222,8 @@ void DebugAI( INT8 bMsgType, SOLDIERTYPE *pSoldier, STR szOutput, INT8 bAction )
 	CHAR8	msg[1024];
 	CHAR8	buf[1024];
 
-	if (!gGameExternalOptions.fAIDecisionInfo)
-	{
+	if (!gfLogsEnabled)
 		return;
-	}
 
 	memset(buf, 0, 1024 * sizeof(char));
 
@@ -307,6 +304,12 @@ void DebugAI( INT8 bMsgType, SOLDIERTYPE *pSoldier, STR szOutput, INT8 bAction )
 		fputs("\n", DebugFile);
 		fclose(DebugFile);
 	}
+	else
+	{
+		// cannot open file in Logs folder, stop logging
+		gfLogsEnabled = FALSE;
+		return;
+	}
 
 	// also log to individual file for selected soldier
 	sprintf(buf, "Logs\\AI_Decisions [%d].txt", pSoldier->ubID);
@@ -319,6 +322,46 @@ void DebugAI( INT8 bMsgType, SOLDIERTYPE *pSoldier, STR szOutput, INT8 bAction )
 		fputs(msg, DebugFile);
 		fputs("\n", DebugFile);
 		fclose(DebugFile);
+	}
+}
+
+extern	UINT32			guiDay;
+extern	UINT32			guiHour;
+extern	UINT32			guiMin;
+
+void DebugQuestInfo(STR szOutput)
+{
+	/*CHAR16 buf16[1024];
+	memset(buf16, 0, 1024 * sizeof(wchar_t));
+
+	if (strlen(szOutput) > 0)
+	{
+		mbstowcs(buf16, szOutput, 1024 - 1);
+		AddTacticalDebugMessage(buf16);
+	}*/
+	CHAR8 buf[1024];
+
+	if (!gfLogsEnabled)
+		return;
+
+	FILE*	DebugFile;
+
+	DebugFile = fopen("Logs\\QuestInfo.txt", "a+t");
+	if (DebugFile != NULL)
+	{
+		// first write game clock and date/time
+		sprintf(buf, "(%d) Day %d %d:%d ", GetJA2Clock(), guiDay, guiHour, guiMin);
+		fputs(buf, DebugFile);
+
+		fputs(szOutput, DebugFile);
+		fputs("\n", DebugFile);
+		fclose(DebugFile);
+	}
+	else
+	{
+		// cannot open file in Logs folder, stop logging
+		gfLogsEnabled = FALSE;
+		return;
 	}
 }
 
@@ -354,6 +397,7 @@ BOOLEAN InitAI( void )
 
 	// sevenfm: Clear the AI debug txt file to prevent it from getting huge
 	remove("Logs\\AI_Decisions.txt");
+	//remove("Logs\\QuestInfo.txt");
 
 	// remove all individual files
 	CHAR8	buf[1024];
@@ -657,7 +701,7 @@ void HandleSoldierAI( SOLDIERTYPE *pSoldier ) // FIXME - this function is named 
 			// ATE: Display message that deadlock occured...
 			LiveMessage( "Breaking Deadlock" );
 
-			//ScreenMsg(FONT_MCOLOR_LTRED, MSG_INTERFACE, L"Aborting AI deadlock for [%d] %s data %d", pSoldier->ubID, gStrAction[pSoldier->aiData.bAction], pSoldier->aiData.usActionData);
+			ScreenMsg(FONT_MCOLOR_LTRED, MSG_INTERFACE, L"Aborting AI deadlock for [%d] %s %s data %d", pSoldier->ubID, pSoldier->GetName(), utf8_to_wstring(std::string(szAction[pSoldier->aiData.bAction])), pSoldier->aiData.usActionData);
 			DebugAI(String("Aborting AI deadlock for [%d] %s data %d", pSoldier->ubID, szAction[pSoldier->aiData.bAction], pSoldier->aiData.usActionData));
 
 #ifdef JA2TESTVERSION
@@ -1435,7 +1479,7 @@ void NPCDoesNothing(SOLDIERTYPE *pSoldier)
 }
 
 
-
+extern BOOLEAN AreInMeanwhile();
 
 void CancelAIAction(SOLDIERTYPE *pSoldier, UINT8 ubForce)
 {
@@ -1451,11 +1495,11 @@ void CancelAIAction(SOLDIERTYPE *pSoldier, UINT8 ubForce)
 	DebugAI(AI_MSG_INFO, pSoldier, String("CancelAIAction"));
 
 	// re-enable cover checking, something is new or something strange happened
-	if ( gGameExternalOptions.fEnemyTanksCanMoveInTactical || !ARMED_VEHICLE( pSoldier ) )//dnl ch64 290813
+	if (!TANK(pSoldier) || gGameExternalOptions.fEnemyTanksCanMoveInTactical)
 		SkipCoverCheck = FALSE;
 
 	// turn off new situation flag to stop this from repeating all the time!
-	if ( pSoldier->aiData.bNewSituation == IS_NEW_SITUATION )
+	if (pSoldier->aiData.bNewSituation == IS_NEW_SITUATION)
 	{
 		pSoldier->aiData.bNewSituation = WAS_NEW_SITUATION;
 	}
@@ -1470,10 +1514,13 @@ void CancelAIAction(SOLDIERTYPE *pSoldier, UINT8 ubForce)
 	ActionDone(pSoldier);
 
 	// sevenfm: reset next action
-	pSoldier->aiData.bNextAction = AI_ACTION_NONE;
-	pSoldier->aiData.usNextActionData = 0;
-	pSoldier->aiData.bNextTargetLevel = 0;
-	pSoldier->iNextActionSpecialData = 0;
+	/*if(!AreInMeanwhile())
+	{
+		pSoldier->aiData.bNextAction = AI_ACTION_NONE;
+		pSoldier->aiData.usNextActionData = 0;
+		pSoldier->aiData.bNextTargetLevel = 0;
+		pSoldier->iNextActionSpecialData = 0;
+	}*/	
 }
 
 
@@ -1857,11 +1904,11 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 {
 	INT32 iRetCode;
 	//NumMessage("ExecuteAction - Guy#",pSoldier->ubID);
-
+	//ScreenMsg(FONT_MCOLOR_LTRED, MSG_INTERFACE, L"Execute action: [%d] %s %s data %d", pSoldier->ubID, pSoldier->GetName(), utf8_to_wstring(std::string(szAction[pSoldier->aiData.bAction])), pSoldier->aiData.usActionData);
 
 	// in most cases, merc will change location, or may cause damage to opponents,
 	// so a new cover check will be necessary.  Exceptions handled individually.
-	if ( gGameExternalOptions.fEnemyTanksCanMoveInTactical || !ARMED_VEHICLE( pSoldier ) )//dnl ch64 290813
+	if ( gGameExternalOptions.fEnemyTanksCanMoveInTactical || !ARMED_VEHICLE( pSoldier ) || !ENEMYROBOT( pSoldier ) )//dnl ch64 290813
 		SkipCoverCheck = FALSE;
 
 	// reset this field, too
@@ -2632,7 +2679,7 @@ INT8 ExecuteAction(SOLDIERTYPE *pSoldier)
 			if (pSoldier->stats.bLife >= OKLIFE &&
 				pSoldier->bBreath > 0 &&
 				!pSoldier->bCollapsed &&
-				(pSoldier->usAnimState == GIVING_AID || pSoldier->usAnimState == GIVING_AID_PRN))
+				pSoldier->IsGivingAid())
 			{
 				if (gAnimControl[pSoldier->usAnimState].ubEndHeight == ANIM_PRONE)
 					pSoldier->ChangeSoldierState(END_AID_PRN, 0, 0);
@@ -2697,7 +2744,7 @@ void CheckForChangingOrders(SOLDIERTYPE *pSoldier)
 			// crank up ONGUARD to CLOSEPATROL, and CLOSEPATROL to FARPATROL
 			pSoldier->aiData.bOrders++;       // increase roaming range by 1 category
 		}
-		else if ( pSoldier->bTeam == MILITIA_TEAM && pSoldier->aiData.bOrders != SNIPER )
+		else if ( pSoldier->bTeam == MILITIA_TEAM && pSoldier->aiData.bOrders != STATIONARY )
 		{
 			// go on alert!
 			pSoldier->aiData.bOrders = SEEKENEMY;
@@ -2943,6 +2990,11 @@ void HandleAITacticalTraversal( SOLDIERTYPE * pSoldier )
 
 		case SOLDIER_CLASS_ADMINISTRATOR:
 			++pSectorInfo->ubNumAdmins;
+			break;
+
+		case SOLDIER_CLASS_ROBOT:
+			if (ENEMYROBOT(pSoldier))
+				++pSectorInfo->ubNumRobots;
 			break;
 
 		case SOLDIER_CLASS_TANK:

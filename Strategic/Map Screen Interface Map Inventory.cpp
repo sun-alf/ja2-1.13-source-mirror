@@ -49,11 +49,63 @@
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
+extern UILayout_Map UI_MAP;
+extern WorldItems gAllWorldItems;
 
 // Flugente: external sector data
 extern SECTOR_EXT_DATA	SectorExternalData[256][4];
 
 extern void	SetLastTimePlayerWasInSector(INT16 sMapX, INT16 sMapY, INT8 sMapZ);	// Flugente: set last time sector was visited
+
+UINT16 MAPINV_NEXT_X;
+UINT16 MAPINV_PREV_X;
+UINT16 MAPINV_ARROW_Y;
+UINT16 MAPINV_ZOOM_X;
+UINT16 MAPINV_ZOOM_Y;
+UINT16 MAPINV_STACK_X;
+UINT16 MAPINV_STACK_Y;
+UINT16 MAPINV_SORT_AMMO_X;
+UINT16 MAPINV_SORT_AMMO_Y;
+UINT16 MAPINV_SORT_ATT_X;
+UINT16 MAPINV_SORT_ATT_Y;
+UINT16 MAPINV_EJECT_AMMO_X;
+UINT16 MAPINV_EJECT_AMMO_Y;
+UINT16 MAPINV_FILTER_X;
+UINT16 MAPINV_FILTER_Y;
+UINT16 MAPINV_FILTER_AMMO_X;
+UINT16 MAPINV_FILTER_AMMO_Y;
+UINT16 MAPINV_FILTER_GUN_X;
+UINT16 MAPINV_FILTER_GUN_Y;
+UINT16 MAPINV_FILTER_EXPLOSIVE_X;
+UINT16 MAPINV_FILTER_EXPLOSIVE_Y;
+UINT16 MAPINV_FILTER_MELEE_X;
+UINT16 MAPINV_FILTER_MELEE_Y;
+UINT16 MAPINV_FILTER_ARMOR_X;
+UINT16 MAPINV_FILTER_ARMOR_Y;
+UINT16 MAPINV_FILTER_LBE_X;
+UINT16 MAPINV_FILTER_LBE_Y;
+UINT16 MAPINV_FILTER_KIT_X;
+UINT16 MAPINV_FILTER_KIT_Y;
+UINT16 MAPINV_FILTER_MISC1_X;
+UINT16 MAPINV_FILTER_MISC1_Y;
+UINT16 MAPINV_FILTER_MISC2_X;
+UINT16 MAPINV_FILTER_MISC2_Y;
+UINT16 MAPINV_FILTER_SAVE_TEMPLATE_X;
+UINT16 MAPINV_FILTER_SAVE_TEMPLATE_Y;
+UINT16 MAPINV_FILTER_LOAD_TEMPLATE_X;
+UINT16 MAPINV_FILTER_LOAD_TEMPLATE_Y;
+UINT16 MAPINV_DONE_X;
+UINT16 MAPINV_DONE_y;
+UINT16 MAPINV_ITEMPOOL_X;
+UINT16 MAPINV_ITEMPOOL_Y;
+UINT16 MAPINV_PAGE_X;
+UINT16 MAPINV_PAGE_Y;
+UINT16 MAPINV_SECTOR_X;
+UINT16 MAPINV_SECTOR_Y;
+UINT16 MAPINV_LOC_STR_X;
+UINT16 MAPINV_LOC_STR_Y;
+UINT16 MAPINV_ITEMPOOL_STR_X;
+UINT16 MAPINV_ITEMPOOL_STR_Y;
 
 //dnl ch51 081009
 UINT8 gInventoryPoolIndex = '0';
@@ -152,7 +204,7 @@ std::vector<WORLDITEM> pInventoryPoolList;
 INT32 iCurrentInventoryPoolPage = 0;
 INT32 iLastInventoryPoolPage = 0;
 
-INT32 sObjectSourceGridNo = 0;
+INT32 sObjectSourceGridNo = -1;//shadooow: I don't see much of a sense in this, we have gpItemPointerSoldier and we can use gpItemPointerSoldier->sGridNo to do this, this is actually unused
 INT8  sObjectSourseSoldierID = -1;
 
 // number of unseen items in sector
@@ -355,6 +407,11 @@ BOOLEAN MapInventoryFilterMenuPopup_OptionOff( void );
 void MapInventoryFilterToggle( UINT32 uiFlags );
 void MapInventoryFilterSet( UINT32 uiFlags );
 void HandleSetFilterButtons();
+void InitMapInventoryCoordinates(void);
+void HandleMousePageScroll(void);
+void MapInvNextPage(void);
+void MapInvPreviousPage(void);
+
 
 //dnl ch75 271013 ClearAllItemPools and RefreshItemPools are relocated from "Handle Items.cpp"
 void ClearAllItemPools()
@@ -394,28 +451,21 @@ BOOLEAN LoadInventoryPoolGraphic( void )
 
 	if (iResolution >= _640x480 && iResolution < _800x600)
 	{
-		MAP_INV_SLOT_COLS = 8;
-		MAP_INVENTORY_POOL_SLOT_COUNT = 40;
-		MAP_INVENTORY_POOL_SLOT_START_X = 269 + xResOffset;
-		MAP_INVENTORY_POOL_SLOT_START_Y = 51 + yResOffset;
 		sprintf( VObjectDesc.ImageFile, "INTERFACE\\sector_inventory.sti" );
+	}
+	else if (iResolution == _1280x720)
+	{
+		sprintf(VObjectDesc.ImageFile, "INTERFACE\\sector_inventory_1280x720.sti");
 	}
 	else if (iResolution < _1024x768)
 	{
-		MAP_INV_SLOT_COLS = 11;
-		MAP_INVENTORY_POOL_SLOT_COUNT = 77;
-		MAP_INVENTORY_POOL_SLOT_START_X = (SCREEN_WIDTH - INTERFACE_WIDTH)/2 + 278 + xResOffset;
-		MAP_INVENTORY_POOL_SLOT_START_Y = 62 + yResOffset;
 		sprintf( VObjectDesc.ImageFile, "INTERFACE\\sector_inventory_800x600.sti" );
 	}
 	else
 	{
-		MAP_INV_SLOT_COLS = 17;
-		MAP_INVENTORY_POOL_SLOT_COUNT = MAP_INVENTORY_POOL_MAX_SLOTS;
-		MAP_INVENTORY_POOL_SLOT_START_X = (SCREEN_WIDTH - INTERFACE_WIDTH)/2 + 282 + xResOffset;
-		MAP_INVENTORY_POOL_SLOT_START_Y = 50 + yResOffset;
 		sprintf( VObjectDesc.ImageFile, "INTERFACE\\sector_inventory_1024x768.sti" );
 	}
+
 
 	// add to V-object index
 	CHECKF(AddVideoObject(&VObjectDesc, &guiMapInventoryPoolBackground));
@@ -428,6 +478,8 @@ BOOLEAN LoadInventoryPoolGraphic( void )
 	sprintf( VObjectDesc.ImageFile, "INTERFACE\\Attachment_Asterisks.sti" );
 	CHECKF(AddVideoObject(&VObjectDesc, &guiAttachmentAsterisks));
 
+
+	ResetMapInventoryOffsets();
 	return( TRUE );
 }
 
@@ -467,7 +519,7 @@ void BlitInventoryPoolGraphic( void )
 
 	// blit inventory pool graphic to the screen
 	GetVideoObject(&hHandle, guiMapInventoryPoolBackground);
-	BltVideoObject( guiSAVEBUFFER , hHandle, 0,(SCREEN_WIDTH - INTERFACE_WIDTH)/2 + INVEN_POOL_X, yResOffset + INVEN_POOL_Y , VO_BLT_SRCTRANSPARENCY,NULL );
+	BltVideoObject( guiSAVEBUFFER , hHandle, 0, UI_MAP.BorderRegion.x, UI_MAP.BorderRegion.y, VO_BLT_SRCTRANSPARENCY,NULL );
 
 	// HEADROCK HAM 5: Draw inventory slots
 	BlitInventoryPoolSlotGraphics();
@@ -500,7 +552,7 @@ void BlitInventoryPoolGraphic( void )
 	HandleButtonStatesWhileMapInventoryActive( );
 
 	// Invalidate
-	RestoreExternBackgroundRect(xResOffset + MAP_BORDER_X, yResOffset + MAP_BORDER_Y, SCREEN_WIDTH - MAP_BORDER_X - 2 * xResOffset, SCREEN_HEIGHT - 121 - 2 * yResOffset);
+	RestoreExternBackgroundRect(UI_MAP.BorderRegion.x, UI_MAP.BorderRegion.y, SCREEN_WIDTH, SCREEN_HEIGHT - 121);
 
 	return;
 }
@@ -853,7 +905,14 @@ void CreateDestroyMapInventoryPoolButtons( BOOLEAN fExitFromMapScreen )
 		}
 
 		// destroy buttons for map border
-		DeleteMapBorderButtons( );
+		if (isWidescreenUI())
+		{
+			DisableMapBorderButtons();
+		}
+		else
+		{
+			DeleteMapBorderButtons( );
+		}
 
 		// delete map level markers regions
 		DeleteMouseRegionsForLevelMarkers( );
@@ -893,12 +952,18 @@ void CreateDestroyMapInventoryPoolButtons( BOOLEAN fExitFromMapScreen )
 		if(gGameExternalOptions.fEnableInventoryPoolQ)//dnl ch51 081009
 			SwitchToInventoryPoolQ(0);
 
-		// check fi we are in fact leaving mapscreen
+		// check if we are in fact leaving mapscreen
 		if( fExitFromMapScreen == FALSE )
 		{
 			// recreate mapborder buttons
-			CreateButtonsForMapBorder( );
-
+			if (isWidescreenUI())
+			{
+				EnableMapBorderButtons();
+			}
+			else
+			{
+				CreateButtonsForMapBorder();
+			}
 			// recreate map level markers regions
 			CreateMouseRegionsForLevelMarkers( );
 		}
@@ -965,7 +1030,6 @@ void CreateDestroyMapInventoryPoolButtons( BOOLEAN fExitFromMapScreen )
 
 	// do our handling here
 	HandleMapSectorInventory( );
-
 }
 
 
@@ -1112,8 +1176,7 @@ void SaveSeenAndUnseenItems( void )
 	}
 	else
 	{
-		Assert(SaveWorldItemsToTempItemFile(sSelMapX, sSelMapY, iCurrentMapSectorZ, uiNumberOfSeenItems + uiNumberOfUnSeenItems, pInventoryPoolList, FALSE));
-		SetNumberOfVisibleWorldItemsInSectorStructureForSector(sSelMapX, sSelMapY, iCurrentMapSectorZ, uiTotalNumberOfVisibleItems);
+		UpdateWorldItems(sSelMapX, sSelMapY, iCurrentMapSectorZ, uiNumberOfSeenItems + uiNumberOfUnSeenItems, pInventoryPoolList);
 	}
 #endif
 }
@@ -1279,16 +1342,21 @@ void MapInvenPoolSlotsMove( MOUSE_REGION * pRegion, INT32 iReason  )
 	{
 		if( iReason & MSYS_CALLBACK_REASON_GAIN_MOUSE )
 		{
-			iCurrentlyHighLightedItem = iCounter;
-			fChangedInventorySlots = TRUE;
-			gfCheckForCursorOverMapSectorInventoryItem = TRUE;
+			if (gpItemPointer == NULL)
+			{
+				iCurrentlyHighLightedItem = iCounter;
+				fChangedInventorySlots = TRUE;
+				gfCheckForCursorOverMapSectorInventoryItem = TRUE;
+			}
 		}
 		else if( iReason & MSYS_CALLBACK_REASON_LOST_MOUSE )
 		{
-			iCurrentlyHighLightedItem = -1;
-			fChangedInventorySlots = TRUE;
-			gfCheckForCursorOverMapSectorInventoryItem = FALSE;
-
+			if (gpItemPointer == NULL)
+			{
+				iCurrentlyHighLightedItem = NO_SLOT;
+				fChangedInventorySlots = TRUE;
+				gfCheckForCursorOverMapSectorInventoryItem = FALSE;
+			}
 			// re render radar map
 			RenderRadarScreen( );
 		}
@@ -1415,7 +1483,10 @@ void MapInvenPoolSlots(MOUSE_REGION * pRegion, INT32 iReason )
 					// access description box directly if CTRL is pressed for stack items
 					else if((twItem->object.ubNumberOfObjects == 1 || _KeyDown( CTRL )) && fValidPointer)
 					{
-						fShowInventoryFlag = TRUE;
+						if (!isWidescreenUI())
+						{
+							fShowInventoryFlag = TRUE;
+						}
 
 						if (InItemDescriptionBox( ))
 						{
@@ -1696,66 +1767,32 @@ void MapInvenPoolSlots(MOUSE_REGION * pRegion, INT32 iReason )
 			if ( PlaceObjectInInventoryStash( &( pInventoryPoolList[ ( iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ) + iCounter ].object ), gpItemPointer,
 				( iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ) + iCounter, iCurrentlyPickedUpItem ) )
 			{
-				INT8 bRenderZHeightAboveLevel = 0;
-
-				//CHRISL: Make sure we put the item at the same level as the merc
-				if ( gpItemPointerSoldier->exists( ) )
-					pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].ubLevel = gpItemPointerSoldier->pathing.bLevel;
-
-				// HEADROCK HAM 5: A LOT of functions rely on these flags being set. So set them!!
-				pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT)+iCounter].bVisible = TRUE;
-				pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT)+iCounter].fExists = TRUE;
-				
-				/*if(gGameExternalOptions.fEnableInventoryPoolQ)//dnl ch51 091009
-				{
-					if(!GridNoOnVisibleWorldTile(sObjectSourceGridNo))
-						sObjectSourceGridNo = gMapInformation.sCenterGridNo;
-				}*/
-
-				// set a grid no for item from mercs with invalid grid no in sector inventory, e.g. merc arriving in sector with a different tactical map loaded
-				if(!GridNoOnVisibleWorldTile(sObjectSourceGridNo))
-				{
-					pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].ubLevel = 0;
-
-					// if this is the current sector, use the center gridno, otherwise look for other items to get a good position
-					if ( (sSelMapX == gWorldSectorX) && (gWorldSectorY == sSelMapY) && (gbWorldSectorZ == iCurrentMapSectorZ) )
-						sObjectSourceGridNo = gMapInformation.sCenterGridNo;
-
-					// Flugente 2016-04-09: (pInventoryPoolList[i].usFlags & WORLD_ITEM_REACHABLE) does not guarantee that an item is reachable. 
-					// For example, a previously reachable item might now be inside a locked house. This would result in all items to be dropped inside that house!
-					// It is better so simply leave sObjectSourceGridNo at NOWHERE. This will cause WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT to be set, which in turn causes
-					// a reassignment to the (by then correct) gMapInformation.sCenterGridNo in LoadAndAddWorldItemsFromTempFile(...)
-					/*if ( !GridNoOnVisibleWorldTile( sObjectSourceGridNo ) )
-					{
-						// use the grid no of the first visible, reachable item
-						for(UINT32 i = 0; i < pInventoryPoolList.size(); ++i )
-						{
-							if( pInventoryPoolList[i].bVisible == 1 && pInventoryPoolList[i].fExists == TRUE && pInventoryPoolList[i].usFlags & WORLD_ITEM_REACHABLE )
-							{
-								sObjectSourceGridNo = pInventoryPoolList[i].sGridNo;
-								bRenderZHeightAboveLevel = pInventoryPoolList[i].bRenderZHeightAboveLevel;
-								break;
-							}
-						}
-					}*/
-				}
-				
-				// set as reachable and set gridno
-				pInventoryPoolList[ ( iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ) + iCounter ].usFlags |= WORLD_ITEM_REACHABLE;
-						
 				// nothing here before, then place here
-				if( iOldNumberOfObjects == 0 )
-				{
-					pInventoryPoolList[(iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].sGridNo = sObjectSourceGridNo;
-					pInventoryPoolList[(iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].bRenderZHeightAboveLevel = bRenderZHeightAboveLevel;
+				if (iOldNumberOfObjects == 0)
+				{			
+					INT32 sGridNo = -1;
+					INT8 bLevel = 0;
 
-					if(TileIsOutOfBounds(sObjectSourceGridNo))
+					// is this sector loaded?
+					if (gpItemPointerSoldier && (gpItemPointerSoldier->sSectorX == gWorldSectorX) && (gpItemPointerSoldier->sSectorY == gWorldSectorY) && (gpItemPointerSoldier->bSectorZ == gbWorldSectorZ))
 					{
-						pInventoryPoolList[ ( iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ) + iCounter ].usFlags |= WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT;
+						sGridNo = gpItemPointerSoldier->sGridNo;
+						bLevel = gpItemPointerSoldier->pathing.bLevel;
 					}
-
-					//if( sObjectSourseSoldierID != -1 )
-					//	pInventoryPoolList[ ( iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ) + iCounter ].soldierID = sObjectSourseSoldierID;
+					// set a grid no for item from mercs with invalid grid no in sector inventory, e.g. merc arriving in sector with a different tactical map loaded
+					if (sGridNo != 0)
+					{
+						// set as reachable and set gridno
+						pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].sGridNo = sGridNo;
+						pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].usFlags |= WORLD_ITEM_REACHABLE;
+						pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].ubLevel = bLevel;
+						pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].bVisible = 1;
+						pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].fExists = TRUE;
+					}
+					if (sGridNo == -1)
+					{
+						pInventoryPoolList[(iCurrentInventoryPoolPage*MAP_INVENTORY_POOL_SLOT_COUNT) + iCounter].usFlags |= WORLD_ITEM_GRIDNO_NOT_SET_USE_ENTRY_POINT;
+					}
 				}
 
 				// Check if it's the same now!
@@ -1791,14 +1828,16 @@ void MapInvenPoolSlots(MOUSE_REGION * pRegion, INT32 iReason )
 
 void CreateMapInventoryButtons( void )
 {
+	InitMapInventoryCoordinates();
+
 	guiMapInvenArrowButtonImage[ 0 ]=  LoadButtonImage( "INTERFACE\\map_screen_bottom_arrows.sti" , 10, 1, -1, 3, -1 );
-	guiMapInvenArrowButton[ 0 ] = QuickCreateButton( guiMapInvenArrowButtonImage[ 0 ], (MAP_INV_X_OFFSET + 559), (SCREEN_HEIGHT - 144 - yResOffset),
+	guiMapInvenArrowButton[ 0 ] = QuickCreateButton( guiMapInvenArrowButtonImage[ 0 ], MAPINV_NEXT_X, MAPINV_ARROW_Y,
 									BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 									(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)MapInventoryPoolNextBtn );
 
 
 	guiMapInvenArrowButtonImage[ 1 ]=  LoadButtonImage( "INTERFACE\\map_screen_bottom_arrows.sti" ,9, 0, -1, 2, -1 );
-	guiMapInvenArrowButton[ 1 ] = QuickCreateButton( guiMapInvenArrowButtonImage[ 1 ], (MAP_INV_X_OFFSET + 487), (SCREEN_HEIGHT - 144 - yResOffset),
+	guiMapInvenArrowButton[ 1 ] = QuickCreateButton( guiMapInvenArrowButtonImage[ 1 ], MAPINV_PREV_X, MAPINV_ARROW_Y,
 									BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 									(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)MapInventoryPoolPrevBtn );
 
@@ -1812,7 +1851,7 @@ void CreateMapInventoryButtons( void )
 	if (iResolution >= _800x600 )
 	{
 		guiMapInvenZoomButtonImage =  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 0, 0, -1, 1, -1 );
-		guiMapInvenZoomButton = QuickCreateButton( guiMapInvenZoomButtonImage, INVEN_POOL_X+10 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+		guiMapInvenZoomButton = QuickCreateButton( guiMapInvenZoomButtonImage, MAPINV_ZOOM_X, MAPINV_ZOOM_Y,
 											BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 											NULL, (GUI_CALLBACK)MapInventoryPoolZoomBtn );
 
@@ -1826,7 +1865,7 @@ void CreateMapInventoryButtons( void )
 
 	// HEADROCK HAM 5: Stack and Merge button
 	guiMapInvenSortButtonImage[ 0 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 16, 14, -1, 15, -1 );
-	guiMapInvenSortButton[ 0 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 0 ], INVEN_POOL_X+50 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenSortButton[ 0 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 0 ], MAPINV_STACK_X, MAPINV_STACK_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolStackAndMergeBtn );
 
@@ -1834,7 +1873,7 @@ void CreateMapInventoryButtons( void )
 
 	// HEADROCK HAM 5: Sort Ammo Button
 	guiMapInvenSortButtonImage[ 1 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 4, 2, -1, 3, -1 );
-	guiMapInvenSortButton[ 1 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 1 ], INVEN_POOL_X+80 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenSortButton[ 1 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 1 ], MAPINV_SORT_AMMO_X, MAPINV_SORT_AMMO_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolSortAmmoBtn );
 
@@ -1842,15 +1881,15 @@ void CreateMapInventoryButtons( void )
 
 	// HEADROCK HAM 5: Sort Attachments Button
 	guiMapInvenSortButtonImage[ 2 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 10, 8, -1, 9, -1 );
-	guiMapInvenSortButton[ 2 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 2 ], INVEN_POOL_X+110 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenSortButton[ 2 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 2 ], MAPINV_SORT_ATT_X, MAPINV_SORT_ATT_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolSortAttachmentsBtn );
 
 	SetButtonFastHelpText( guiMapInvenSortButton[ 2 ], pMapScreenInvenButtonHelpText[ 6 ] );
 
-	// HEADROCK HAM 5: Sort Attachments Button
+	// HEADROCK HAM 5: Eject Ammo Button
 	guiMapInvenSortButtonImage[ 3 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 13, 11, -1, 12, -1 );
-	guiMapInvenSortButton[ 3 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 3 ], INVEN_POOL_X+140 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenSortButton[ 3 ] = QuickCreateButton( guiMapInvenSortButtonImage[ 3 ], MAPINV_EJECT_AMMO_X, MAPINV_EJECT_AMMO_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolEjectAmmoBtn );
 
@@ -1858,7 +1897,7 @@ void CreateMapInventoryButtons( void )
 
 	// HEADROCK HAM 5: Filter Toggle Button
 	guiMapInvenFilterButtonImage[ 0 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 7, 5, -1, 6, -1 );
-	guiMapInvenFilterButton[ 0 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 0 ], INVEN_POOL_X+185 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenFilterButton[ 0 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 0 ], MAPINV_FILTER_X, MAPINV_FILTER_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1870,7 +1909,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[0] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 1 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 20, 20, -1, 21, -1 );
-	guiMapInvenFilterButton[ 1 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 1 ], INVEN_POOL_X+214 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenFilterButton[ 1 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 1 ], MAPINV_FILTER_GUN_X, MAPINV_FILTER_GUN_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1882,7 +1921,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[1] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 2 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 22, 22, -1, 23, -1 );
-	guiMapInvenFilterButton[ 2 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 2 ], INVEN_POOL_X+214 + xResOffset, INVEN_POOL_Y + 24 + yResOffset,
+	guiMapInvenFilterButton[ 2 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 2 ], MAPINV_FILTER_AMMO_X, MAPINV_FILTER_AMMO_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1894,7 +1933,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[2] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 3 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 24, 24, -1, 25, -1 );
-	guiMapInvenFilterButton[ 3 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 3 ], INVEN_POOL_X+243 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenFilterButton[ 3 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 3 ], MAPINV_FILTER_EXPLOSIVE_X, MAPINV_FILTER_EXPLOSIVE_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1906,7 +1945,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[3] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 4 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 26, 26, -1, 27, -1 );
-	guiMapInvenFilterButton[ 4 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 4 ], INVEN_POOL_X+243 + xResOffset, INVEN_POOL_Y + 24 + yResOffset,
+	guiMapInvenFilterButton[ 4 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 4 ], MAPINV_FILTER_MELEE_X, MAPINV_FILTER_MELEE_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1918,7 +1957,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[4] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 5 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 28, 28, -1, 29, -1 );
-	guiMapInvenFilterButton[ 5 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 5 ], INVEN_POOL_X+272 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenFilterButton[ 5 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 5 ], MAPINV_FILTER_ARMOR_X, MAPINV_FILTER_ARMOR_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1930,7 +1969,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[5] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 6 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 30, 30, -1, 31, -1 );
-	guiMapInvenFilterButton[ 6 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 6 ], INVEN_POOL_X+272 + xResOffset, INVEN_POOL_Y + 24 + yResOffset,
+	guiMapInvenFilterButton[ 6 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 6 ], MAPINV_FILTER_LBE_X, MAPINV_FILTER_LBE_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1942,7 +1981,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[6] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 7 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 32, 32, -1, 33, -1 );
-	guiMapInvenFilterButton[ 7 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 7 ], INVEN_POOL_X+301 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenFilterButton[ 7 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 7 ], MAPINV_FILTER_KIT_X, MAPINV_FILTER_KIT_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1954,7 +1993,7 @@ void CreateMapInventoryButtons( void )
 	guiMapInvenFilterButtonDefined[7] = TRUE;
 
 	guiMapInvenFilterButtonImage[ 8 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 34, 34, -1, 35, -1 );
-	guiMapInvenFilterButton[ 8 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 8 ], INVEN_POOL_X+301 + xResOffset, INVEN_POOL_Y + 24 + yResOffset,
+	guiMapInvenFilterButton[ 8 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 8 ], MAPINV_FILTER_MISC1_X, MAPINV_FILTER_MISC1_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtn );
 
@@ -1967,7 +2006,7 @@ void CreateMapInventoryButtons( void )
 
 	// Flugente: toggle button for move item display
 	guiMapInvenFilterButtonImage[ 9 ]=  LoadButtonImage( "INTERFACE\\sector_inventory_buttons.sti" , 36, 36, -1, 37, -1 );
-	guiMapInvenFilterButton[ 9 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 9 ], INVEN_POOL_X+336 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+	guiMapInvenFilterButton[ 9 ] = QuickCreateButton( guiMapInvenFilterButtonImage[ 9 ], MAPINV_FILTER_MISC2_X, MAPINV_FILTER_MISC2_Y,
 										BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 										NULL, (GUI_CALLBACK)MapInventoryPoolFilterBtnMoveItemDisplay );
 
@@ -1985,7 +2024,7 @@ void CreateMapInventoryButtons( void )
 	{
 		// Flugente: gear templates
 		guiMapInvenFilterButtonImage[10] = LoadButtonImage("INTERFACE\\sector_inventory_buttons.sti", 40, 40, -1, 40, -1);
-		guiMapInvenFilterButton[10] = QuickCreateButton(guiMapInvenFilterButtonImage[10], INVEN_POOL_X + 371 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+		guiMapInvenFilterButton[10] = QuickCreateButton(guiMapInvenFilterButtonImage[10], MAPINV_FILTER_SAVE_TEMPLATE_X, MAPINV_FILTER_SAVE_TEMPLATE_Y,
 			BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 			NULL, (GUI_CALLBACK)MapInventoryWriteEquipmentTemplate);
 	
@@ -1993,7 +2032,7 @@ void CreateMapInventoryButtons( void )
 		guiMapInvenFilterButtonDefined[10] = TRUE;
 
 		guiMapInvenFilterButtonImage[11] = LoadButtonImage("INTERFACE\\sector_inventory_buttons.sti", 42, 42, -1, 42, -1);
-		guiMapInvenFilterButton[11] = QuickCreateButton(guiMapInvenFilterButtonImage[11], INVEN_POOL_X + 406 + xResOffset, INVEN_POOL_Y + 10 + yResOffset,
+		guiMapInvenFilterButton[11] = QuickCreateButton(guiMapInvenFilterButtonImage[11], MAPINV_FILTER_LOAD_TEMPLATE_X, MAPINV_FILTER_LOAD_TEMPLATE_Y,
 			BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 			NULL, (GUI_CALLBACK)MapInventoryReadEquipmentTemplate);
 
@@ -2306,13 +2345,23 @@ void BuildStashForSelectedSector( INT16 sMapX, INT16 sMapY, INT16 sMapZ )
 	}
 	else// if map not loaded, use tempfile to build lists
 	{
-		Assert(GetNumberOfWorldItemsFromTempItemFile(sMapX, sMapY, (INT8)sMapZ, &uiTotalNumberOfItems, FALSE));
+		const auto ii = FindWorldItemSector(sMapX, sMapY, (INT8)sMapZ);
+		if (ii == -1)
+		{
+			uiTotalNumberOfItems = 0;
+		}
+		else
+		{
+			uiTotalNumberOfItems = gAllWorldItems.NumItems[ii];
+			pInventoryPoolList = gAllWorldItems.Items[ii];
+		}
+		
 		uiNumOfSlots = (uiTotalNumberOfItems / MAP_INVENTORY_POOL_SLOT_COUNT + 1) * MAP_INVENTORY_POOL_SLOT_COUNT;
 		if(pInventoryPoolList.size() < uiNumOfSlots)
 			pInventoryPoolList.resize(uiNumOfSlots);
 		if(pUnSeenItems.size() < uiNumOfSlots)
 			pUnSeenItems.resize(uiNumOfSlots);
-		Assert(LoadWorldItemsFromTempItemFile(sMapX, sMapY, (INT8)sMapZ, pInventoryPoolList));
+
 		uiNumberOfSeenItems = uiTotalNumberOfItems;
 		uiNumberOfUnSeenItems = 0;
 		pipl = &pInventoryPoolList.front();
@@ -2681,13 +2730,14 @@ BOOLEAN AutoPlaceObjectInInventoryStash( OBJECTTYPE *pItemPtr, INT32 sGridNo, IN
 
 	while(1)
 	{
-		//if we run out of indecies before running out of items to place, make new indecies
+		//if we run out of indices before running out of items to place, make new indices
 		if(cnt == pInventoryPoolList.size())
 		{
 			ResizeInventoryList();
 		}
 		pInventorySlot = &pInventoryPoolList[cnt].object;
-		if(pInventorySlot->usItem == pItemPtr->usItem)
+
+		if(pInventorySlot->usItem == pItemPtr->usItem && pInventoryPoolList[cnt].usFlags & WORLD_ITEM_REACHABLE)
 		{
 			pInventorySlot->AddObjectsToStack(*pItemPtr);
 		}
@@ -2734,44 +2784,32 @@ BOOLEAN AutoPlaceObjectInInventoryStash( OBJECTTYPE *pItemPtr, INT32 sGridNo, IN
 
 void MapInventoryPoolNextBtn( GUI_BUTTON *btn, INT32 reason )
 {
-		if(reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
+	if(reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
 	{
 	  btn->uiFlags|=(BUTTON_CLICKED_ON);
 	}
 	else if(reason & MSYS_CALLBACK_REASON_LBUTTON_UP )
-  {
-    if (btn->uiFlags & BUTTON_CLICKED_ON)
+	{
+		if (btn->uiFlags & BUTTON_CLICKED_ON)
 		{
-      btn->uiFlags&=~(BUTTON_CLICKED_ON);
-
-			// if can go to next page, go there
-			if( iCurrentInventoryPoolPage < ( iLastInventoryPoolPage ) )
-			{
-				iCurrentInventoryPoolPage++;
-				fMapPanelDirty = TRUE;
-			}
+			btn->uiFlags&=~(BUTTON_CLICKED_ON);
+			MapInvNextPage();
 		}
 	}
 }
 
 void MapInventoryPoolPrevBtn( GUI_BUTTON *btn, INT32 reason )
 {
-		if(reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
+	if(reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
 	{
 	  btn->uiFlags|=(BUTTON_CLICKED_ON);
 	}
 	else if(reason & MSYS_CALLBACK_REASON_LBUTTON_UP )
-  {
-    if (btn->uiFlags & BUTTON_CLICKED_ON)
+	{
+		if (btn->uiFlags & BUTTON_CLICKED_ON)
 		{
-      btn->uiFlags&=~(BUTTON_CLICKED_ON);
-
-			// if can go to next page, go there
-			if( iCurrentInventoryPoolPage > 0 )
-			{
-				iCurrentInventoryPoolPage--;
-				fMapPanelDirty = TRUE;
-			}
+			btn->uiFlags&=~(BUTTON_CLICKED_ON);
+			MapInvPreviousPage();
 		}
 	}
 }
@@ -2923,7 +2961,12 @@ void MapInventoryPoolFilterBtn( GUI_BUTTON *btn, INT32 reason )
 			{
 				MapInventoryFilterToggle( btn->UserData[1] );
 			}
-
+			//shadooow: this will re-render item compatibility highlighting when changing filters for currently held item
+			if (gpItemPointer != NULL)
+			{
+				fChangedInventorySlots = TRUE;
+				gfCheckForCursorOverMapSectorInventoryItem = TRUE;
+			}
 			// HEADROCK HAM 5: Disabled for now, as we've got buttons for this.
 			//CreateMapInventoryFilterMenu( );
 		}
@@ -2940,7 +2983,12 @@ void MapInventoryPoolFilterBtn( GUI_BUTTON *btn, INT32 reason )
 			{
 				MapInventoryFilterToggle( btn->UserData[3] );
 			}
-
+			//shadooow: this will re-render item compatibility highlighting when changing filters for currently held item
+			if (gpItemPointer != NULL)
+			{
+				fChangedInventorySlots = TRUE;
+				gfCheckForCursorOverMapSectorInventoryItem = TRUE;
+			}
 			// HEADROCK HAM 5: Disabled for now, as we've got buttons for this.
 			//CreateMapInventoryFilterMenu( );
 		}
@@ -3151,7 +3199,7 @@ void DisplayPagesForMapInventoryPool( void )
 	swprintf( sString, L"%d / %d", iCurrentInventoryPoolPage + 1, iLastInventoryPoolPage + 1 );
 
 	// grab centered coords
-	FindFontCenterCoordinates(MAP_INVENTORY_POOL_PAGE_X, MAP_INVENTORY_POOL_PAGE_Y - yResOffset, MAP_INVENTORY_POOL_PAGE_WIDTH ,MAP_INVENTORY_POOL_PAGE_HEIGHT ,sString , MAP_SCREEN_FONT, &sX, &sY);
+	FindFontCenterCoordinates(MAPINV_PAGE_X, MAPINV_PAGE_Y, MAP_INVENTORY_POOL_PAGE_WIDTH ,MAP_INVENTORY_POOL_PAGE_HEIGHT ,sString , MAP_SCREEN_FONT, &sX, &sY);
 
 	mprintf( sX, sY, sString );
 
@@ -3213,7 +3261,7 @@ void DrawNumberOfIventoryPoolItems( void )
 	SetFontDestBuffer( guiSAVEBUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FALSE );
 
 	// grab centered coords
-	FindFontCenterCoordinates(MAP_INVENTORY_POOL_NUMBER_X, MAP_INVENTORY_POOL_PAGE_Y - yResOffset, MAP_INVENTORY_POOL_NUMBER_WIDTH ,MAP_INVENTORY_POOL_PAGE_HEIGHT ,sString , MAP_SCREEN_FONT, &sX, &sY);
+	FindFontCenterCoordinates(MAPINV_ITEMPOOL_X, MAPINV_ITEMPOOL_Y, MAP_INVENTORY_POOL_NUMBER_WIDTH ,MAP_INVENTORY_POOL_PAGE_HEIGHT ,sString , MAP_SCREEN_FONT, &sX, &sY);
 
 	mprintf( sX, sY, sString );
 
@@ -3227,7 +3275,7 @@ void CreateMapInventoryPoolDoneButton( void )
 {
 	// create done button
 	guiMapInvenDoneButtonImage=  LoadButtonImage( "INTERFACE\\done_button.sti" , -1, 0, -1, 1, -1 );
-	guiMapInvenDoneButton = QuickCreateButton( guiMapInvenDoneButtonImage, MAP_INV_X_OFFSET + 587 , (yResSize - 147 + yResOffset),
+	guiMapInvenDoneButton = QuickCreateButton( guiMapInvenDoneButtonImage, MAPINV_DONE_X , MAPINV_DONE_y,
 								BUTTON_TOGGLE, MSYS_PRIORITY_HIGHEST,
 								(GUI_CALLBACK)BtnGenericMouseMoveButtonCallback, (GUI_CALLBACK)MapInventoryPoolDoneBtn );
 
@@ -3266,7 +3314,7 @@ void DisplayCurrentSector( void )
 	SetFontDestBuffer( guiSAVEBUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FALSE );
 
 	// grab centered coords
-	FindFontCenterCoordinates(MAP_INVENTORY_POOL_LOC_X, MAP_INVENTORY_POOL_PAGE_Y - yResOffset, MAP_INVENTORY_POOL_LOC_WIDTH ,MAP_INVENTORY_POOL_PAGE_HEIGHT ,sString , MAP_SCREEN_FONT, &sX, &sY);
+	FindFontCenterCoordinates(MAPINV_SECTOR_X, MAPINV_SECTOR_Y, MAP_INVENTORY_POOL_LOC_WIDTH ,MAP_INVENTORY_POOL_PAGE_HEIGHT ,sString , MAP_SCREEN_FONT, &sX, &sY);
 
 	mprintf( sX, sY, sString );
 
@@ -3426,12 +3474,12 @@ void DrawTextOnMapInventoryBackground( void )
 	SetFontDestBuffer( guiSAVEBUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FALSE );
 
 	//Calculate the height of the string, as it needs to be vertically centered.
-	usStringHeight = DisplayWrappedString(MAP_INV_X_OFFSET + 268, (SCREEN_HEIGHT - 138 - yResOffset), 53, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 0 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED | DONT_DISPLAY_TEXT );
-	DisplayWrappedString(MAP_INV_X_OFFSET + 268, (UINT16)((SCREEN_HEIGHT - 138 - yResOffset) - (usStringHeight / 2) ), 53, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 0 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED );
+	usStringHeight = DisplayWrappedString(MAPINV_LOC_STR_X, MAPINV_LOC_STR_Y, 53, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 0 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED | DONT_DISPLAY_TEXT );
+	DisplayWrappedString(MAPINV_LOC_STR_X, MAPINV_LOC_STR_Y - (usStringHeight / 2) , 53, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 0 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED );
 
 	//Calculate the height of the string, as it needs to be vertically centered.
-	usStringHeight = DisplayWrappedString( MAP_INV_X_OFFSET + 369, (SCREEN_HEIGHT - 138 - yResOffset), 65, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 1 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED | DONT_DISPLAY_TEXT );
-	DisplayWrappedString(MAP_INV_X_OFFSET + 369, (UINT16)((SCREEN_HEIGHT - 138 - yResOffset) - (usStringHeight / 2) ), 65, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 1 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED );
+	usStringHeight = DisplayWrappedString(MAPINV_ITEMPOOL_STR_X, MAPINV_ITEMPOOL_STR_Y, 65, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 1 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED | DONT_DISPLAY_TEXT );
+	DisplayWrappedString(MAPINV_ITEMPOOL_STR_X, MAPINV_ITEMPOOL_STR_Y - (usStringHeight / 2), 65, 1, MAP_IVEN_FONT, FONT_BEIGE, pMapInventoryStrings[ 1 ], FONT_BLACK, FALSE, RIGHT_JUSTIFIED );
 
 	// item filter buttons included in 640x480
 	/*if (iResolution < _800x600)
@@ -3629,9 +3677,9 @@ void HandleMouseInCompatableItemForMapSectorInventory( INT32 iCurrentSlot )
 	}
 
 	//Nothing selected or out of bounds or empty slot selected; highlightings reseted already, return
-	if ( iCurrentSlot == NO_SLOT || 
+	if ( gpItemPointer == NULL && (iCurrentSlot == NO_SLOT || 
 		(pInventoryPoolList.size() < (UINT32)(iCurrentSlot + ( iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ) )) ||
-		pInventoryPoolList[ iCurrentSlot + iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ].fExists == FALSE )
+		pInventoryPoolList[ iCurrentSlot + iCurrentInventoryPoolPage * MAP_INVENTORY_POOL_SLOT_COUNT ].fExists == FALSE ))
 	{
 		fChangedInventorySlots = FALSE;
 		if (fItemWasHighLighted)
@@ -3742,6 +3790,7 @@ void HandleMapSectorInventory( void )
 	{
 		HandleMouseInCompatableItemForMapSectorInventory( iCurrentlyHighLightedItem );
 	}
+	HandleMousePageScroll();
 }
 
 
@@ -3979,16 +4028,21 @@ BOOLEAN	LoadInventoryPoolQ (UINT8 ubSaveGameID)
 	UINT32 uiNumBytesRead;
 	HWFILE hFile = 0;
 
-	if(MAP_INVENTORY_POOL_SLOT_COUNT <= 0)
-	{
-		if (iResolution >= _640x480 && iResolution < _800x600)
-			MAP_INVENTORY_POOL_SLOT_COUNT = 40;
-		else if (iResolution < _1024x768)
-			MAP_INVENTORY_POOL_SLOT_COUNT = 77;
-		else
-			MAP_INVENTORY_POOL_SLOT_COUNT = 170;
-	}
-	
+	//if(MAP_INVENTORY_POOL_SLOT_COUNT <= 0)
+	//{
+	//	if (iResolution >= _640x480 && iResolution < _800x600)
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = 40;
+	//	else if (iResolution == _1280x720)
+	//	{
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = MAP_INVENTORY_POOL_MAX_SLOTS;
+	//	}
+	//	else if (iResolution < _1024x768)
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = 77;
+	//	else
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = 170;
+	//}
+	ResetMapInventoryOffsets();
+
 	ret = FALSE;
 	CreateSavedGameFileNameFromNumber(ubSaveGameID, tmpbuf);
 	strcat(tmpbuf, ".IPQ");
@@ -4055,16 +4109,21 @@ BOOLEAN SaveInventoryPoolQ(UINT8 ubSaveGameID)
 	UINT32 uiNumBytesWritten;
 	HWFILE hFile;
 
-	if(MAP_INVENTORY_POOL_SLOT_COUNT <= 0)
-	{
-		if (iResolution >= _640x480 && iResolution < _800x600)
-			MAP_INVENTORY_POOL_SLOT_COUNT = 40;
-		else if (iResolution < _1024x768)
-			MAP_INVENTORY_POOL_SLOT_COUNT = 77;
-		else
-			MAP_INVENTORY_POOL_SLOT_COUNT = 170;
-	}
-	
+	//if(MAP_INVENTORY_POOL_SLOT_COUNT <= 0)
+	//{
+	//	if (iResolution >= _640x480 && iResolution < _800x600)
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = 40;
+	//	else if (iResolution == _1280x720)
+	//	{
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = MAP_INVENTORY_POOL_MAX_SLOTS;
+	//	}
+	//	else if (iResolution < _1024x768)
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = 77;
+	//	else
+	//		MAP_INVENTORY_POOL_SLOT_COUNT = 170;
+	//}
+	ResetMapInventoryOffsets();
+
 	ret = FALSE;
 	CreateSavedGameFileNameFromNumber(ubSaveGameID, tmpbuf);
 	strcat(tmpbuf, ".IPQ");
@@ -4458,12 +4517,11 @@ void ResetMapInventoryOffsets( void )
 	{
 		//////////////////////////////////////////////
 		// ZOOM OFF
-
-		if (iResolution >= _640x480 && iResolution < _800x600)
+		if (isWidescreenUI() ||iResolution >= _1024x768)
 		{
-			MAP_INV_SLOT_COLS = 8;
-			MAP_INVENTORY_POOL_SLOT_START_X = 269 + xResOffset;
-			MAP_INVENTORY_POOL_SLOT_START_Y = 51 + yResOffset;
+			MAP_INV_SLOT_COLS = 17;
+			MAP_INVENTORY_POOL_SLOT_START_X = UI_MAP.BorderRegion.x + 25;
+			MAP_INVENTORY_POOL_SLOT_START_Y = UI_MAP.BorderRegion.y + 51;
 		}
 		else if (iResolution >= _800x600 && iResolution < _1024x768)
 		{
@@ -4471,12 +4529,18 @@ void ResetMapInventoryOffsets( void )
 			MAP_INVENTORY_POOL_SLOT_START_X = 278 + xResOffset;
 			MAP_INVENTORY_POOL_SLOT_START_Y = 62 + yResOffset;
 		}
-		else if (iResolution >= _1024x768)
+		else
 		{
-			MAP_INV_SLOT_COLS = 17;
-			MAP_INVENTORY_POOL_SLOT_START_X = 282 + xResOffset;
-			MAP_INVENTORY_POOL_SLOT_START_Y = 50 + yResOffset;
+			MAP_INV_SLOT_COLS = 8;
+			MAP_INVENTORY_POOL_SLOT_START_X = 269 + xResOffset;
+			MAP_INVENTORY_POOL_SLOT_START_Y = 51 + yResOffset;
 		}
+		//else if (iResolution >= _1024x768)
+		//{
+		//	MAP_INV_SLOT_COLS = 17;
+		//	MAP_INVENTORY_POOL_SLOT_START_X = 282 + xResOffset;
+		//	MAP_INVENTORY_POOL_SLOT_START_Y = 50 + yResOffset;
+		//}
 		MAP_INVENTORY_POOL_SLOT_COUNT = GetInventorySlotCount( FALSE );
 
 		ITEMDESC_ITEM_STATUS_HEIGHT_INV_POOL = 20;
@@ -4499,11 +4563,11 @@ void ResetMapInventoryOffsets( void )
 		////////////////////////////////////
 		// ZOOM ON
 
-		if (iResolution >= _640x480 && iResolution < _800x600)
+		if (isWidescreenUI() || iResolution >= _1024x768)
 		{
-			MAP_INV_SLOT_COLS = 3;
-			MAP_INVENTORY_POOL_SLOT_START_X = 269 + xResOffset;
-			MAP_INVENTORY_POOL_SLOT_START_Y = 51 + yResOffset;
+			MAP_INV_SLOT_COLS = 8;
+			MAP_INVENTORY_POOL_SLOT_START_X = UI_MAP.BorderRegion.x + 25;
+			MAP_INVENTORY_POOL_SLOT_START_Y = UI_MAP.BorderRegion.y + 51;
 		}
 		else if (iResolution >= _800x600 && iResolution < _1024x768)
 		{
@@ -4511,12 +4575,18 @@ void ResetMapInventoryOffsets( void )
 			MAP_INVENTORY_POOL_SLOT_START_X = 278 + xResOffset;
 			MAP_INVENTORY_POOL_SLOT_START_Y = 62 + yResOffset;
 		}
-		else if (iResolution >= _1024x768)
+		else
 		{
-			MAP_INV_SLOT_COLS = 8;
-			MAP_INVENTORY_POOL_SLOT_START_X = 282 + xResOffset;
-			MAP_INVENTORY_POOL_SLOT_START_Y = 50 + yResOffset;
+			MAP_INV_SLOT_COLS = 3;
+			MAP_INVENTORY_POOL_SLOT_START_X = 269 + xResOffset;
+			MAP_INVENTORY_POOL_SLOT_START_Y = 51 + yResOffset;
 		}
+		//else if (iResolution >= _1024x768)
+		//{
+		//	MAP_INV_SLOT_COLS = 8;
+		//	MAP_INVENTORY_POOL_SLOT_START_X = 282 + xResOffset;
+		//	MAP_INVENTORY_POOL_SLOT_START_Y = 50 + yResOffset;
+		//}
 
 		MAP_INVENTORY_POOL_SLOT_COUNT = GetInventorySlotCount( TRUE );
 		ITEMDESC_ITEM_STATUS_HEIGHT_INV_POOL = 40;
@@ -4678,32 +4748,32 @@ UINT16 GetInventorySlotCount( BOOLEAN fZoomed )
 {
 	if (!fZoomed)
 	{
-		if (iResolution >= _640x480 && iResolution < _800x600)
+		if (isWidescreenUI() || iResolution >= _1024x768)
 		{
-			return 40;
+			return MAP_INVENTORY_POOL_MAX_SLOTS;
 		}
-		if (iResolution >= _800x600 && iResolution < _1024x768)
+		else if (iResolution >= _800x600 && iResolution < _1024x768)
 		{
 			return 77;
 		}
-		if (iResolution >= _1024x768)
+		else
 		{
-			return MAP_INVENTORY_POOL_MAX_SLOTS;
+			return 40;
 		}
 	}
 	else
 	{
-		if (iResolution >= _640x480 && iResolution < _800x600)
+		if (isWidescreenUI() || iResolution >= _1024x768)
 		{
-			return 6;
+			return 40;
 		}
-		if (iResolution >= _800x600 && iResolution < _1024x768)
+		else if (iResolution >= _800x600 && iResolution < _1024x768)
 		{
 			return 15;
 		}
-		if (iResolution >= _1024x768)
+		else
 		{
-			return 40;
+			return 6;
 		}
 	}
 
@@ -4993,7 +5063,7 @@ void SortSectorInventoryAmmo(bool useBoxes)
 				// as possible into crates. 
 
 				// Look through all items in the game to try and find an ammocrate that can contain this kind of ammo.
-				for ( int iCrateLoop = 0; iCrateLoop < gMAXITEMS_READ; ++iCrateLoop )
+				for (INT32 iCrateLoop = 0; iCrateLoop < (INT32)gMAXITEMS_READ; ++iCrateLoop)
 				{
 					// Is it the right ammo crate?
 					if( Item[iCrateLoop].usItemClass == IC_AMMO &&
@@ -5043,7 +5113,7 @@ void SortSectorInventoryAmmo(bool useBoxes)
 						// Dump all the ammo into it.
 						DistributeStatus(pCurObject, &newCrate, Magazine[Item[crateItem].ubClassIndex].ubMagSize);
 						// Place it in the sector inventory.
-						AutoPlaceObjectToWorld( pSoldier, &newCrate, true );
+						AutoPlaceObjectToWorld(pSoldier, &newCrate, TRUE);
 						// Ran out of magazines?
 						if(pCurObject->ubNumberOfObjects < 1)
 						{
@@ -5117,7 +5187,7 @@ void SortSectorInventoryEjectAmmo()
 						pInventoryPoolList[uiLoop].object[x]->data.gun.ubGunAmmoType = NONE;
 
 						// put it on the ground
-						AutoPlaceObjectToWorld( pSoldier, &gTempObject, true );
+						AutoPlaceObjectToWorld(pSoldier, &gTempObject, TRUE);
 
 						// Check...
 						if (&gTempObject != NULL)
@@ -5169,7 +5239,7 @@ void SortSectorInventoryEmptyLBE() {
 							OBJECTTYPE * LBEStack = lbeInvIter._Ptr;
 							dropCnt += LBEStack->ubNumberOfObjects;
 
-							AutoPlaceObjectToWorld(pSoldier, LBEStack, true);
+							AutoPlaceObjectToWorld(pSoldier, LBEStack, TRUE);
 							if (LBEStack != NULL)
 							{
 								DeleteObj(lbeInvIter._Ptr);
@@ -5251,7 +5321,7 @@ void SortSectorInventorySeparateAttachments()
 					{
 						gpTempObject = pNewObj;
 
-						AutoPlaceObjectToWorld(pSoldier, gpTempObject, true);
+						AutoPlaceObjectToWorld(pSoldier, gpTempObject, TRUE);
 						if (gpTempObject != NULL)
 						{
 							DeleteObj(gpTempObject);
@@ -6243,5 +6313,215 @@ void HandleSectorCooldownFunctions( INT16 sMapX, INT16 sMapY, INT8 sMapZ, std::v
 	for( UINT32 uiCount = 0; uiCount < size; ++uiCount )				// ... for all items in the world ...
 	{
 		HandleItemCooldownFunctions( &(pWorldItem[ uiCount ].object), tickspassed * ( fUndo ? -NUM_SEC_PER_TACTICAL_TURN : NUM_SEC_PER_TACTICAL_TURN ), (sMapZ > 0) );
+	}
+}
+
+
+
+void HandleMousePageScroll(void)
+{
+	SGPPoint	MousePos;
+	GetMousePos(&MousePos);
+	const auto x = MousePos.iX;
+	const auto y = MousePos.iY;
+	if ( (UI_MAP.BorderRegion.x < x && x < (UI_MAP.BorderRegion.x + UI_MAP.BorderRegion.width)) && (UI_MAP.BorderRegion.y < y && y < (UI_MAP.BorderRegion.y + UI_MAP.BorderRegion.height)) )
+	{
+		const auto Wheelstate = _WheelValue * (gGameSettings.fOptions[TOPTION_INVERT_WHEEL] ? -1 : 1);
+		if (Wheelstate < 0)
+		{
+			MapInvNextPage();
+		}
+		else if (Wheelstate > 0)
+		{
+			MapInvPreviousPage();
+		}
+		_WheelValue = 0;
+	}
+}
+
+void MapInvNextPage(void)
+{
+	// if can go to next page, go there
+	if (iCurrentInventoryPoolPage < iLastInventoryPoolPage)
+	{
+		iCurrentInventoryPoolPage++;
+		//shadooow: this will re-render item compatibility highlighting when changing pages for currently held item
+		if (gpItemPointer != NULL)
+		{
+			fChangedInventorySlots = TRUE;
+			gfCheckForCursorOverMapSectorInventoryItem = TRUE;
+		}
+		fMapPanelDirty = TRUE;
+	}
+}
+
+void MapInvPreviousPage(void)
+{
+	// if can go to next page, go there
+	if (iCurrentInventoryPoolPage > 0)
+	{
+		iCurrentInventoryPoolPage--;
+		//shadooow: this will re-render item compatibility highlighting when changing pages for currently held item
+		if (gpItemPointer != NULL)
+		{
+			fChangedInventorySlots = TRUE;
+			gfCheckForCursorOverMapSectorInventoryItem = TRUE;
+		}
+		fMapPanelDirty = TRUE;
+	}
+}
+
+
+void InitMapInventoryCoordinates(void)
+{
+	if (isWidescreenUI())
+	{
+		MAPINV_NEXT_X = UI_MAP.BorderRegion.x + 679;
+		MAPINV_PREV_X = UI_MAP.BorderRegion.x + 607;
+		MAPINV_ARROW_Y = UI_MAP.BorderRegion.y + 19;
+
+		MAPINV_ZOOM_X = UI_MAP.BorderRegion.x + 10;
+		MAPINV_ZOOM_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_STACK_X = UI_MAP.BorderRegion.x + 50;
+		MAPINV_STACK_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_SORT_AMMO_X = UI_MAP.BorderRegion.x + 80;
+		MAPINV_SORT_AMMO_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_SORT_ATT_X = UI_MAP.BorderRegion.x + 110;
+		MAPINV_SORT_ATT_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_EJECT_AMMO_X = UI_MAP.BorderRegion.x + 140;
+		MAPINV_EJECT_AMMO_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_X = UI_MAP.BorderRegion.x + 185;
+		MAPINV_FILTER_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_GUN_X = UI_MAP.BorderRegion.x + 214;
+		MAPINV_FILTER_GUN_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_AMMO_X = UI_MAP.BorderRegion.x + 214;
+		MAPINV_FILTER_AMMO_Y = UI_MAP.BorderRegion.y + 24;
+
+		MAPINV_FILTER_EXPLOSIVE_X = UI_MAP.BorderRegion.x + 243;
+		MAPINV_FILTER_EXPLOSIVE_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_MELEE_X = UI_MAP.BorderRegion.x + 243;
+		MAPINV_FILTER_MELEE_Y = UI_MAP.BorderRegion.y + 24;
+
+		MAPINV_FILTER_ARMOR_X = UI_MAP.BorderRegion.x + 272;
+		MAPINV_FILTER_ARMOR_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_LBE_X = UI_MAP.BorderRegion.x + 272;
+		MAPINV_FILTER_LBE_Y = UI_MAP.BorderRegion.y + 24;
+
+		MAPINV_FILTER_KIT_X = UI_MAP.BorderRegion.x + 301;
+		MAPINV_FILTER_KIT_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_MISC1_X = UI_MAP.BorderRegion.x + 301;
+		MAPINV_FILTER_MISC1_Y = UI_MAP.BorderRegion.y + 24;
+
+		MAPINV_FILTER_MISC2_X = UI_MAP.BorderRegion.x + 336;
+		MAPINV_FILTER_MISC2_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_SAVE_TEMPLATE_X = UI_MAP.BorderRegion.x + 371;
+		MAPINV_FILTER_SAVE_TEMPLATE_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_FILTER_LOAD_TEMPLATE_X = UI_MAP.BorderRegion.x + 406;
+		MAPINV_FILTER_LOAD_TEMPLATE_Y = UI_MAP.BorderRegion.y + 10;
+
+		MAPINV_DONE_X = UI_MAP.BorderRegion.x + 706;
+		MAPINV_DONE_y = UI_MAP.BorderRegion.y + 15;
+
+		MAPINV_ITEMPOOL_X = UI_MAP.BorderRegion.x + 558;
+		MAPINV_ITEMPOOL_Y = UI_MAP.BorderRegion.y + 19;
+
+		MAPINV_PAGE_X = UI_MAP.BorderRegion.x + 626;
+		MAPINV_PAGE_Y = UI_MAP.BorderRegion.y + 19;
+
+		MAPINV_SECTOR_X = UI_MAP.BorderRegion.x + 447;
+		MAPINV_SECTOR_Y = UI_MAP.BorderRegion.y + 19;
+
+		MAPINV_LOC_STR_X = MAPINV_SECTOR_X - 19;
+		MAPINV_LOC_STR_Y = UI_MAP.BorderRegion.y + 15;
+
+		MAPINV_ITEMPOOL_STR_X = MAPINV_ITEMPOOL_X - 19;
+		MAPINV_ITEMPOOL_STR_Y = UI_MAP.BorderRegion.y + 15;
+	}
+	else
+	{
+		MAPINV_NEXT_X = MAP_INV_X_OFFSET + 559;
+		MAPINV_PREV_X = MAP_INV_X_OFFSET + 487;
+		MAPINV_ARROW_Y = SCREEN_HEIGHT - 144 - yResOffset;
+
+		MAPINV_ZOOM_X = INVEN_POOL_X + 10 + xResOffset;
+		MAPINV_ZOOM_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_STACK_X = INVEN_POOL_X + 50 + xResOffset;
+		MAPINV_STACK_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_SORT_AMMO_X = INVEN_POOL_X + 80 + xResOffset;
+		MAPINV_SORT_AMMO_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_SORT_ATT_X = INVEN_POOL_X + 110 + xResOffset;
+		MAPINV_SORT_ATT_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_EJECT_AMMO_X = INVEN_POOL_X + 140 + xResOffset;
+		MAPINV_EJECT_AMMO_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_X = INVEN_POOL_X + 185 + xResOffset;
+		MAPINV_FILTER_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_GUN_X = INVEN_POOL_X + 214 + xResOffset;
+		MAPINV_FILTER_GUN_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_AMMO_X = INVEN_POOL_X + 214 + xResOffset;
+		MAPINV_FILTER_AMMO_Y = INVEN_POOL_Y + 24 + yResOffset;
+
+		MAPINV_FILTER_EXPLOSIVE_X = INVEN_POOL_X + 243 + xResOffset;
+		MAPINV_FILTER_EXPLOSIVE_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_MELEE_X = INVEN_POOL_X + 243 + xResOffset;
+		MAPINV_FILTER_MELEE_Y = INVEN_POOL_Y + 24 + yResOffset;
+
+		MAPINV_FILTER_ARMOR_X = INVEN_POOL_X + 272 + xResOffset;
+		MAPINV_FILTER_ARMOR_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_LBE_X = INVEN_POOL_X + 272 + xResOffset;
+		MAPINV_FILTER_LBE_Y = INVEN_POOL_Y + 24 + yResOffset;
+
+		MAPINV_FILTER_KIT_X = INVEN_POOL_X + 301 + xResOffset;
+		MAPINV_FILTER_KIT_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_MISC1_X = INVEN_POOL_X + 301 + xResOffset;
+		MAPINV_FILTER_MISC1_Y = INVEN_POOL_Y + 24 + yResOffset;
+
+		MAPINV_FILTER_MISC2_X = INVEN_POOL_X + 336 + xResOffset;
+		MAPINV_FILTER_MISC2_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_SAVE_TEMPLATE_X = INVEN_POOL_X + 371 + xResOffset;
+		MAPINV_FILTER_SAVE_TEMPLATE_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_FILTER_LOAD_TEMPLATE_X = INVEN_POOL_X + 406 + xResOffset;
+		MAPINV_FILTER_LOAD_TEMPLATE_Y = INVEN_POOL_Y + 10 + yResOffset;
+
+		MAPINV_DONE_X = MAP_INV_X_OFFSET + 587;
+		MAPINV_DONE_y = yResSize - 147 + yResOffset;
+
+		MAPINV_ITEMPOOL_X = MAP_INVENTORY_POOL_NUMBER_X;
+		MAPINV_ITEMPOOL_Y = MAP_INVENTORY_POOL_PAGE_Y - yResOffset;
+
+		MAPINV_PAGE_X = MAP_INVENTORY_POOL_PAGE_X;
+		MAPINV_PAGE_Y = MAP_INVENTORY_POOL_PAGE_Y - yResOffset;
+
+		MAPINV_SECTOR_X = MAP_INVENTORY_POOL_LOC_X;
+		MAPINV_SECTOR_Y = MAP_INVENTORY_POOL_PAGE_Y - yResOffset;
+
+		MAPINV_LOC_STR_X = MAP_INV_X_OFFSET + 268;
+		MAPINV_LOC_STR_Y = (SCREEN_HEIGHT - 138 - yResOffset);
+
+		MAPINV_ITEMPOOL_STR_X = MAP_INV_X_OFFSET + 369;
+		MAPINV_ITEMPOOL_STR_Y = (SCREEN_HEIGHT - 138 - yResOffset);
 	}
 }

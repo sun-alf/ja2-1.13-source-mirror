@@ -78,6 +78,9 @@
     <ClInclude Include="Merc Contract.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+	<ClInclude Include="MiniEvents.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="MilitiaSquads.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -102,7 +105,10 @@
     <ClInclude Include="QuestText.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Reinforcement.h">
+    <ClInclude Include="Rebel Command.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+	<ClInclude Include="Reinforcement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Scheduling.h">
@@ -236,6 +242,9 @@
     <ClCompile Include="Merc Contract.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+	<ClCompile Include="MiniEvents.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="MilitiaSquads.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -257,7 +266,10 @@
     <ClCompile Include="Quests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Reinforcement.cpp">
+    <ClCompile Include="Rebel Command.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+	<ClCompile Include="Reinforcement.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Scheduling.cpp">

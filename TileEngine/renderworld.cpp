@@ -1,62 +1,40 @@
 #include "builddefines.h"
-
-#ifdef PRECOMPILEDHEADERS
-	#include "TileEngine All.h"
-#else
-	#include "math.h"
-	#include <stdio.h>
-	#include <errno.h>
-
-	#include "worlddef.h"
-	#include "renderworld.h"
-	#include "vsurface.h"
-	#include "input.h"
-	#include "sysutil.h"
-	#include "wchar.h"
-	#include "video.h"
-	#include "vobject_blitters.h"
-	#include "debug.h"
-	#include "wcheck.h"
-	#include "worldman.h"
-	#include "jascreens.h"
-	#include "Isometric Utils.h"
-	#include "line.h"
-	#include "Animation Control.h"
-	#include "Animation Data.h"
-	#include "Timer Control.h"
-	#include "Radar Screen.h"
-	#include "Render Dirty.h"
-	#include "Font Control.h"
-	#include "Sys Globals.h"
-	#include "Render Dirty.h"
-	#include "lighting.h"
-	#include "Overhead types.h"
-	#include "Overhead.h"
-	#include "weapons.h"
-	#include "ai.h"
-	#include "vobject.h"
-	#include "render fun.h"
-	#include "los.h"
-	#include "interactive tiles.h"
-	#include "rotting corpses.h"
-	#include "tile cache.h"
-	#include "tile animation.h"
-	#include "English.h"
-	#include "world items.h"
-	#include "GameSettings.h"
-	#include "interface control.h"
-	#include "Sound Control.h"
-#endif
-
 ///////////////////////////
 // C file include here
 #include "Render Z.h"
 ///////////////////////////
 
+#ifdef PRECOMPILEDHEADERS
+	#include "TileEngine All.h"
+#else
+	#include "renderworld.h"
+	#include "sysutil.h"
+	#include "vobject_blitters.h"
+	#include "debug.h"
+	#include "wcheck.h"
+	#include "worldman.h"
+	#include "Radar Screen.h"
+	#include "Render Dirty.h"
+	#include "ai.h"
+	#include "render fun.h"
+	#include "interactive tiles.h"
+	#include "tile cache.h"
+	#include "English.h"
+	#include "interface control.h"
+	#include "Sound Control.h"
+	#include "LogicalBodyTypes/Layers.h"
+	#include "LogicalBodyTypes/BodyTypeDB.h"
+#endif
+
 #include "Utilities.h"
 
 UINT32 guiShieldGraphic = 0;
 BOOLEAN fShieldGraphicInit = FALSE;
+#define WALLDAMAGEGRAPHICS_MAX		2
+UINT32 guiWallDamageGraphic[WALLDAMAGEGRAPHICS_MAX] = { 0 };
+BOOLEAN fWallDamageGraphicInit[WALLDAMAGEGRAPHICS_MAX] = { FALSE };
+UINT32 guiWallBloodGraphic = 0;
+BOOLEAN fWallBloodGraphicInit = FALSE;
 
 extern	CHAR8	gDebugStr[128];
 extern	BOOLEAN fLandLayerDirty	= TRUE;
@@ -609,7 +587,7 @@ void RenderHighlight( INT16 sMouseX_M, INT16 sMouseY_M, INT16 sStartPointX_M, IN
 BOOLEAN CheckRenderCenter( INT16 sNewCenterX, INT16 sNewCenterY );
 
 // Flugente: display a riot shield
-void ShowRiotShield( SOLDIERTYPE* pSoldier )
+void ShowRiotShield( SOLDIERTYPE* pSoldier, UINT16 *pBuffer, UINT32 uiDestPitchBYTES, UINT16 *pZBuffer, UINT16 usZValue )
 {
 	if (pSoldier)
 	{
@@ -625,6 +603,17 @@ void ShowRiotShield( SOLDIERTYPE* pSoldier )
 
 			fShieldGraphicInit = TRUE;
 		}
+		
+		HVOBJECT hSrcVObject;
+		if ( !GetVideoObject( &hSrcVObject, guiShieldGraphic ) )
+			return;
+
+		OBJECTTYPE* pObj = pSoldier->GetEquippedRiotShield();
+
+		if ( !pObj )
+			return;
+
+		UINT16 offset = Item[pObj->usItem].usRiotShieldGraphic;
 
 		// Get screen pos of gridno......
 		INT16					sScreenX, sScreenY;
@@ -633,24 +622,6 @@ void ShowRiotShield( SOLDIERTYPE* pSoldier )
 		// take height level into account
 		if ( pSoldier->pathing.bLevel == 1 )
 			sScreenY -= 50;
-
-		// redraw background to stop weird graphic remnants remaining
-		// but don*t do so while scrolling, because that looks weird
-		if ( !gfScrollPending && !gfScrollInertia)
-		{
-			INT32 iBack = RegisterBackgroundRect(BGND_FLAG_SINGLE, NULL, sScreenX - 50, sScreenY - 60, sScreenX + 50, sScreenY + 35 );
-
-			if (iBack != -1)
-			{
-				SetBackgroundRectFilled(iBack);
-			}
-		}
-
-		UINT16 offset = 0;
-		OBJECTTYPE* pObj = pSoldier->GetEquippedRiotShield();
-
-		if (pObj)
-			offset = Item[pObj->usItem].usRiotShieldGraphic;
 
 		// try to keep the shield 'moving' alongside the soldier. This won't work perfectly, but it's better than nothing		
 		INT16 base_x = 0;
@@ -663,9 +634,244 @@ void ShowRiotShield( SOLDIERTYPE* pSoldier )
 		INT16 offset_x = (dx - dy);
 		INT16 offset_y = (dx + dy);
 
-		BltVideoObjectFromIndex( FRAME_BUFFER, guiShieldGraphic, offset * 8 + pSoldier->ubDirection, sScreenX - 20 + offset_x, sScreenY - 60 + offset_y, VO_BLT_TRANSSHADOW, NULL );
+		// redraw background to stop weird graphic remnants remaining
+		// but don't do so while scrolling, because that looks weird
+		if ( !gfScrollPending && !gfScrollInertia )
+		{
+			// We can get graphical glitches here if we reserve too many background rectangles, as the entire array will be filled rapidly.
+			// To prevent this, each soldier can have their own reserved rectangle, which we free first
+			static INT32 soldierbackgroundrectangle[TOTAL_SOLDIERS] = { 0 };
+
+			if ( soldierbackgroundrectangle[pSoldier->ubID] != 0 && soldierbackgroundrectangle[pSoldier->ubID] != -1 )
+			{
+				FreeBackgroundRect( soldierbackgroundrectangle[pSoldier->ubID] );
+				soldierbackgroundrectangle[pSoldier->ubID] = 0;
+			}
+
+			soldierbackgroundrectangle[pSoldier->ubID] = RegisterBackgroundRect( BGND_FLAG_ANIMATED, NULL, sScreenX - 50, sScreenY - 60, sScreenX + 50, sScreenY + 35 );
+
+			if ( soldierbackgroundrectangle[pSoldier->ubID] != -1 )
+			{
+				SetBackgroundRectFilled( soldierbackgroundrectangle[pSoldier->ubID] );
+			}
+		}
+		
+		Blt8BPPDataTo16BPPBufferTransZNB( pBuffer, uiDestPitchBYTES, pZBuffer, usZValue, hSrcVObject, sScreenX - 20 + offset_x, sScreenY - 60 + offset_y, offset * 8 + pSoldier->ubDirection );
 	}
 }
+
+// We can get graphical glitches here if we reserve too many background rectangles, as the entire array will be filled rapidly.
+// Additionally we get graphic glitches if we never free these background rectangles.
+// To prevent this, we reserve a limited amount and free them at the beginning of every rendering
+#define MAX_DECALS_ONSCREEN		200
+INT32 gDecalBackgroundRectangle[MAX_DECALS_ONSCREEN] = { 0 };
+int gDecalBackgroundRectableCounter = 0;
+
+void ClearBackgroundRectanglesForDecal()
+{
+	for ( int i = 0; i < gDecalBackgroundRectableCounter; ++i )
+	{
+		if (gDecalBackgroundRectangle[i] != -1 )
+		{
+			FreeBackgroundRect( gDecalBackgroundRectangle[i] );
+			gDecalBackgroundRectangle[i] = -1;
+		}
+	}
+
+	gDecalBackgroundRectableCounter = 0;
+}
+
+bool SetupBackgroundRectanglesForDecal( UINT32 uiFlags, INT16 *pSaveArea, INT16 sLeft, INT16 sTop, INT16 sRight, INT16 sBottom )
+{
+	if ( gDecalBackgroundRectableCounter < MAX_DECALS_ONSCREEN )
+	{
+		gDecalBackgroundRectangle[gDecalBackgroundRectableCounter] = RegisterBackgroundRect( uiFlags, pSaveArea, sLeft, sTop, sRight, sBottom );
+		
+		if ( gDecalBackgroundRectangle[gDecalBackgroundRectableCounter] != -1 )
+		{
+			SetBackgroundRectFilled( gDecalBackgroundRectangle[gDecalBackgroundRectableCounter] );
+
+			++gDecalBackgroundRectableCounter;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// Flugente: display decal
+void ShowDecal( UINT16 *pBuffer, UINT32 uiDestPitchBYTES, UINT16 *pZBuffer, UINT16 usZValue, INT32 sGridNo )
+{
+	// we mark locations with decals with the 'DAMAGED' flag for easier filtering
+	if ( gGameExternalOptions.fAdditionalDecals 
+		&& gGameSettings.fOptions[TOPTION_BLOOD_N_GORE]
+		&& !TileIsOutOfBounds( sGridNo )
+		&& ( gpWorldLevelData[sGridNo].uiFlags & MAPELEMENT_STRUCTURE_DAMAGED ) )
+	{
+		for ( int i = 0; i < WALLDAMAGEGRAPHICS_MAX; ++i )
+		{
+			if ( !fWallDamageGraphicInit[i] )
+			{
+				VOBJECT_DESC	VObjectDesc;
+				VObjectDesc.fCreateFlags = VOBJECT_CREATE_FROMFILE;
+
+				CHAR8	filename[128];
+				sprintf( filename, "Tilecache\\walldamage%d.sti", i );
+
+				FilenameForBPP( filename, VObjectDesc.ImageFile );
+				if ( !AddVideoObject( &VObjectDesc, &guiWallDamageGraphic[i] ) )
+					AssertMsg( 0, String( "Missing %s", VObjectDesc.ImageFile ) );
+
+				fWallDamageGraphicInit[i] = TRUE;
+			}
+		}
+
+		if ( !fWallBloodGraphicInit )
+		{
+			VOBJECT_DESC	VObjectDesc;
+			VObjectDesc.fCreateFlags = VOBJECT_CREATE_FROMFILE;
+			FilenameForBPP( "Tilecache\\bloodspatter_wall.sti", VObjectDesc.ImageFile );
+			if ( !AddVideoObject( &VObjectDesc, &guiWallBloodGraphic ) )
+				AssertMsg( 0, String( "Missing %s", VObjectDesc.ImageFile ) );
+
+			fWallBloodGraphicInit = TRUE;
+		}
+		
+		//  rendering while scrolling is a pain in the ass, so we skip that
+		if ( gfScrollPending || gfScrollInertia )
+			return;
+
+		STRUCTURE* pStructure = FindStructure( sGridNo, STRUCTURE_WALL );
+		if ( !pStructure )
+			return;
+
+		// Get screen pos of gridno......
+		INT16					sScreenX, sScreenY;
+		GetGridNoScreenXY( sGridNo, &sScreenX, &sScreenY );
+
+		// For ease of use, the pics from the libraries are without an offset, we handle this here. Of course this assumes the painter starts with the proper template to begin with.
+		INT32 displayX = sScreenX - WORLD_TILE_X / 2;
+		INT32 displayY = sScreenY - WORLD_TILE_Y / 2 - 41;
+		
+		// we need to reserve a background if we draw decals, but we only need to do that once
+		bool backgroundrectregistered = false;
+
+		//loop through all the structures and add all that are damaged
+		while ( pStructure )
+		{
+			// for now only for full walls
+			if ( StructureHeight(pStructure) == 4
+				&& ( pStructure->ubWallOrientation == OUTSIDE_TOP_LEFT
+					|| pStructure->ubWallOrientation == INSIDE_TOP_LEFT
+					|| pStructure->ubWallOrientation == OUTSIDE_TOP_RIGHT
+					|| pStructure->ubWallOrientation == INSIDE_TOP_RIGHT ))
+			{
+				//if the structure has been damaged
+				if ( pStructure->ubHitPoints < pStructure->pDBStructureRef->pDBStructure->ubHitPoints )
+				{
+					int graphiclib = sGridNo % WALLDAMAGEGRAPHICS_MAX;
+
+					HVOBJECT hSrcVObject;
+					if ( GetVideoObject( &hSrcVObject, guiWallDamageGraphic[graphiclib] ) )
+					{
+						// redraw background to stop weird graphic remnants remaining
+						// but don't do so while scrolling, because that looks weird
+						if ( !backgroundrectregistered )
+						{
+							if ( !SetupBackgroundRectanglesForDecal( BGND_FLAG_ANIMATED, NULL, displayX - 50, displayY - 60, displayX + 50, displayY + 60 ) )
+							{
+								return;
+							}
+
+							backgroundrectregistered = true;
+						}
+
+						FLOAT ratio = (FLOAT)( pStructure->ubHitPoints ) / (FLOAT)( pStructure->pDBStructureRef->pDBStructure->ubHitPoints );
+
+						// The first half of the pics are for the left side, the second half for the right side
+						UINT16 picsperside = hSrcVObject->usNumberOfObjects / 2;
+
+						UINT16 graphic = 0;
+						displayX = sScreenX - WORLD_TILE_X / 2;
+
+						switch ( pStructure->ubWallOrientation )
+						{
+						case OUTSIDE_TOP_LEFT:
+						case INSIDE_TOP_LEFT:
+						{
+							graphic = ratio * picsperside;
+						}
+						break; 
+						
+						case OUTSIDE_TOP_RIGHT:
+						case INSIDE_TOP_RIGHT:
+						{
+							graphic = ratio * picsperside + picsperside;
+							displayX += 16;
+						}
+						break;						
+						}
+
+						if ( BltIsClippedOrOffScreen( hSrcVObject, displayX, displayY, graphic, &gClippingRect ) )
+							return;
+
+						Blt8BPPDataTo16BPPBufferTransZNB( pBuffer, uiDestPitchBYTES, pZBuffer, usZValue, hSrcVObject, displayX, displayY, graphic );
+					}
+				}
+
+				if ( pStructure->ubDecalFlag & STRUCTURE_DECALFLAG_BLOOD )
+				{
+					HVOBJECT hSrcVObject;
+					if ( GetVideoObject( &hSrcVObject, guiWallBloodGraphic ) )
+					{
+						// redraw background to stop weird graphic remnants remaining
+						// but don't do so while scrolling, because that looks weird
+						if ( !backgroundrectregistered )
+						{
+							if ( !SetupBackgroundRectanglesForDecal( BGND_FLAG_ANIMATED, NULL, displayX - 50, displayY - 60, displayX + 50, displayY + 60 ) )
+							{
+								return;
+							}
+
+							backgroundrectregistered = true;
+						}
+
+						// The first half of the pics are for the left side, the second half for the right side
+						UINT16 picsperside = hSrcVObject->usNumberOfObjects / 2;
+
+						UINT16 graphic = 0;
+						displayX = sScreenX - WORLD_TILE_X / 2;
+
+						switch ( pStructure->ubWallOrientation )
+						{
+						case OUTSIDE_TOP_LEFT:
+						case INSIDE_TOP_LEFT:
+							// It is advised that the number of pics per side does not divide the map length per side - 160 or 360 - without remainder.
+							// Otherwise the spatters along a '/' wall will all be the same
+							graphic = ( sGridNo ) % picsperside;
+							break; 
+						
+						case OUTSIDE_TOP_RIGHT:
+						case INSIDE_TOP_RIGHT:
+							graphic = ( sGridNo ) % picsperside + picsperside;
+							displayX += 16;
+							break;
+						}
+
+						if ( BltIsClippedOrOffScreen( hSrcVObject, displayX, displayY, graphic, &gClippingRect ) )
+							return;
+
+						Blt8BPPDataTo16BPPBufferTransZNB( pBuffer, uiDestPitchBYTES, pZBuffer, usZValue, hSrcVObject, displayX, displayY, graphic );
+					}
+				}
+			}
+
+			pStructure = FindNextStructure( pStructure, STRUCTURE_WALL );
+		}
+	}
+}
+
 
 BOOLEAN RevealWalls(INT16 sX, INT16 sY, INT16 sRadius)
 {
@@ -837,12 +1043,21 @@ void RenderSetShadows(BOOLEAN fShadows)
 inline UINT16 * GetShadeTable(LEVELNODE * pNode, SOLDIERTYPE * pSoldier, SOLDIERTYPE * pPaletteTable, UINT32 uiFlags, INT16 * gsForceSoldierZLevel)
 {
 	UINT16 * pShadeTable;
-	// Shade guy always lighter than sceane default!
+	// Shade guy always lighter than scene default!
 	{
-		UINT8 ubShadeLevel;
-		ubShadeLevel = (pNode->ubShadeLevel & 0x0f);
+		const auto GridNo = pSoldier->sGridNo;
+		UINT8 ubShadeLevel = gpWorldLevelData[GridNo].pLandHead->ubShadeLevel;
+		// If merc is on a roof, shade according to roof brightness
+		if (pSoldier->pathing.bLevel > 0 && gpWorldLevelData[GridNo].pRoofHead != NULL)
+		{
+			ubShadeLevel = gpWorldLevelData[GridNo].pRoofHead->ubShadeLevel;
+		}
+
+		ubShadeLevel = (ubShadeLevel & 0x0f);
 		ubShadeLevel = __max(ubShadeLevel - 2, DEFAULT_SHADE_LEVEL);
-		ubShadeLevel |= (pNode->ubShadeLevel & 0x30);
+		ubShadeLevel |= (ubShadeLevel & 0x30);
+
+
 		if (pSoldier->flags.fBeginFade)
 		{
 			pShadeTable = pPaletteTable->pCurrentShade = pPaletteTable->pShades[pSoldier->ubFadeLevel];
@@ -955,7 +1170,7 @@ inline UINT16 * GetShadeTable(LEVELNODE * pNode, SOLDIERTYPE * pSoldier, SOLDIER
 	{
 		if (pSoldier->flags.fForceShade)
 		{
-			pShadeTable = pPaletteTable->pForcedShade;
+			pShadeTable = pSoldier->pForcedShade;
 		}
 	}
 	// check if we are a merc duplicate, if so, only do minimal stuff!
@@ -984,7 +1199,7 @@ void RenderTiles(UINT32 uiFlags, INT32 iStartPointX_M, INT32 iStartPointY_M, INT
 	//#if 0
 
 	LEVELNODE		*pNode; //, *pLand, *pStruct; //*pObject, *pTopmost, *pMerc;
-	SOLDIERTYPE	*pSoldier, *pSelSoldier;
+	SOLDIERTYPE	*pSoldier;
 	HVOBJECT		hVObject = NULL;
 	ETRLEObject *pTrav;
 	TILE_ELEMENT *TileElem = NULL;
@@ -1069,6 +1284,9 @@ void RenderTiles(UINT32 uiFlags, INT32 iStartPointX_M, INT32 iStartPointY_M, INT
 	iAnchorPosY_M = iStartPointY_M;
 	iAnchorPosX_S = iStartPointX_S;
 	iAnchorPosY_S = iStartPointY_S;
+
+	// Flugente: clear rectangles reserved for decals
+	ClearBackgroundRectanglesForDecal();
 
 	if (!(uiFlags&TILES_DIRTY))
 		pDestBuf = LockVideoSurface(FRAME_BUFFER, &uiDestPitchBYTES);
@@ -1897,17 +2115,6 @@ void RenderTiles(UINT32 uiFlags, INT32 iStartPointX_M, INT32 iStartPointY_M, INT
 									usImageIndex = pSoldier->CryoAniFrame();
 								}
 
-								// Flugente: riot shields
-								if (pSoldier &&
-									pSoldier->bVisible != -1 &&
-									(pSoldier->ubDirection == NORTH ||
-										pSoldier->ubDirection == NORTHWEST ||
-										pSoldier->ubDirection == WEST)
-									&& pSoldier->IsRiotShieldEquipped())
-								{
-									ShowRiotShield(pSoldier);
-								}
-
 								uiDirtyFlags = BGND_FLAG_SINGLE | BGND_FLAG_ANIMATED | BGND_FLAG_MERC;
 								break;
 							}
@@ -2543,6 +2750,17 @@ void RenderTiles(UINT32 uiFlags, INT32 iStartPointX_M, INT32 iStartPointY_M, INT
 												}
 												else if (fMerc)
 												{
+													// Flugente: draw riot shield UNDER the soldier
+													if ( pSoldier &&
+														pSoldier->bVisible != -1 &&
+														( pSoldier->ubDirection == NORTH ||
+															pSoldier->ubDirection == NORTHWEST ||
+															pSoldier->ubDirection == WEST )
+														&& pSoldier->IsRiotShieldEquipped() )
+													{
+														ShowRiotShield( pSoldier, (UINT16*)pDestBuf, uiDestPitchBYTES, gpZBuffer, sZLevel );
+													}
+
 													if (fZBlitter)
 													{
 														if (fZWrite)
@@ -2665,6 +2883,19 @@ void RenderTiles(UINT32 uiFlags, INT32 iStartPointX_M, INT32 iStartPointY_M, INT
 																fIgnoreShadows);
 														}
 
+													}
+
+													// Flugente: draw riot shield OVER the soldier
+													if ( pSoldier &&
+														pSoldier->bVisible != -1 &&
+														( pSoldier->ubDirection == EAST ||
+															pSoldier->ubDirection == SOUTHEAST ||
+															pSoldier->ubDirection == SOUTH ||
+															pSoldier->ubDirection == SOUTHWEST ||
+															pSoldier->ubDirection == NORTHEAST )
+														&& pSoldier->IsRiotShieldEquipped() )
+													{
+														ShowRiotShield( pSoldier, (UINT16*)pDestBuf, uiDestPitchBYTES, gpZBuffer, sZLevel );
 													}
 												}
 												else if (fShadowBlitter)
@@ -2816,6 +3047,12 @@ void RenderTiles(UINT32 uiFlags, INT32 iStartPointX_M, INT32 iStartPointY_M, INT
 											else
 												Blt8BPPDataTo8BPPBufferTransparent((UINT16*)pDestBuf, uiDestPitchBYTES, hVObject, sXPos, sYPos, usImageIndex);
 										}
+									}
+
+									// Flugente: additional decals
+									if ( fWallTile )
+									{
+										ShowDecal( (UINT16*)pDestBuf, uiDestPitchBYTES, gpZBuffer, sZLevel, uiTileIndex );
 									}
 								}
 

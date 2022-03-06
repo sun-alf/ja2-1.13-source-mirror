@@ -149,6 +149,8 @@ BOOLEAN InitializeGame(void)
 	LoadReputationSettings();
 	// Load creatures settings
 	LoadCreaturesSettings();
+	// Load rebel command settings
+	LoadRebelCommandSettings();
 
 #ifdef JA2UB
 	LoadGameUBOptions(); // JA25 UB
@@ -194,6 +196,7 @@ BOOLEAN InitializeGame(void)
 
 	//Loads the saved (if any) general JA2 game settings
 	LoadGameSettings();
+	LoadFeatureFlags();
 
 	guiCurrentScreen = INIT_SCREEN;
 
@@ -212,7 +215,7 @@ void ShutdownGame(void)
 
 	//Save the general save game settings to disk
 	SaveGameSettings();
-
+	SaveFeatureFlags();
 
 	//shutdown the file database manager
 	ShutDownFileDatabase( );
@@ -417,7 +420,10 @@ void GameLoop(void)
 	}
 
 	// Flugente: dynamic opinions: Dialogue Boxes need to be refreshed
-	RefreshBoxes( );
+	if (gGameExternalOptions.fDynamicOpinions)
+	{
+		RefreshBoxes();
+	}
 	
 	// Flugente:disguised mercs can distract enemies by talking to them. In order to display that, we sometimes display excerpts of their 'chats'
 	CheckChatPartners();

@@ -135,11 +135,15 @@ extern MercPopUpBox *gPopUpTextBox;
 
 BOOLEAN IsItAllowedToRenderRain()
 {
-	if ( !(gGameExternalOptions.gfAllowRain || gGameExternalOptions.gfAllowSandStorms || gGameExternalOptions.gfAllowSnow) )
+	const UINT8 currentWeather = GetWeatherInCurrentSector();
+
+	if( (!gGameExternalOptions.gfAllowRain && currentWeather == WEATHER_FORECAST_RAIN)
+		|| (!gGameExternalOptions.gfAllowSandStorms && currentWeather == WEATHER_FORECAST_SANDSTORM)
+		|| (!gGameExternalOptions.gfAllowSnow && currentWeather == WEATHER_FORECAST_SNOW) )
 		return FALSE;
 
-	if ( !(GetWeatherInCurrentSector( ) == WEATHER_FORECAST_RAIN || GetWeatherInCurrentSector( ) == WEATHER_FORECAST_THUNDERSHOWERS 
-		|| GetWeatherInCurrentSector( ) == WEATHER_FORECAST_SANDSTORM || GetWeatherInCurrentSector( ) == WEATHER_FORECAST_SNOW ) )
+	if ( !(currentWeather == WEATHER_FORECAST_RAIN || currentWeather == WEATHER_FORECAST_THUNDERSHOWERS 
+		|| currentWeather == WEATHER_FORECAST_SANDSTORM || currentWeather == WEATHER_FORECAST_SNOW ) )
 		return FALSE;
 
 	if( guiCurrentScreen != GAME_SCREEN && guiCurrentScreen != SHOPKEEPER_SCREEN )
@@ -598,10 +602,10 @@ void RainClipVideoOverlay()
 	{
 		pCurr = gVideoOverlays[ uiIndex ].pBackground;
 
-		if( pCurr->sLeft < gRainRegion.right ||
+		if(!(pCurr->uiFlags & BGND_FLAG_IGNORE_RAIN) && (pCurr->sLeft < gRainRegion.right ||
 			pCurr->sTop < gRainRegion.bottom ||
 			pCurr->sRight >= gRainRegion.left ||
-			pCurr->sBottom >= gRainRegion.top )
+			pCurr->sBottom >= gRainRegion.top))
 				ColorFillVideoSurfaceArea( guiRainRenderSurface, pCurr->sLeft, pCurr->sTop, pCurr->sRight, pCurr->sBottom, Get16BPPColor( FROMRGB( 0, 0, 0 ) ) );
 	}
 }

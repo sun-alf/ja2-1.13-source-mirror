@@ -3,25 +3,16 @@
 #ifdef PRECOMPILEDHEADERS
 	#include "TileEngine All.h"
 #else
-	#include "stdio.h"
-	#include "sgp.h"
-	#include "Ambient types.h"
-	#include "fileman.h"
-	#include "environment.h"
+	#include "Ambient Control.h"
 	#include "Sound Control.h"
 	#include "Game Events.h"
-	#include "Ambient Control.h"
 	#include "lighting.h"
 	#include "Random.h"	
 	// sevenfm
 	#include "SmokeEffects.h"
-	#include "message.h"
 	#include "Overhead.h"
-	#include "strategicmap.h"
 	#include "Strategic Movement.h"
 	#include "Game Clock.h"
-	#include "Queen Command.h"
-	#include "undergroundinit.h"
 	#include "strategic mines.h"
 #endif
 
@@ -436,6 +427,7 @@ void StartFireAmbient(void)
 }
 
 #define MAX_SSA_SOUNDS 10
+extern BOOLEAN AreInMeanwhile();
 
 void SetSSA(void)
 {
@@ -479,6 +471,12 @@ void SetSSA(void)
 
 	// no ambients in the rain
 	if (GetWeatherInCurrentSector() != WEATHER_FORECAST_NORMAL)
+	{
+		return;
+	}
+
+	// no ambients in cutscenes
+	if(AreInMeanwhile())
 	{
 		return;
 	}

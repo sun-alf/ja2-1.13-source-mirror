@@ -2414,6 +2414,24 @@ void InternalInitEDBTooltipRegion( OBJECTTYPE * gpItemDescObject, UINT32 guiCurr
 				MSYS_EnableRegion( &gUDBFasthelpRegions[ iFirstDataRegion + cnt ] );
 				cnt++;
 			}
+
+			////////////////// Ammo with white smoke trail 
+			if ( AmmoTypes[Magazine[Item[gpItemDescObject->usItem].ubClassIndex].ubAmmoType].ammoflag & AMMO_TRAIL_WHITESMOKE )
+			{
+				swprintf( pStr, L"%s%s", szUDBGenSecondaryStatsTooltipText[49], szUDBGenSecondaryStatsExplanationsTooltipText[49] );
+				SetRegionFastHelpText( &( gUDBFasthelpRegions[iFirstDataRegion + cnt] ), pStr );
+				MSYS_EnableRegion( &gUDBFasthelpRegions[iFirstDataRegion + cnt] );
+				cnt++;
+			}
+
+			//////////////////  Ammo with fire trail 
+			if ( AmmoTypes[Magazine[Item[gpItemDescObject->usItem].ubClassIndex].ubAmmoType].ammoflag & AMMO_TRAIL_FIRE )
+			{
+				swprintf( pStr, L"%s%s", szUDBGenSecondaryStatsTooltipText[50], szUDBGenSecondaryStatsExplanationsTooltipText[50] );
+				SetRegionFastHelpText( &( gUDBFasthelpRegions[iFirstDataRegion + cnt] ), pStr );
+				MSYS_EnableRegion( &gUDBFasthelpRegions[iFirstDataRegion + cnt] );
+				cnt++;
+			}
 		}
 
 		if (Item[ gpItemDescObject->usItem ].usItemClass & IC_EXPLOSV)
@@ -5715,15 +5733,7 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 
 	// Flugente
 	// new line is necessary (Moa: only if needed)
-	INT16 fDrawGenIndexes = FALSE;
-	if ( gGameExternalOptions.fWeaponOverheating )
-	{
-		if( ( Item[gpItemDescObject->usItem].usItemClass & (IC_GUN|IC_LAUNCHER) || Item[gpItemDescObject->usItem].barrel == TRUE || ( Item[gpItemDescObject->usItem].overheatTemperatureModificator != 0.0 ) || ( Item[gpItemDescObject->usItem].overheatCooldownModificator != 0.0 ) || ( Item[gpItemDescObject->usItem].overheatJamThresholdModificator != 0.0 ) || ( Item[gpItemDescObject->usItem].overheatDamageThresholdModificator != 0.0 ) ) ||
-			( fComparisonMode && ( Item[gpComparedItemDescObject->usItem].usItemClass & (IC_GUN|IC_LAUNCHER) || Item[gpComparedItemDescObject->usItem].barrel == TRUE || ( Item[gpComparedItemDescObject->usItem].overheatTemperatureModificator != 0.0 ) || ( Item[gpComparedItemDescObject->usItem].overheatCooldownModificator != 0.0 ) || ( Item[gpComparedItemDescObject->usItem].overheatJamThresholdModificator != 0.0 ) || ( Item[gpComparedItemDescObject->usItem].overheatDamageThresholdModificator != 0.0 ) ) ) )
-		{
-			if (!fDrawGenIndexes) fDrawGenIndexes = ++cnt; // new index line here?
-		}
-	}
+	INT16 fDrawGenIndexes = 0;
 
 	// Flugente
 	if ( gGameExternalOptions.fWeaponOverheating )
@@ -5731,6 +5741,8 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 		if( ( Item[gpItemDescObject->usItem].usItemClass & (IC_GUN|IC_LAUNCHER) ) ||
 			( fComparisonMode && Item[gpComparedItemDescObject->usItem].usItemClass & (IC_GUN|IC_LAUNCHER) ) )
 		{
+			if ( !fDrawGenIndexes ) fDrawGenIndexes = ++cnt; // new index line here?
+
 			///////////////////// SINGLE SHOT TEMPERATURE
 			if (cnt >= sFirstLine && cnt < sLastLine)
 			{
@@ -5759,9 +5771,12 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 			}
 			cnt++;
 		}
+
 		if( ( Item[gpItemDescObject->usItem].barrel == TRUE ) ||	// for barrel items
 			( fComparisonMode && Item[gpComparedItemDescObject->usItem].barrel == TRUE ) )
 		{
+			if ( !fDrawGenIndexes ) fDrawGenIndexes = ++cnt; // new index line here?
+
 			///////////////////// COOLDOWN FACTOR
 			if (cnt >= sFirstLine && cnt < sLastLine)
 			{
@@ -5774,6 +5789,8 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 		if ( ( ( Item[gpItemDescObject->usItem].overheatTemperatureModificator != 0.0 ) || ( Item[gpItemDescObject->usItem].overheatCooldownModificator != 0.0 ) || ( Item[gpItemDescObject->usItem].overheatJamThresholdModificator != 0.0 ) || ( Item[gpItemDescObject->usItem].overheatDamageThresholdModificator != 0.0 ) ) ||
 			( fComparisonMode && ( ( Item[gpComparedItemDescObject->usItem].overheatTemperatureModificator != 0.0 ) || ( Item[gpComparedItemDescObject->usItem].overheatCooldownModificator != 0.0 ) || ( Item[gpComparedItemDescObject->usItem].overheatJamThresholdModificator != 0.0 ) || ( Item[gpComparedItemDescObject->usItem].overheatDamageThresholdModificator != 0.0 ) ) ) )
 		{
+			if ( !fDrawGenIndexes ) fDrawGenIndexes = ++cnt; // new index line here?
+
 			///////////////////// TEMPERATURE MODIFICATOR
 			if ( ( Item[gpItemDescObject->usItem].overheatTemperatureModificator != 0.0 ) ||
 				( fComparisonMode && Item[gpComparedItemDescObject->usItem].overheatTemperatureModificator != 0.0 ) )
@@ -5825,6 +5842,8 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 		if ( ( Item[gpItemDescObject->usItem].usItemClass & (IC_GUN|IC_LAUNCHER) ) ||
 			( fComparisonMode && Item[gpComparedItemDescObject->usItem].usItemClass & (IC_GUN|IC_LAUNCHER) ) )
 		{
+			if ( !fDrawGenIndexes ) fDrawGenIndexes = ++cnt; // new index line here?
+
 			if (cnt >= sFirstLine && cnt < sLastLine)
 			{
 				BltVideoObjectFromIndex( guiSAVEBUFFER, guiItemInfoAdvancedIcon, 55, gItemDescAdvRegions[cnt-sFirstLine][0].sLeft + sOffsetX, gItemDescAdvRegions[cnt-sFirstLine][0].sTop + sOffsetY, VO_BLT_SRCTRANSPARENCY, NULL );
@@ -5837,6 +5856,8 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 	if ( gGameOptions.fNewTraitSystem && gSkillTraitValues.fCanFanTheHammer &&
 		( ( Item[gpItemDescObject->usItem].usItemClass & IC_BOBBY_GUN ) || ( fComparisonMode && ( Item[gpComparedItemDescObject->usItem].usItemClass & IC_BOBBY_GUN ) ) ) )
 	{
+		if ( !fDrawGenIndexes ) fDrawGenIndexes = ++cnt; // new index line here?
+
 		if ( cnt >= sFirstLine && cnt < sLastLine )
 		{
 			BltVideoObjectFromIndex( guiSAVEBUFFER, guiItemInfoAdvancedIcon, 65, gItemDescAdvRegions[cnt - sFirstLine][0].sLeft + sOffsetX, gItemDescAdvRegions[cnt - sFirstLine][0].sTop + sOffsetY, VO_BLT_SRCTRANSPARENCY, NULL );
@@ -5847,6 +5868,8 @@ void DrawAdvancedStats( OBJECTTYPE * gpItemDescObject )
 	///////////////////// MULTIPLE BARRELS
 	if ( ( ( Item[gpItemDescObject->usItem].usItemClass & IC_BOBBY_GUN ) || ( fComparisonMode && ( Item[gpComparedItemDescObject->usItem].usItemClass & IC_BOBBY_GUN ) ) ) )
 	{
+		if ( !fDrawGenIndexes ) fDrawGenIndexes = ++cnt; // new index line here?
+
 		if ( cnt >= sFirstLine && cnt < sLastLine )
 		{
 			BltVideoObjectFromIndex( guiSAVEBUFFER, guiItemInfoAdvancedIcon, 66, gItemDescAdvRegions[cnt - sFirstLine][0].sLeft + sOffsetX, gItemDescAdvRegions[cnt - sFirstLine][0].sTop + sOffsetY, VO_BLT_SRCTRANSPARENCY, NULL );
@@ -6106,6 +6129,22 @@ void DrawSecondaryStats( OBJECTTYPE * gpItemDescObject )
 			( fComparisonMode && AmmoTypes[Magazine[Item[ gpComparedItemDescObject->usItem ].ubClassIndex].ubAmmoType].ammoflag & AMMO_ANTIMATERIEL ) )
 		{
 			BltVideoObjectFromIndex( guiSAVEBUFFER, guiItemInfoSecondaryIcon, 36, gItemDescGenSecondaryRegions[cnt].sLeft+sOffsetX, gItemDescGenSecondaryRegions[cnt].sTop+sOffsetY, VO_BLT_SRCTRANSPARENCY, NULL );
+			cnt++;
+		}
+
+		////////////////// Ammo with white smoke trail 
+		if ( ( AmmoTypes[Magazine[Item[gpItemDescObject->usItem].ubClassIndex].ubAmmoType].ammoflag & AMMO_TRAIL_WHITESMOKE && !fComparisonMode ) ||
+			( fComparisonMode && AmmoTypes[Magazine[Item[gpComparedItemDescObject->usItem].ubClassIndex].ubAmmoType].ammoflag & AMMO_TRAIL_WHITESMOKE ) )
+		{
+			BltVideoObjectFromIndex( guiSAVEBUFFER, guiItemInfoSecondaryIcon, 46, gItemDescGenSecondaryRegions[cnt].sLeft + sOffsetX, gItemDescGenSecondaryRegions[cnt].sTop + sOffsetY, VO_BLT_SRCTRANSPARENCY, NULL );
+			cnt++;
+		}
+
+		////////////////// Ammo with fire trail 
+		if ( ( AmmoTypes[Magazine[Item[gpItemDescObject->usItem].ubClassIndex].ubAmmoType].ammoflag & AMMO_TRAIL_FIRE && !fComparisonMode ) ||
+			( fComparisonMode && AmmoTypes[Magazine[Item[gpComparedItemDescObject->usItem].ubClassIndex].ubAmmoType].ammoflag & AMMO_TRAIL_FIRE ) )
+		{
+			BltVideoObjectFromIndex( guiSAVEBUFFER, guiItemInfoSecondaryIcon, 47, gItemDescGenSecondaryRegions[cnt].sLeft + sOffsetX, gItemDescGenSecondaryRegions[cnt].sTop + sOffsetY, VO_BLT_SRCTRANSPARENCY, NULL );
 			cnt++;
 		}
 	}
@@ -13427,7 +13466,7 @@ void DrawAdvancedValues( OBJECTTYPE *gpItemDescObject )
 	
 	// Flugente: draw a new description line 
 	// Moa: only if required
-	INT16 fDrawGenIndexes = FALSE;
+	INT16 fDrawGenIndexes = 0;
 
 	// Flugente	
 	if ( gGameExternalOptions.fWeaponOverheating )

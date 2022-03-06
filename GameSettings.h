@@ -38,6 +38,7 @@ enum
 	TOPTION_SNAP_CURSOR_TO_DOOR,
 	TOPTION_GLOW_ITEMS,
 	TOPTION_TOGGLE_TREE_TOPS,
+	TOPTION_SMART_TREE_TOPS,
 	TOPTION_TOGGLE_WIREFRAME,
 	TOPTION_3D_CURSOR,
 	TOPTION_CTH_CURSOR,
@@ -63,11 +64,6 @@ enum
 
 	// arynn
 	TOPTION_TOGGLE_TURN_MODE,
-
-	// HEADROCK HAM 3.6:
-	TOPTION_STAT_PROGRESS_BARS,
-
-	
 
 	// HEADROCK HAM 4:
 	TOPTION_ALT_MAP_COLOR,
@@ -136,6 +132,56 @@ enum
 	NUM_ALL_GAME_OPTIONS,
 };	
 
+// this enum needs to be kept in sync with z113FeaturesToggleText, z113FeaturesHelpText, and z113FeaturesPanelText
+enum
+{
+	FF_FEATURES_SCREEN, // meta!
+	FF_NCTH,
+	FF_DROP_ALL,
+	FF_DROP_ALL_DAMAGED,
+	FF_SUPPRESSION,
+	FF_TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN,
+	FF_AGGRESSIVE_STRATEGIC_AI,
+	FF_AGGRESSIVE_STRATEGIC_AI_2,
+	FF_INTEL, // potential issue: enabling this feature mid-campaign may require users to manually re-open the email for the RIS website...
+	FF_PRISONERS,
+	FF_MINES_REQUIRE_WORKERS,
+	FF_ENEMY_AMBUSHES,
+	FF_ENEMY_ASSASSINS,
+	FF_ENEMY_ROLES,
+	FF_ENEMY_ROLE_MEDIC,
+	FF_ENEMY_ROLE_OFFICER,
+	FF_ENEMY_ROLE_GENERAL,
+	FF_KERBERUS,
+	FF_FOOD,
+	FF_DISEASE,
+	FF_DYNAMIC_OPINIONS,
+	FF_DYNAMIC_DIALOGUE,
+	FF_ASD,
+	FF_ASD_HELICOPTERS,
+	FF_ENEMY_VEHICLES_CAN_MOVE,
+	FF_ZOMBIES,
+	FF_BLOODCAT_RAIDS,
+	FF_BANDIT_RAIDS,
+	FF_ZOMBIE_RAIDS,
+	FF_MILITIA_VOLUNTEER_POOL,
+	FF_ALLOW_TACTICAL_MILITIA_COMMAND,
+	FF_ALLOW_STRATEGIC_MILITIA_COMMAND,
+	FF_MILITIA_USE_SECTOR_EQUIPMENT,
+	FF_MILITIA_REQUIRE_RESOURCES,
+	FF_ENHANCED_CLOSE_COMBAT_SYSTEM,
+	FF_IMPROVED_INTERRUPT_SYSTEM,
+	FF_OVERHEATING,
+	FF_ALLOW_RAIN,
+	FF_ALLOW_LIGHTNING,
+	FF_ALLOW_SANDSTORM,
+	FF_ALLOW_SNOW,
+	FF_MINI_EVENTS,
+	FF_REBEL_COMMAND,
+
+	NUM_FEATURE_FLAGS,
+};
+
 
 typedef struct
 {
@@ -147,6 +193,9 @@ typedef struct
 
 	//The following are set from the status of the toggle boxes in the Options Screen
 	BOOLEAN				fOptions[ NUM_ALL_GAME_OPTIONS + 1 ];	// Toggle Options (Speech, Subtitles, Show Tree Tops, etc.. )
+
+	//The following are set from the status of the toggle boxes in the Features Screen
+	BOOLEAN				fFeatures[NUM_FEATURE_FLAGS];
 
 	UINT32				uiMeanwhileScenesSeenFlags;         // Bit Vector describing seen 'mean whiles..' (not sure why this is in Game Settings )
 
@@ -222,6 +271,7 @@ enum
 	ASD_HELI,
 	ASD_JEEP,
 	ASD_TANK,
+	ASD_ROBOT,
 
 	ASD_RESOURCE_MAX
 };
@@ -404,6 +454,7 @@ typedef struct
 	///////////////////////////////////////
 
 	// System settings
+	BOOLEAN gfCheatMode;
 	UINT8 gubDeadLockDelay;
 	BOOLEAN gfEnableEmergencyButton_SkipStrategicEvents;
 
@@ -558,6 +609,8 @@ typedef struct
 	BOOLEAN fEnemyJams;
 	// use new code for random
 	BOOLEAN fNewRandom;
+	// determine if battle was defeat
+	UINT8 ubDefeatMode;
 
 	// WDS - Improve Tony's and Devin's inventory like BR's
 	// silversurfer: not used anymore, see "Tactical\XML_Merchants.cpp" for "useBRSetting"
@@ -686,9 +739,11 @@ typedef struct
 
 	BOOLEAN fASDAssignsTanks;
 	BOOLEAN fASDAssignsJeeps;
+	BOOLEAN fASDAssignsRobots;
 
 	INT32 gASDResource_Fuel_Tank;
 	INT32 gASDResource_Fuel_Jeep;
+	INT32 gASDResource_Fuel_Robot;
 
 	// Flugente: enemy heli
 	BOOLEAN fEnemyHeliActive;
@@ -894,6 +949,9 @@ typedef struct
 	BOOLEAN fAutoHideProgressBar;
 	// anv: hide stuff on roof in explored rooms at ground level view (sandbags and other crap)
 	BOOLEAN fHideExploredRoomRoofStructures;
+
+	BOOLEAN fAdditionalDecals;						// Flugente: show additional decals on objects (cracked walls, blood spatters etc.)
+
 	//enable ext mouse key
 	BOOLEAN bAltAimEnabled;	
 	BOOLEAN bAimedBurstEnabled;
@@ -939,13 +997,9 @@ typedef struct
 	BOOLEAN fEnemiesDontSpareLaunchables;
 	BOOLEAN fEnemiesBlowObstaclesUp;
 
-	BOOLEAN fArmyUsesTanksInAttacks;
-	BOOLEAN fArmyUsesTanksInPatrols;
 	UINT8 usTankMinimumProgress;
-
-	BOOLEAN fArmyUsesJeepsInAttacks;
-	BOOLEAN fArmyUsesJeepsInPatrols;
 	UINT8 usJeepMinimumProgress;
+	UINT8 usRobotMinimumProgress;
 
 	// WANNE: Always use "prof.dat".
 	BOOLEAN fUseDifficultyBasedProfDat;
@@ -1145,6 +1199,9 @@ typedef struct
 	// HEADROCK HAM 3: If enabled, tooltipping over Bobby Ray's weapons will show a list of possible attachments to those weapons.
 	BOOLEAN fBobbyRayTooltipsShowAttachments;
 
+	// sevenfm: show LBE details in tooltip
+	BOOLEAN fBobbyRayTooltipsShowLBEDetails;
+
 	//JMich Externalized gGameExternalOptions.ubBobbyRayMaxPurchaseAmount for BobbyRay
 	UINT8 ubBobbyRayMaxPurchaseAmount;
 
@@ -1202,6 +1259,9 @@ typedef struct
 	// HEADROCK HAM 3.3: Minimum distance (in METERS) at which character suffer from friendly suppression.
 	UINT16 usMinDistanceFriendlySuppression;
 	
+	// sevenfm: new suppression tolerance calculation
+	BOOLEAN fNewSuppressionCode;
+
 	// HEADROCK HAM 3.4: This controls the intensity of Hiding the Bullet Count during combat. The higher it is, the more intense the effect. Negative values reduce the effect.
 	UINT16 usBulletHideIntensity;
 		
@@ -1569,9 +1629,16 @@ typedef struct
 	BOOLEAN fAITacticalRetreat;
 	BOOLEAN fAIMovementMode;
 	BOOLEAN fAIPathTweaks;
-	BOOLEAN fAIDecisionInfo;
 	BOOLEAN fAIShootUnseen;
 	BOOLEAN fAISafeSuppression;
+
+	// Mini Events
+	BOOLEAN fMiniEventsEnabled;
+	UINT16 fMiniEventsMinHoursBetweenEvents;
+	UINT16 fMiniEventsMaxHoursBetweenEvents;
+
+	// Rebel Command
+	BOOLEAN fRebelCommandEnabled;
 
 } GAME_EXTERNAL_OPTIONS;
 
@@ -1673,6 +1740,106 @@ typedef struct
 	UINT8 ubCrepitusFeedingSectorY;
 	UINT8 ubCrepitusFeedingSectorZ;
 } CREATURES_SETTINGS;
+
+typedef struct
+{
+	FLOAT fIncomeModifier;
+
+	INT8 iMaxLoyaltyNovice;
+	INT8 iMaxLoyaltyExperienced;
+	INT8 iMaxLoyaltyExpert;
+	INT8 iMaxLoyaltyInsane;
+
+	INT16 iAdminActionCostIncreaseRegional;
+	INT16 iAdminActionCostIncreaseNational;
+
+	FLOAT fLoyaltyGainModifier;
+	INT32 iMilitiaStatBonusPerLevel;
+	INT32 iMilitiaMarksmanshipBonusPerLevel;
+	std::vector<INT32> iMilitiaUpgradeCosts;
+	
+	// directives
+	// this directive is always available
+	std::vector<INT32> iGatherSuppliesCosts;
+	std::vector<INT32> iGatherSuppliesIncome;
+
+	UINT8 uSupportMilitiaProgressRequirement;
+	std::vector<INT32> iSupportMilitiaCosts;
+	std::vector<FLOAT> fSupportMilitiaDiscounts;
+
+	UINT8 uTrainMilitiaProgressRequirement;
+	std::vector<INT32> iTrainMilitiaCosts;
+	std::vector<FLOAT> fTrainMilitiaDiscount;
+	std::vector<INT32> iTrainMilitiaSpeedBonus;
+
+	UINT8 uCreatePropagandaProgressRequirement;
+	std::vector<INT32> iCreatePropagandaCosts;
+	std::vector<FLOAT> fCreatePropagandaModifier;
+
+	UINT8 uEliteMilitiaProgressRequirement;
+	std::vector<INT32> iEliteMilitiaCosts;
+	std::vector<INT32> iEliteMilitiaPerDay;
+
+	UINT8 uHvtStrikesProgressRequirement;
+	std::vector<INT32> iHvtStrikesCosts;
+	std::vector<INT32> iHvtStrikesChance;
+
+	UINT8 uSpottersProgressRequirement;
+	std::vector<INT32> iSpottersCosts;
+	std::vector<INT32> iSpottersModifier;
+
+	UINT8 uRaidMinesProgressRequirement;
+	INT32 iRaidMinesFailChance;
+	std::vector<INT32> iRaidMinesCosts;
+	std::vector<FLOAT> fRaidMinesPercentage;
+
+	UINT8 uCreateTurncoatsProgressRequirement;
+	FLOAT fCreateTurncoatsIntelCost;
+	std::vector<INT32> iCreateTurncoatsCosts;
+	std::vector<INT32> iCreateTurncoatsPerDay;
+
+	UINT8 uDraftProgressRequirement;
+	std::vector<INT32> iDraftCosts;
+	std::vector<INT32> iDraftPerDayModifier;
+	std::vector<INT32> iDraftLoyaltyLossPerDay;
+
+	// admin actions
+	INT32 iSupplyLineMaxLoyaltyIncrease;
+
+	INT32 iRebelRadioDailyLoyaltyGain;
+
+	UINT32 iSafehouseReinforceChance;
+	INT32 iSafehouseMinimumSoldiers;
+	INT32 iSafehouseBonusSoldiers;
+
+	INT32 iSupplyDisruptionEnemyStatLoss;
+
+	// SCOUTS - no variable effect, but included here for completeness
+
+	INT32 iDeadDropsDailyIntel;
+
+	INT32 iSmugglersDailySupplies;
+
+	INT32 iWarehousesDailyMilitiaGuns;
+	INT32 iWarehousesDailyMilitiaArmour;
+	INT32 iWarehousesDailyMilitiaMisc;
+
+	INT32 iTaxesDailyIncome;
+	INT32 iTaxesDailyLoyaltyLoss;
+
+	INT32 iAssistCiviliansDailyVolunteers;
+
+	INT32 iMercSupportBonus;
+
+	INT32 iMiningPolicyBonus;
+
+	UINT8 uPathfindersSpeedBonus;
+
+	UINT8 uHarriersSpeedPenalty;
+
+	INT16 iFortificationsBonus;
+
+} REBELCOMMAND_SETTINGS;
 
 typedef struct
 {
@@ -1985,6 +2152,7 @@ typedef struct
 	INT8 sSVFoodConsumption;					// alters food consumption rate
 	INT8 sSVDrinkConsumption;
 	UINT8 usSVSnakeDefense;						// increases chance to evade a snake attack
+	UINT8 ubSVCamoEffectivenessBonus;
 } SKILL_TRAIT_VALUES;
 
 // HEADROCK HAM 4: Constants used as coefficients by the various parts of the new CTH system.
@@ -2175,12 +2343,16 @@ typedef struct
 	UINT8 ubInitialPOWSectorY;
 	INT32 iInitialPOWGridNo[3];
 	INT32 iInitialPOWItemGridNo[3];
+	INT32 iInitialPOWGetFreeGridNo[3];
 
 	//[Grumm]
 
 	//[Tixa]
 	UINT8 ubTixaPrisonSectorX;
 	UINT8 ubTixaPrisonSectorY;
+	INT32 iTixaPrisonPOWGridNo[3];
+	INT32 iTixaPrisonPOWItemGridNo[3];
+	INT32 iTixaPrisonPOWGetFreeGridNo[3];
 
 	//Dynamo Captive Sector
 	UINT8 ubDyanmoCaptiveSectorX;
@@ -2443,6 +2615,8 @@ extern REPUTATION_SETTINGS gReputationSettings;
 
 extern CREATURES_SETTINGS gCreaturesSettings;
 
+extern REBELCOMMAND_SETTINGS gRebelCommandSettings;
+
 // HEADROCK HAM 4: CTH constants read from a separate INI file
 extern CTH_CONSTANTS gGameCTHConstants;
 
@@ -2464,11 +2638,16 @@ void LoadHelicopterRepairRefuelSettings();
 void LoadMoraleSettings();
 void LoadReputationSettings();
 void LoadCreaturesSettings();
+void LoadRebelCommandSettings();
 void FreeGameExternalOptions();
 
 void InitGameOptions();
 
 void InitGameSettings();
+
+void InitFeatureFlags();
+BOOLEAN SaveFeatureFlags();
+BOOLEAN LoadFeatureFlags();
 
 BOOLEAN GetCDLocation( );
 

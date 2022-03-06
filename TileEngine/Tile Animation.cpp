@@ -2,10 +2,7 @@
 #include "TileEngine All.h"
 #else
 #include "worlddef.h"
-#include <stdio.h>
-#include <string.h>
-#include "stdlib.h"
-#include "video.h"
+#include "tile animation.h"
 #include "debug.h"
 #include "worldman.h"
 #include "lighting.h"
@@ -13,18 +10,11 @@
 #include "overhead.h"
 #include "ai.h"
 #include "Sound Control.h"
-#include "animation control.h"
-#include "isometric utils.h"
-#include "Font Control.h"
-#include "message.h"
-#include "tile animation.h"
 #include "tile cache.h"
 #include "explosion control.h"
-#include "weapons.h"
 #include "Keys.h"
 #include "bullets.h"
 #include "LightEffects.h"
-#include "rotting corpses.h"
 #include "SmokeEffects.h"
 #endif
 
@@ -570,8 +560,19 @@ void UpdateAniTiles( )
 
 							ubExpType = Explosive[ Item[ (UINT16)pNode->uiUserData ].ubClassIndex ].ubType;
 
+							// Flugente: if tile has a fire retardant effect, don't create new fire
+							if ( ubExpType == EXPLOSV_BURNABLEGAS )
+							{
+								if ( gpWorldLevelData[pNode->sGridNo].ubExtFlags[gExplosionData[pNode->uiUserData3].Params.bLevel] & MAPELEMENT_EXT_FIRERETARDANT_SMOKE )
+								{
+									// don't add fire
+									return;
+								}
+							}
+
 							if ( ubExpType == EXPLOSV_TEARGAS || ubExpType == EXPLOSV_MUSTGAS ||
-								ubExpType == EXPLOSV_SMOKE || ubExpType == EXPLOSV_BURNABLEGAS || ubExpType == EXPLOSV_SIGNAL_SMOKE || ubExpType == EXPLOSV_SMOKE_DEBRIS || ubExpType == EXPLOSV_CREATUREGAS)
+								ubExpType == EXPLOSV_SMOKE || ubExpType == EXPLOSV_BURNABLEGAS || ubExpType == EXPLOSV_SIGNAL_SMOKE || ubExpType == EXPLOSV_SMOKE_DEBRIS || ubExpType == EXPLOSV_CREATUREGAS ||
+								ubExpType == EXPLOSV_SMOKE_FIRERETARDANT )
 							{
 								// Do sound....
 								// PlayJA2Sample( AIR_ESCAPING_1, RATE_11025, SoundVolume( HIGHVOLUME, pNode->sGridNo ), 1, SoundDir( pNode->sGridNo ) );

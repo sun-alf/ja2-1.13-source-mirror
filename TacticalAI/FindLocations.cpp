@@ -442,28 +442,28 @@ INT32 CalcCoverValue(SOLDIERTYPE *pMe, INT32 sMyGridNo, INT32 iMyThreat, INT32 i
 		// sevenfm: special calculations for zombies: zombie is very dangerous at close range
 		if (pHim->IsZombie() || !AICheckHasGun(pHim))
 		{
-			if (sDist < (INT32)(DAY_VISION_RANGE / 2))
+			if (sDist < (INT32)(TACTICAL_RANGE / 2))
 			{
 				// 100 - 25
-				bHisCTGT = 100 - 150 * sDist / DAY_VISION_RANGE;
+				bHisCTGT = 100 - 150 * sDist / TACTICAL_RANGE;
 			}
 			else
 			{
 				// 25 - 0
-				bHisCTGT = 100 * DAY_VISION_RANGE * DAY_VISION_RANGE / (16 * sDist * sDist);
+				bHisCTGT = 100 * TACTICAL_RANGE * TACTICAL_RANGE / (16 * sDist * sDist);
 			}
 		}
 
 		// sevenfm: if soldier has no gun, use different calculation
 		if (pMe->IsZombie() || !AICheckHasGun(pMe))
 		{
-			if (sDist < (INT32)(DAY_VISION_RANGE / 2))
+			if (sDist < (INT32)(TACTICAL_RANGE / 2))
 			{
-				bMyCTGT = 100 - 150 * sDist / DAY_VISION_RANGE;
+				bMyCTGT = 100 - 150 * sDist / TACTICAL_RANGE;
 			}
 			else
 			{
-				bMyCTGT = 100 * DAY_VISION_RANGE * DAY_VISION_RANGE / (16 * sDist * sDist);
+				bMyCTGT = 100 * TACTICAL_RANGE * TACTICAL_RANGE / (16 * sDist * sDist);
 			}
 		}
 	}	
@@ -473,13 +473,13 @@ INT32 CalcCoverValue(SOLDIERTYPE *pMe, INT32 sMyGridNo, INT32 iMyThreat, INT32 i
 	iMyPosValue =	bMyCTGT *	iMyThreat * iMyAPsLeft;
 
 	// add penalty to enemy position, bonus to my position if soldier has cover at spot
-	// max 25% at DAY_VISION_RANGE/2, 0 at zero range
+	// max 25% at TACTICAL_RANGE / 2, 0 at zero range
 	if( gGameExternalOptions.fAIBetterCover )
 	{
 		UINT8 ubCoverBonus = 25;
-		if (sDist < (INT32)(DAY_VISION_RANGE / 2))
+		if (sDist < (INT32)(TACTICAL_RANGE / 2))
 		{
-			ubCoverBonus = ubCoverBonus * 2 * sDist / DAY_VISION_RANGE;
+			ubCoverBonus = ubCoverBonus * 2 * sDist / TACTICAL_RANGE;
 		}
 		if (!pHim->IsZombie() && AICheckHasGun(pHim) && AnyCoverFromSpot(sMyGridNo, bMyLevel, sHisGridNo, bHisLevel))
 		{
@@ -504,7 +504,6 @@ INT32 CalcCoverValue(SOLDIERTYPE *pMe, INT32 sMyGridNo, INT32 iMyThreat, INT32 i
 	{
 		iMyPosValue /= pMe->aiData.bOppCnt;
 	}
-
 
 	// if my positional value is worth something at all here
 	if (iMyPosValue > 0)
@@ -533,13 +532,12 @@ INT32 CalcCoverValue(SOLDIERTYPE *pMe, INT32 sMyGridNo, INT32 iMyThreat, INT32 i
 			iRangeFactor = (iRangeChange * iRCD) / 2;
 
 			// sevenfm: reduce range bonus depending on cover
-			if (gGameExternalOptions.fAIBetterCover)
+			if (gGameExternalOptions.fAIBetterCover &&
+				pMe->aiData.bAIMorale < MORALE_FEARLESS &&
+				AIGunRange(pMe) >= PythSpacesAway(sMyGridNo, sHisGridNo) &&
+				!AnyCoverFromSpot(sMyGridNo, bMyLevel, sHisGridNo, bHisLevel))
 			{
-				if (!AnyCoverFromSpot(sMyGridNo, bMyLevel, sHisGridNo, bHisLevel) &&
-					CountSeenEnemiesLastTurn(pMe) > CountNearbyFriends(pMe, sMyGridNo, DAY_VISION_RANGE / 2))
-				{
-					iRangeFactor = iRangeFactor * (100 - bHisCTGT * __min(Threat[uiThreatIndex].iAPs, APBPConstants[AP_MAXIMUM]) / APBPConstants[AP_MAXIMUM]) / 100;
-				}
+				iRangeFactor = iRangeFactor * (100 - bHisCTGT * Threat[uiThreatIndex].iAPs / (2 * APBPConstants[AP_MAXIMUM])) / 100;
 			}
 
 #ifdef DEBUGCOVER
@@ -626,14 +624,15 @@ INT32 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	UINT32 uiLoop;
 	INT32 iCurrentCoverValue, iCoverValue, iBestCoverValue;
 	INT32	iCurrentScale = -1, iCoverScale = -1, iBestCoverScale = -1;
-	INT32	iDistFromOrigin, iDistCoverFromOrigin, iThreatCertainty;
+	INT32	iDistFromOrigin, iDistCoverFromOrigin;
+	//INT32 iThreatCertainty;
 	INT32 sGridNo, sBestCover = NOWHERE;
 	INT32 iPathCost;
 	INT32	iThreatRange, iClosestThreatRange = 1500;
 //	INT16 sClosestThreatGridno = NOWHERE;
 	INT32	iMyThreatValue;
-	INT32	sThreatLoc;
-	INT32 iMaxThreatRange;
+	//INT32	sThreatLoc;
+	//INT32 iMaxThreatRange;
 	UINT32	uiThreatCnt = 0;
 	INT32 iMaxMoveTilesLeft, iSearchRange, iRoamRange;
 	INT16	sMaxLeft, sMaxRight, sMaxUp, sMaxDown, sXOffset, sYOffset;
@@ -641,7 +640,7 @@ INT32 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 	INT32	*		pusLastLoc;
 	INT8 *		pbPersOL;
 	INT8 *		pbPublOL;
-	SOLDIERTYPE *pOpponent;
+	//SOLDIERTYPE *pOpponent;
 	UINT16 usMovementMode;
 
 	UINT8	ubBackgroundLightLevel;
@@ -787,7 +786,7 @@ INT32 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 		// sevenfm: sight test
 		if( gGameExternalOptions.fAIBetterCover )
 		{
-			if ( LocationToLocationLineOfSightTest( Threat[uiLoop].sGridNo, Threat[uiLoop].pOpponent->pathing.bLevel, pSoldier->sGridNo, pSoldier->pathing.bLevel, TRUE, DAY_VISION_RANGE * 2, STANDING_LOS_POS, PRONE_LOS_POS ) )
+			if ( LocationToLocationLineOfSightTest( Threat[uiLoop].sGridNo, Threat[uiLoop].pOpponent->pathing.bLevel, pSoldier->sGridNo, pSoldier->pathing.bLevel, TRUE, MAX_VISION_RANGE, STANDING_LOS_POS, PRONE_LOS_POS ) )
 			//if ( SoldierToVirtualSoldierLineOfSightTest( Threat[uiLoop].pOpponent, pSoldier->sGridNo, pSoldier->pathing.bLevel, ANIM_PRONE, TRUE, NO_DISTANCE_LIMIT ) )
 			{
 				fProneCover = FALSE;
@@ -1053,7 +1052,7 @@ INT32 FindBestNearbyCover(SOLDIERTYPE *pSoldier, INT32 morale, INT32 *piPercentB
 				// sevenfm: sight test
 				if( gGameExternalOptions.fAIBetterCover )
 				{
-					if ( LocationToLocationLineOfSightTest( Threat[uiLoop].sGridNo, Threat[uiLoop].pOpponent->pathing.bLevel, sGridNo, pSoldier->pathing.bLevel, TRUE, DAY_VISION_RANGE * 2, STANDING_LOS_POS, PRONE_LOS_POS ) )
+					if ( LocationToLocationLineOfSightTest( Threat[uiLoop].sGridNo, Threat[uiLoop].pOpponent->pathing.bLevel, sGridNo, pSoldier->pathing.bLevel, TRUE, MAX_VISION_RANGE, STANDING_LOS_POS, PRONE_LOS_POS ) )
 					//if ( SoldierToVirtualSoldierLineOfSightTest( Threat[uiLoop].pOpponent, sGridNo, pSoldier->pathing.bLevel, ANIM_PRONE, TRUE, -1 ) != 0 )
 					{
 						fProneCover = FALSE;
@@ -2773,19 +2772,25 @@ INT32 FindFlankingSpot(SOLDIERTYPE *pSoldier, INT32 sPos, INT8 bAction )
 			}
 
 			// sevenfm: penalize locations too far from noise gridno
-			if (PythSpacesAway(sGridNo, sPos) > MAX_FLANK_DIST_RED)
+			if (PythSpacesAway(sGridNo, sPos) > MAX_FLANK_DIST_RED - 5)
 			{
 				sTempDist = sTempDist / 2;
 			}
 
-			// sevenfm: try to flank closer to vision distance limit for faster flanking
-			if (PythSpacesAway(sGridNo, sPos) > sDistanceVisible + 10)
+			// avoid moving too far from noise gridno
+			if (PythSpacesAway(sGridNo, sPos) > MAX_FLANK_DIST_RED && pSoldier->aiData.bAttitude != CUNNINGSOLO)
+			{
+				continue;
+			}
+
+			// sevenfm: avoid moving too close to enemy vision range
+			if (PythSpacesAway(sGridNo, sPos) < sDistanceVisible + 5)
 			{
 				sTempDist = sTempDist / 2;
 			}
 
 			// sevenfm: penalize locations with no sight cover from noise gridno (supposed that we are sneaking)
-			if( //PythSpacesAway( sGridNo, sPos) <= sDistanceVisible &&
+			if( PythSpacesAway( sGridNo, sPos) <= (INT16)MAX_VISION_RANGE &&
 				LocationToLocationLineOfSightTest( sGridNo, pSoldier->pathing.bLevel, sPos, pSoldier->pathing.bLevel, TRUE, CALC_FROM_ALL_DIRS) )
 			{
 				//continue;
@@ -3329,7 +3334,7 @@ INT32 FindAdvanceSpot(SOLDIERTYPE *pSoldier, INT32 sTargetSpot, INT8 bAction, UI
 			}
 
 			// skip locations too close to target spot
-			if (PythSpacesAway(sGridNo, sTargetSpot) < (INT16)(DAY_VISION_RANGE / 4))
+			if (PythSpacesAway(sGridNo, sTargetSpot) < (INT16)(TACTICAL_RANGE / 4))
 			{
 				continue;
 			}
@@ -3613,7 +3618,7 @@ INT32 FindRetreatSpot(SOLDIERTYPE *pSoldier)
 			// skip if too close to enemy
 			//sClosestOpponent = ClosestKnownOpponent(pSoldier, NULL, NULL);
 			sDistance = PythSpacesAway(sGridNo, sClosestOpponent);
-			if (sDistance < (INT16)(DAY_VISION_RANGE / 2))
+			if (sDistance < (INT16)(TACTICAL_RANGE / 2))
 			{
 				continue;
 			}

@@ -1237,8 +1237,8 @@ INT32 ClosestReachableDisturbance(SOLDIERTYPE *pSoldier, BOOLEAN * pfChangeLevel
 			continue;
 		}
 
-		// sevenfm: zombies do not attack vehicles
-		if (pSoldier->IsZombie() && (ARMED_VEHICLE(pOpponent) || (pOpponent->flags.uiStatusFlags & SOLDIER_VEHICLE)))
+		// sevenfm: zombies do not attack vehicles (rftr: or robots)
+		if (pSoldier->IsZombie() && (AM_A_ROBOT(pOpponent) || ENEMYROBOT(pOpponent) || ARMED_VEHICLE(pOpponent) || (pOpponent->flags.uiStatusFlags & SOLDIER_VEHICLE)))
 		{
 			continue;
 		}
@@ -1818,7 +1818,16 @@ INT32 ClosestUnDisguisedPC( SOLDIERTYPE *pSoldier, INT32 * psDistance )
 
 INT32 FindClosestClimbPointAvailableToAI( SOLDIERTYPE * pSoldier, INT32 sStartGridNo, INT32 sDesiredGridNo, BOOLEAN fClimbUp )
 {
-	INT32 sGridNo;
+	// sevenfm: safety check
+	if (!pSoldier)
+	{
+		return NOWHERE;
+	}
+
+	// sevenfm: don't check roaming range
+	return FindClosestClimbPoint(pSoldier, sStartGridNo, sDesiredGridNo, fClimbUp);
+
+	/*INT32 sGridNo;
 	INT32	sRoamingOrigin;
 	INT16	sRoamingRange;
 
@@ -1845,7 +1854,7 @@ INT32 FindClosestClimbPointAvailableToAI( SOLDIERTYPE * pSoldier, INT32 sStartGr
 	else
 	{
 		return( sGridNo );
-	}
+	}*/
 }
 
 BOOLEAN ClimbingNecessary( SOLDIERTYPE * pSoldier, INT32 sDestGridNo, INT8 bDestLevel )
@@ -1913,8 +1922,10 @@ INT16 EstimatePathCostToLocation( SOLDIERTYPE * pSoldier, INT32 sDestGridNo, INT
 		{
 			// on ground or same building... normal!
 			sPathCost = EstimatePlotPath( pSoldier, sDestGridNo, FALSE, FALSE, FALSE, WALKING, FALSE, FALSE, 0);
-			*pfClimbingNecessary = FALSE;
-			*psClimbGridNo = NOWHERE;
+			if (pfClimbingNecessary)
+				*pfClimbingNecessary = FALSE;
+			if (psClimbGridNo)
+				*psClimbGridNo = NOWHERE;
 		}
 		else
 		{
@@ -1945,8 +1956,10 @@ INT16 EstimatePathCostToLocation( SOLDIERTYPE * pSoldier, INT32 sDestGridNo, INT
 						// add in an estimate of getting there after climbing down, *but not on top of roof*
 						sPathCost += (APBPConstants[AP_MOVEMENT_FLAT] + APBPConstants[AP_MODIFIER_WALK]) * PythSpacesAway( sClimbGridNo, sDestGridNo ) / 2;
 					}
-					*pfClimbingNecessary = TRUE;
-					*psClimbGridNo = sClimbGridNo;
+					if (pfClimbingNecessary)
+						*pfClimbingNecessary = TRUE;
+					if (psClimbGridNo)
+						*psClimbGridNo = sClimbGridNo;
 				}
 			}
 		}
@@ -2001,8 +2014,10 @@ INT16 EstimatePathCostToLocation( SOLDIERTYPE * pSoldier, INT32 sDestGridNo, INT
 					// estimate walk cost
 					sPathCost += (APBPConstants[AP_MOVEMENT_FLAT] + APBPConstants[AP_MODIFIER_WALK]) * PythSpacesAway( sClimbGridNo, sDestGridNo );
 				}
-				*pfClimbingNecessary = TRUE;
-				*psClimbGridNo = sClimbGridNo;
+				if (pfClimbingNecessary)
+					*pfClimbingNecessary = TRUE;
+				if (psClimbGridNo)
+					*psClimbGridNo = sClimbGridNo;
 			}
 		}
 	}
@@ -2246,7 +2261,7 @@ BOOLEAN InWaterGasOrSmoke( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 BOOLEAN InGasOrSmoke( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 {
 	// smoke
-	if ( gpWorldLevelData[sGridNo].ubExtFlags[pSoldier->pathing.bLevel] & (MAPELEMENT_EXT_SMOKE | MAPELEMENT_EXT_SIGNAL_SMOKE | MAPELEMENT_EXT_DEBRIS_SMOKE) )
+	if ( gpWorldLevelData[sGridNo].ubExtFlags[pSoldier->pathing.bLevel] & (MAPELEMENT_EXT_SMOKE | MAPELEMENT_EXT_SIGNAL_SMOKE | MAPELEMENT_EXT_DEBRIS_SMOKE | MAPELEMENT_EXT_FIRERETARDANT_SMOKE ) )
 		return TRUE;
 
 	return InGas(pSoldier,sGridNo);
@@ -3016,6 +3031,7 @@ UINT8 SoldierDifficultyLevel( SOLDIERTYPE * pSoldier )
 			bDifficulty = bDifficultyBase;
 			break;
 
+		case SOLDIER_CLASS_ROBOT:
 		case SOLDIER_CLASS_ELITE:
 			bDifficulty = bDifficultyBase + 1;
 			break;
@@ -3461,7 +3477,7 @@ UINT8 GetClosestFlaggedSoldierID( SOLDIERTYPE * pSoldier, INT16 aRange, UINT8 au
 			continue;
 
 		// this is not for tanks
-		if ( ARMED_VEHICLE( pFriend ) )
+		if ( ARMED_VEHICLE( pFriend ) || ENEMYROBOT( pFriend ))
 			continue;
 		
 		// skip if this guy is dead
@@ -3514,7 +3530,7 @@ UINT8 GetClosestWoundedSoldierID( SOLDIERTYPE * pSoldier, INT16 aRange, UINT8 au
 			continue;
 
 		// this is not for tanks
-		if ( ARMED_VEHICLE( pFriend ) )
+		if ( ARMED_VEHICLE( pFriend ) || ENEMYROBOT( pFriend ) )
 			continue;
 		
 		// skip if this guy is dead, or not wounded (enough)
@@ -3563,7 +3579,7 @@ UINT8 GetClosestMedicSoldierID( SOLDIERTYPE * pSoldier, INT16 aRange, UINT8 auTe
 			continue;
 
 		// this is not for tanks
-		if ( ARMED_VEHICLE( pFriend ) )
+		if ( ARMED_VEHICLE( pFriend ) || ENEMYROBOT( pFriend ) )
 			continue;
 
 		// skip this guy if he is dead or unconscious
@@ -3908,11 +3924,14 @@ INT8 CalcMoraleNew(SOLDIERTYPE *pSoldier)
 		bMoraleCategory++;
 	}
 
-	// limit AI morale depending on morale and suppression shock
-	if( pSoldier->aiData.bShock )
-	{
-		bMoraleCategory = min(bMoraleCategory, (20 + pSoldier->aiData.bMorale - 20 * min(3, pSoldier->aiData.bShock / 5)) / 20);
-	}
+	// limit AI morale when soldier is under heavy fire
+	/*if (pSoldier->ShockLevelPercent() > 75)
+		bMoraleCategory = min(bMoraleCategory, MORALE_NORMAL);
+	else if (pSoldier->ShockLevelPercent() > 50)
+		bMoraleCategory = min(bMoraleCategory, MORALE_CONFIDENT);*/
+
+	// limit AI morale depending on morale and shock level
+	bMoraleCategory = min(bMoraleCategory, max(MORALE_WORRIED, ((pSoldier->aiData.bOrders == SEEKENEMY ? pSoldier->aiData.bMorale + 20 : pSoldier->aiData.bMorale) * 100 / (100 + pSoldier->ShockLevelPercent())) / 20));
 
 	// prevent hopeless morale when not under attack
 	if (bMoraleCategory == MORALE_HOPELESS && !pSoldier->aiData.bUnderFire)
@@ -3920,13 +3939,51 @@ INT8 CalcMoraleNew(SOLDIERTYPE *pSoldier)
 		bMoraleCategory = MORALE_WORRIED;
 	}
 
-	// if adjustments made it outside the allowed limits
-	if (bMoraleCategory < MORALE_HOPELESS)
-		bMoraleCategory = MORALE_HOPELESS;
-	else if (bMoraleCategory > MORALE_FEARLESS)
-		bMoraleCategory = MORALE_FEARLESS;
+	// check limits
+	bMoraleCategory = max(bMoraleCategory, MORALE_HOPELESS);
+	bMoraleCategory = min(bMoraleCategory, MORALE_FEARLESS);
 
 	return(bMoraleCategory);
+}
+
+BOOLEAN AICheckSpecialRole(SOLDIERTYPE *pSoldier)
+{
+	if (AICheckIsSniper(pSoldier) || AICheckIsMachinegunner(pSoldier) || AICheckIsMortarOperator(pSoldier) || AICheckIsRadioOperator(pSoldier) || AICheckIsCommander(pSoldier))
+		return TRUE;
+
+	return FALSE;
+}
+
+BOOLEAN WeAttack(INT8 bTeam)
+{
+	if (bTeam >= MAXTEAMS)
+	{
+		return FALSE;
+	}
+
+	if (bTeam != ENEMY_TEAM)
+	{
+		return FALSE;
+	}
+
+	// check that every soldier has SEEKENEMY order
+	SOLDIERTYPE * pFriend;
+
+	// Run through each friendly.
+	for (UINT8 iCounter = gTacticalStatus.Team[bTeam].bFirstID; iCounter <= gTacticalStatus.Team[bTeam].bLastID; iCounter++)
+	{
+		pFriend = MercPtrs[iCounter];
+
+		if (pFriend &&
+			pFriend->bActive &&
+			pFriend->stats.bLife >= OKLIFE &&
+			pFriend->aiData.bOrders != SEEKENEMY)
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 UINT8 CountNearbyFriendsLastAttackHit( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubDistance )
@@ -4071,7 +4128,7 @@ UINT8 CountFriendsBlack( SOLDIERTYPE *pSoldier, INT32 sClosestOpponent )
 			//sFriendClosestOpponent = ClosestKnownOpponent( pFriend, NULL, NULL );
 			sFriendClosestOpponent = ClosestSeenOpponent( pFriend, NULL, NULL );
 			if(!TileIsOutOfBounds(sFriendClosestOpponent) &&
-				PythSpacesAway( sClosestOpponent, sFriendClosestOpponent ) < (INT16)DAY_VISION_RANGE / 4 &&
+				PythSpacesAway( sClosestOpponent, sFriendClosestOpponent ) < (INT16)TACTICAL_RANGE / 4 &&
 				pFriend->aiData.bAlertStatus == STATUS_BLACK &&
 				pFriend->stats.bLife > pFriend->stats.bLifeMax / 2 &&
 				( GetNearestRottingCorpseAIWarning( pFriend->sGridNo ) == 0 && !InLightAtNight(pFriend->sGridNo, pFriend->pathing.bLevel) ||
@@ -4191,7 +4248,7 @@ BOOLEAN ProneSightCoverAtSpot(SOLDIERTYPE *pSoldier, INT32 sSpot, BOOLEAN fUnlim
 		else
 		{
 			gbForceWeaponReady = true;
-			iDistanceVisible = DistanceVisible(pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sSpot, pSoldier->pathing.bLevel, CoweringShockLevel(pSoldier), GetPercentTunnelVision(pSoldier));
+			iDistanceVisible = DistanceVisible(pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sSpot, pSoldier->pathing.bLevel, pSoldier->IsCowering(), GetPercentTunnelVision(pSoldier));
 			gbForceWeaponReady = false;
 			//iDistanceVisible = pSoldier->GetMaxDistanceVisible(sSpot, pSoldier->pathing.bLevel, CALC_FROM_WANTED_DIR);
 		}
@@ -4281,7 +4338,7 @@ BOOLEAN SightCoverAtSpot(SOLDIERTYPE *pSoldier, INT32 sSpot, BOOLEAN fUnlimited)
 		else
 		{
 			gbForceWeaponReady = true;
-			iDistanceVisible = DistanceVisible(pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sSpot, pSoldier->pathing.bLevel, CoweringShockLevel(pSoldier), GetPercentTunnelVision(pSoldier));
+			iDistanceVisible = DistanceVisible(pSoldier, DIRECTION_IRRELEVANT, DIRECTION_IRRELEVANT, sSpot, pSoldier->pathing.bLevel, pSoldier->IsCowering(), GetPercentTunnelVision(pSoldier));
 			gbForceWeaponReady = false;
 			//iDistanceVisible = pSoldier->GetMaxDistanceVisible(sSpot, pSoldier->pathing.bLevel, CALC_FROM_WANTED_DIR);
 		}		
@@ -4462,7 +4519,7 @@ UINT8 RedSmokeDanger(INT32 sGridNo, INT8 bLevel)
 	UINT32	uiCnt;
 	INT32	sDist;
 	INT32	sClosestDist;
-	INT32	sMaxDist = min(gSkillTraitValues.usVOMortarRadius, DAY_VISION_RANGE);
+	INT32	sMaxDist = min(gSkillTraitValues.usVOMortarRadius, TACTICAL_RANGE);
 	INT32	sClosestSmoke = NOWHERE;
 	UINT8	ubDangerPercent = 0;
 
@@ -4854,7 +4911,8 @@ BOOLEAN SoldierAI(SOLDIERTYPE *pSoldier)
 		pSoldier->flags.uiStatusFlags & SOLDIER_BOXER ||
 		ARMED_VEHICLE(pSoldier) ||
 		pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE ||
-		AM_A_ROBOT(pSoldier))
+		AM_A_ROBOT(pSoldier) ||
+		ENEMYROBOT(pSoldier))
 		return FALSE;
 
 	return TRUE;
@@ -4967,7 +5025,7 @@ BOOLEAN AICheckIsSniper(SOLDIERTYPE *pSoldier)
 	return FALSE;
 	}*/
 
-	if ((AIGunRange(pSoldier) > DAY_VISION_RANGE || AICheckHasWeaponOfType(pSoldier, GUN_SN_RIFLE)) &&
+	if ((AIGunRange(pSoldier) > TACTICAL_RANGE || AICheckHasWeaponOfType(pSoldier, GUN_SN_RIFLE)) &&
 		AIGunScoped(pSoldier) &&
 		pSoldier->stats.bMarksmanship > 90 &&
 		gGameOptions.fNewTraitSystem &&
@@ -5000,7 +5058,7 @@ BOOLEAN AICheckIsMarksman(SOLDIERTYPE *pSoldier)
 		return FALSE;
 	}
 
-	if (AIGunRange(pSoldier) >= DAY_VISION_RANGE &&
+	if (AIGunRange(pSoldier) >= TACTICAL_RANGE &&
 		(AIGunScoped(pSoldier) || pSoldier->stats.bMarksmanship > 90 || gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT(pSoldier, SNIPER_NT)))
 	{
 		return TRUE;
@@ -5589,7 +5647,7 @@ BOOLEAN AICheckShortWeaponRange(SOLDIERTYPE *pSoldier)
 		return TRUE;
 	}
 
-	if (AIGunRange(pSoldier) < DAY_VISION_RANGE / 2)
+	if (AIGunRange(pSoldier) < TACTICAL_RANGE / 2)
 	{
 		return TRUE;
 	}

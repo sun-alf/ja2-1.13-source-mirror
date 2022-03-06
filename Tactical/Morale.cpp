@@ -170,7 +170,19 @@ INT8 GetMoraleModifier( SOLDIERTYPE * pSoldier )
 {
 	INT8 morale = 0;
 
-	if (pSoldier->flags.uiStatusFlags & SOLDIER_PC)
+	// sevenfm: use bMorale for both player and AI
+	if (pSoldier->aiData.bMorale > 50)
+	{
+		// give +1 at 55, +3 at 65, up to +5 at 95 and above
+		morale = (pSoldier->aiData.bMorale - 45) / 10;
+	}
+	else
+	{
+		// give penalties down to -20 at 0 (-2 at 45, -4 by 40...)
+		morale = (pSoldier->aiData.bMorale - 50) * 2 / 5;
+	}
+
+	/*if (pSoldier->flags.uiStatusFlags & SOLDIER_PC)
 	{
 		if (pSoldier->aiData.bMorale > 50)
 		{
@@ -199,7 +211,7 @@ INT8 GetMoraleModifier( SOLDIERTYPE * pSoldier )
 			default:
 				morale = 0;
 		}
-	}
+	}*/
 
 	// Flugente: morale modifiers
 	morale = max( morale, morale * pSoldier->GetMoraleModifier( ) );
@@ -326,15 +338,18 @@ void DecayTacticalMoraleModifiers( void )
 						else
 						{
 							// alone, no recovery... in fact, if tact morale is high, decay
-							if ( !(pSoldier->usQuoteSaidFlags & SOLDIER_QUOTE_SAID_PERSONALITY) )
+							if (!(pSoldier->usQuoteSaidFlags & SOLDIER_QUOTE_SAID_PERSONALITY))
 							{
-								TacticalCharacterDialogue( pSoldier, QUOTE_PERSONALITY_TRAIT );
+								TacticalCharacterDialogue(pSoldier, QUOTE_PERSONALITY_TRAIT);
 								pSoldier->usQuoteSaidFlags |= SOLDIER_QUOTE_SAID_PERSONALITY;
 							}
-							HandleMoraleEvent( pSoldier, MORALE_NERVOUS_ALONE, pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ );
+							HandleMoraleEvent(pSoldier, MORALE_NERVOUS_ALONE, pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->bSectorZ);
 
 							// Flugente: dynamic opinions
-							HandleDynamicOpinionChange( pSoldier, OPINIONEVENT_ANNOYINGDISABILITY, TRUE, TRUE );
+							if (gGameExternalOptions.fDynamicOpinions)
+							{
+								HandleDynamicOpinionChange(pSoldier, OPINIONEVENT_ANNOYINGDISABILITY, TRUE, TRUE);
+							}
 						}
 					}
 				}
@@ -791,8 +806,10 @@ void HandleMoraleEvent( SOLDIERTYPE *pSoldier, INT8 bMoraleEvent, INT16 sMapX, I
 				{
 					// CJC: adding to SOLDIER_IN_SECTOR check special stuff because the old sector values might
 					// be appropriate (because in transit going out of that sector!)
-
-					if ( SOLDIER_IN_SECTOR( pTeamSoldier, sMapX, sMapY, bMapZ ) || (pTeamSoldier->flags.fBetweenSectors && SECTORX( pTeamSoldier->ubPrevSectorID ) == sMapX && SECTORY( pTeamSoldier->ubPrevSectorID ) == sMapY && (pTeamSoldier->bSectorZ == bMapZ)) )
+					// sevenfm: improved check
+					//if ( SOLDIER_IN_SECTOR( pTeamSoldier, sMapX, sMapY, bMapZ ) || (pTeamSoldier->flags.fBetweenSectors && SECTORX( pTeamSoldier->ubPrevSectorID ) == sMapX && SECTORY( pTeamSoldier->ubPrevSectorID ) == sMapY && (pTeamSoldier->bSectorZ == bMapZ)) )
+					if (pTeamSoldier->bInSector ||
+						pTeamSoldier->flags.fBetweenSectors && pTeamSoldier->sSectorX == gWorldSectorX && pTeamSoldier->sSectorY == gWorldSectorY && pTeamSoldier->bSectorZ == gbWorldSectorZ)
 					{
 						if ( gGameOptions.fNewTraitSystem )
 						{
@@ -834,7 +851,8 @@ void HandleMoraleEvent( SOLDIERTYPE *pSoldier, INT8 bMoraleEvent, INT16 sMapX, I
 					// SANDRO - Assertive people don't care about actions of others
 					else if ( !gGameOptions.fNewTraitSystem || !DoesMercHavePersonality( pTeamSoldier, CHAR_TRAIT_ASSERTIVE ) )
 					{
-						HandleMoraleEventForSoldier( pTeamSoldier, MORALE_HEARD_BATTLE_LOST );
+						// sevenfm: no MORALE_HEARD_BATTLE_LOST penalty fpr running from battle
+						//HandleMoraleEventForSoldier( pTeamSoldier, MORALE_HEARD_BATTLE_LOST );
 					}
 				}
 			}
@@ -1079,6 +1097,8 @@ void HandleMoraleEvent( SOLDIERTYPE *pSoldier, INT8 bMoraleEvent, INT16 sMapX, I
 			ModifyPlayerReputation(REPUTATION_BATTLE_WON);
 			break;
 		case MORALE_RAN_AWAY:
+			// sevenfm: no reputation loss when retreating from battle
+			break;
 		case MORALE_HEARD_BATTLE_LOST:
 			ModifyPlayerReputation(REPUTATION_BATTLE_LOST);
 			break;
@@ -1523,7 +1543,10 @@ void HandleSnitchesReports( std::vector<SnitchEvent>& aVec )
 					event2.ubEventType = NUM_SNITCH_EVENTS;
 
 					// Flugente: dynamic opinions
-					AddOpinionEvent( event2.ubTargetProfile, pSnitch->ubProfile, OPINIONEVENT_SNITCHSOLDMEOUT );
+					if (gGameExternalOptions.fDynamicOpinions)
+					{
+						AddOpinionEvent(event2.ubTargetProfile, pSnitch->ubProfile, OPINIONEVENT_SNITCHSOLDMEOUT);
+					}
 				}
 			}
 

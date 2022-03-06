@@ -23,6 +23,7 @@
 	#include "overhead map.h"
 	#include "DropDown.h"		// added by Flugente
 	#include "Utilities.h"		// added by Flugente for FilenameForBPP(...)
+	#include "FeaturesScreen.h"
 #endif
 
 #define		MSGBOX_DEFAULT_WIDTH							300
@@ -197,6 +198,19 @@ INT32 DoMessageBox( UINT8 ubStyle, const STR16 zString, UINT32 uiExitScreen, UIN
 
 			break;
 
+		case 	MSG_BOX_MINIEVENT_STYLE:
+
+			ubMercBoxBackground = DIALOG_MERC_POPUP_BACKGROUND;
+			ubMercBoxBorder			= DIALOG_MERC_POPUP_BORDER;
+
+			// Add button images
+			gMsgBox.iButtonImages			= LoadButtonImage( "INTERFACE\\msgboxbuttonwide.sti", -1,0,-1,1,-1 );
+			ubFontColor	= FONT_MCOLOR_WHITE;
+			ubFontShadowColor = DEFAULT_SHADOW;
+			usCursor = CURSOR_NORMAL;
+
+			break;
+
 		default:
 			ubMercBoxBackground = BASIC_MERC_POPUP_BACKGROUND;
 			ubMercBoxBorder			= BASIC_MERC_POPUP_BORDER;
@@ -265,6 +279,14 @@ INT32 DoMessageBox( UINT8 ubStyle, const STR16 zString, UINT32 uiExitScreen, UIN
 	if( usFlags & MSG_BOX_FLAG_GENERIC_EIGHT_BUTTONS && ubStyle == MSG_BOX_BASIC_MEDIUM_BUTTONS )
 	{
 		usMBWidth = MSGBOX_BUTTON_WIDTH * 4;
+		bFixedWidth = TRUE;
+	}
+	
+	// rftr - bigger msg box. I guess these max out the box?
+	if (usFlags & MSG_BOX_FLAG_BIGGER)
+	{
+		heightincrease = 140;
+		usMBWidth = MSGBOX_BUTTON_WIDTH * 5;
 		bFixedWidth = TRUE;
 	}
 
@@ -873,6 +895,31 @@ INT32 DoMessageBox( UINT8 ubStyle, const STR16 zString, UINT32 uiExitScreen, UIN
 			ForceButtonUnDirty( gMsgBox.uiNOButton );
 		}
 
+		if (usFlags & MSG_BOX_FLAG_WIDE_BUTTONS)
+		{
+			sButtonX = 10;//usTextBoxWidth - (MSGBOX_BUTTON_WIDTH + MSGBOX_BUTTON_WIDTH + MSGBOX_BUTTON_X_SEP);
+			sButtonY = usTextBoxHeight - 10;
+
+			gMsgBox.uiYESButton = CreateIconAndTextButton( gMsgBox.iButtonImages, gzUserDefinedButton1, FONT12ARIAL,
+															ubFontColor, ubFontShadowColor,
+															ubFontColor, ubFontShadowColor,
+															TEXT_LJUSTIFIED,
+															(INT16)(gMsgBox.sX + sButtonX ), (INT16)(gMsgBox.sY + sButtonY - 5 - MSGBOX_BUTTON_HEIGHT * 2 ), BUTTON_TOGGLE ,MSYS_PRIORITY_HIGHEST,
+															DEFAULT_MOVE_CALLBACK, (GUI_CALLBACK)YESMsgBoxCallback );
+			SetButtonCursor(gMsgBox.uiYESButton, usCursor);
+			ForceButtonUnDirty( gMsgBox.uiYESButton );
+
+
+			gMsgBox.uiNOButton = CreateIconAndTextButton( gMsgBox.iButtonImages, gzUserDefinedButton2, FONT12ARIAL,
+															ubFontColor, ubFontShadowColor,
+															ubFontColor, ubFontShadowColor,
+															TEXT_LJUSTIFIED,
+															(INT16)(gMsgBox.sX + sButtonX ), (INT16)(gMsgBox.sY + sButtonY - MSGBOX_BUTTON_HEIGHT ), BUTTON_TOGGLE ,MSYS_PRIORITY_HIGHEST,
+															DEFAULT_MOVE_CALLBACK, (GUI_CALLBACK)NOMsgBoxCallback );
+			SetButtonCursor(gMsgBox.uiNOButton, usCursor);
+			ForceButtonUnDirty( gMsgBox.uiNOButton );
+		}
+
 		if ( usFlags & MSG_BOX_FLAG_YESNOLIE )
 		{
 			sButtonX = ( usTextBoxWidth - ( MSGBOX_BUTTON_WIDTH + MSGBOX_BUTTON_WIDTH + MSGBOX_BUTTON_X_SEP ) ) / 3;
@@ -1263,6 +1310,12 @@ UINT32	ExitMsgBox( INT8 ubExitCode )
 			RemoveButton( gMsgBox.uiYESButton );
 			RemoveButton( gMsgBox.uiNOButton );
 		}
+
+		if ( gMsgBox.usFlags & MSG_BOX_FLAG_WIDE_BUTTONS )
+		{
+			RemoveButton( gMsgBox.uiYESButton );
+			RemoveButton( gMsgBox.uiNOButton );
+		}
 	}
 
 	if ( gMsgBox.usFlags & MSG_BOX_FLAG_IMAGE )
@@ -1521,6 +1574,12 @@ UINT32	MessageBoxScreenHandle( )
 			MarkAButtonDirty( gMsgBox.uiNOButton );
 		}
 
+		if ( gMsgBox.usFlags & MSG_BOX_FLAG_WIDE_BUTTONS )
+		{
+			MarkAButtonDirty( gMsgBox.uiYESButton );
+			MarkAButtonDirty( gMsgBox.uiNOButton );
+		}
+
 
 		RenderMercPopUpBoxFromIndex( gMsgBox.iBoxId, gMsgBox.sX, gMsgBox.sY,	FRAME_BUFFER );
 		//gMsgBox.fRenderBox = FALSE;
@@ -1545,10 +1604,15 @@ UINT32	MessageBoxScreenHandle( )
 		{
 			if( ( InputEvent.usParam == ESC ) || ( InputEvent.usParam == 'n') )
 			{
-				if ( gMsgBox.usFlags & MSG_BOX_FLAG_YESNO )
+				if ( gMsgBox.usFlags & MSG_BOX_FLAG_YESNO || gMsgBox.usFlags & MSG_BOX_FLAG_OKSKIP)
 				{
-						// Exit messagebox
-						gMsgBox.bHandled = MSG_BOX_RETURN_NO;
+					// Exit messagebox
+					gMsgBox.bHandled = MSG_BOX_RETURN_NO;
+				}
+				else if (gMsgBox.usFlags & MSG_BOX_FLAG_OK)
+				{
+					// Exit messagebox
+					gMsgBox.bHandled = MSG_BOX_RETURN_OK;
 				}
 				//OJW - 20090208 - Input Box
 				else if( gMsgBox.usFlags & MSG_BOX_FLAG_INPUTBOX )
@@ -1556,6 +1620,11 @@ UINT32	MessageBoxScreenHandle( )
 					// Exit messagebox
 					gMsgBox.bHandled = MSG_BOX_RETURN_NO;
 					memset(gszMsgBoxInputString,0,sizeof(CHAR16)*255);
+				}
+				//shadooow - 20210515 - allowing to escape from our custom multibutton message boxes
+				else if (gMsgBox.usFlags & MSG_BOX_FLAG_GENERIC_FOUR_BUTTONS || gMsgBox.usFlags & MSG_BOX_FLAG_GENERIC_EIGHT_BUTTONS || gMsgBox.usFlags & MSG_BOX_FLAG_GENERIC_SIXTEEN_BUTTONS)
+				{
+					gMsgBox.bHandled = 99;
 				}
 			}
 
@@ -1566,7 +1635,7 @@ UINT32	MessageBoxScreenHandle( )
 					// Exit messagebox
 					gMsgBox.bHandled = MSG_BOX_RETURN_YES;
 				}
-				else if( gMsgBox.usFlags & MSG_BOX_FLAG_OK )
+				else if( gMsgBox.usFlags & MSG_BOX_FLAG_OK || gMsgBox.usFlags & MSG_BOX_FLAG_OKSKIP)
 				{
 					// Exit messagebox
 					gMsgBox.bHandled = MSG_BOX_RETURN_OK;
@@ -1588,7 +1657,7 @@ UINT32	MessageBoxScreenHandle( )
 
 			if( InputEvent.usParam == 'o' )
 			{
-				if( gMsgBox.usFlags & MSG_BOX_FLAG_OK )
+				if( gMsgBox.usFlags & MSG_BOX_FLAG_OK || gMsgBox.usFlags & MSG_BOX_FLAG_OKSKIP)
 				{
 					// Exit messagebox
 					gMsgBox.bHandled = MSG_BOX_RETURN_OK;
@@ -1715,6 +1784,11 @@ UINT32	MessageBoxScreenShutdown(	)
 	return( FALSE );
 }
 
+void DoScreenIndependantMessageBoxFullScreen( const STR16 zString, UINT32 usFlags, MSGBOX_CALLBACK ReturnCallback )
+{
+	SGPRect CenteringRect= {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
+	DoScreenIndependantMessageBoxWithRect(	zString, usFlags, ReturnCallback, &CenteringRect );
+}
 
 // a basic box that don't care what screen we came from
 void DoScreenIndependantMessageBox( const STR16 zString, UINT32 usFlags, MSGBOX_CALLBACK ReturnCallback )
@@ -1780,6 +1854,11 @@ void DoScreenIndependantMessageBoxWithRect( const STR16 zString, UINT32 usFlags,
 	else if( guiCurrentScreen == OPTIONS_SCREEN )
 	{
 		DoOptionsMessageBoxWithRect( MSG_BOX_BASIC_STYLE, zString, OPTIONS_SCREEN, usFlags, ReturnCallback, pCenteringRect );
+	}
+
+	else if( guiCurrentScreen == FEATURES_SCREEN )
+	{
+		FeaturesScreen::DoMessageBoxWithRect( MSG_BOX_BASIC_STYLE, zString, FEATURES_SCREEN, usFlags, ReturnCallback, pCenteringRect );
 	}
 
 	// Tactical

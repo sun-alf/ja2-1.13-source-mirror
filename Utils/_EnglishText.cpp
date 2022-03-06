@@ -2480,6 +2480,7 @@ STR16 pAssignmentStrings[] =
 	L"Burial",
 	L"Admin",
 	L"Explore",
+	L"Event"// rftr: merc is on a mini event
 };
 
 
@@ -2798,6 +2799,7 @@ STR16 pMilitiaControlMenuStrings[] =
 	L"Get down",
 	L"Crouch",
 	L"Take cover",
+	L"Move to",
 	L"All: Attack",
 	L"All: Hold Position",
 	L"All: Retreat",
@@ -3498,7 +3500,7 @@ STR16 gpStrategicString[] =
 	//Various strings (translate word for word)
 
 	L"Sector",
-	L"Choose entry positions",
+	L"Choose entry positions (use arrow keys to scroll map)",
 
 	//Strings used for various popup message boxes.  Can be as long as desired.
 
@@ -3536,6 +3538,7 @@ STR16 gpStrategicString[] =
 	L"Militia cannot move here (RESTRICT_ROAMING = TRUE).",
 	L"War room isn't staffed - militia move aborted!",
 
+	L"Robot",								//STR_AR_ROBOT_NAME,
 	L"Tank",								//STR_AR_TANK_NAME,
 	L"Jeep",								//STR_AR_JEEP_NAME,
 
@@ -4058,6 +4061,7 @@ CHAR16 TacticalStr[][ MED_STRING_LENGTH ] =
 	L"Offer surrender",
 	L"Distract",
 	L"Talk",
+	L"Recruit Turncoat",
 
     // added by sevenfm: disarm messagebox options, messages when arming wrong bomb
     L"Disarm trap",
@@ -4371,6 +4375,7 @@ STR16 pMovementMenuStrings[] =
 	L"Plot Travel Route", 		// done with movement menu, start plotting movement
 	L"Cancel", 		// cancel this menu
 	L"Other",		// title for group of mercs not on squads nor in vehicles
+	L"Select all",		// Select all squads
 };
 
 
@@ -4635,6 +4640,8 @@ STR16 pTransactionText[] =
 	L"SAM site repair", // Flugente: SAM repair
 	L"Trained workers", // Flugente: train workers
 	L"Drill militia in %s",	// Flugente: drill militia
+	L"Mini event", // rftr: mini events
+	L"Funds transferred from rebel command", // rftr: rebel command
 };
 
 STR16 pTransactionAlternateText[] =
@@ -5087,6 +5094,7 @@ STR16 pBookMarkStrings[] =
 	L"Militia Overview",
 	L"R.I.S.",
 	L"Factories",
+	L"A.R.C.",
 };
 
 STR16 pBookmarkTitle[] =
@@ -5193,7 +5201,7 @@ STR16 pWebPagesTitles[] =
 	L"Contract",
 	L"Comments",
 	L"McGillicutty's Mortuary",
-	L"",
+	L"", //LAPTOP_MODE_SIRTECH
 	L"URL not found.",
 	L"%s Press Council - Conflict Summary",
 	L"%s Press Council - Battle Reports",
@@ -5219,6 +5227,9 @@ STR16 pWebPagesTitles[] =
 	L"Encyclopedia - Data",
 	L"Briefing Room",
 	L"Briefing Room - Data",
+	L"", //LAPTOP_MODE_BRIEFING_ROOM_ENTER
+	L"", //LAPTOP_MODE_AIM_MEMBERS_ARCHIVES_NEW
+	L"A.R.C.",
 };
 
 STR16 pShowBookmarkString[] =
@@ -5721,6 +5732,9 @@ STR16			BobbyRText[] =
 	L"Stun:",			// Weapon's Stun Damage
 	L"Protect:",		// Armour's Protection
 	L"Camo:",			// Armour's Camouflage
+	L"Armor Pen:",		// Ammo's Armour Piercing modifier (see AmmoTypes.xml - armourImpactReduction)
+	L"Dmg Mod:",		// Ammo's Bullet Tumble modifier (see AmmoTypes.xml - afterArmourDamage)
+	L"Projectiles:",	// Ammo's bullet count (for buckshot) (see AmmoTypes.xml - numberOfBullets)
 	L"Cost:",			// Cost of the item
 	L"In stock:",			// The number of items still in the store's inventory
 	L"Qty on Order:",		// The number of items on order
@@ -6163,6 +6177,9 @@ STR16	zOptionsText[] =
 	L"Next",
 	L"Prev",
 	L"Done",
+	L"1.13 Features",
+	L"New in 1.13",
+	L"Options",
 
 	//Text above the slider bars
 	L"Effects",
@@ -6173,6 +6190,154 @@ STR16	zOptionsText[] =
 	L"Quit game and return to the main menu?",
 
 	L"You need either the Speech option, or the Subtitle option to be enabled.",
+};
+
+STR16	z113FeaturesScreenText[] =
+{
+	L"1.13 FEATURE TOGGLES",
+	L"Changing these settings during a campaign will affect your experience.",
+	L"Hover over a feature to display more information. Some features may be configurable in JA2_Options.ini (or other specified file).",
+};
+
+STR16	z113FeaturesToggleText[] =
+{
+	L"Use These Overrides",
+	L"New Chance to Hit",
+	L"Enemies Drop All",
+	L"Enemies Drop All (Damaged)",
+	L"Suppression Fire",
+	L"Drassen Counterattack",
+	L"City Counterattacks",
+	L"Multiple Counterattacks",
+	L"Intel",
+	L"Prisoners",
+	L"Mines Require Workers",
+	L"Enemy Ambushes",
+	L"Enemy Assassins",
+	L"Enemy Roles",
+	L"Enemy Role: Medic",
+	L"Enemy Role: Officer",
+	L"Enemy Role: General",
+	L"Kerberus",
+	L"Mercs Need Food",
+	L"Disease",
+	L"Dynamic Opinions",
+	L"Dynamic Dialogue",
+	L"Arulco Strategic Division",
+	L"ASD: Helicopters",
+	L"Enemy Vehicles Can Move",
+	L"Zombies",
+	L"Bloodcat Raids",
+	L"Bandit Raids",
+	L"Zombie Raids",
+	L"Militia Volunteer Pool",
+	L"Tactical Militia Command",
+	L"Strategic Militia Command",
+	L"Militia Uses Sector Equipment",
+	L"Militia Requires Resources",
+	L"Enhanced Close Combat",
+	L"Improved Interrupt System",
+	L"Weapon Overheating",
+	L"Weather: Rain",
+	L"Weather: Lightning",
+	L"Weather: Sandstorms",
+	L"Weather: Snow",
+	L"Mini Events",
+	L"Arulco Rebel Command",
+};
+
+STR16	z113FeaturesHelpText[] =
+{
+	L"|U|s|e |T|h|e|s|e |O|v|e|r|r|i|d|e|s\n \nAllow this screen to override some feature toggles present in JA2_Options.ini.\nHover over a feature to see which flag is overridden.\nThese toggles have no effect if this option is disabled.",
+	L"|N|C|T|H\nOverrides [Tactical Gameplay Settings] NCTH\n \nUse the new chance to hit system.\n \nFor tweakable values, see CTHConstants.ini.",
+	L"|E|n|e|m|i|e|s |D|r|o|p |E|v|e|r|y|t|h|i|n|g\nOverrides [Tactical Difficulty Settings] DROP_ALL\n \nEnemies drop all of their gear when killed.\n \nNot compatible with Enemies Drop All (Damaged).",
+	L"|E|n|e|m|i|e|s |D|r|o|p |E|v|e|r|y|t|h|i|n|g |(|D|a|m|a|g|e|d|)\nOverrides [Tactical Difficulty Settings] DROP_ALL\n \nEnemies drop all of their gear when killed, but things that would normally not be dropped are severely damaged.\n \nNot compatible with Enemies Drop All.",
+	L"|S|u|p|p|r|e|s|s|i|o|n |F|i|r|e\nOverrides [Tactical Suppression Fire Settings] SUPPRESSION_EFFECTIVENESS\n \nCombatants can be affected by suppression and shock.\n \nFor configurable options, see [Tactical Suppression Fire Settings].",
+	L"|D|r|a|s|s|e|n |C|o|u|n|t|e|r|a|t|t|a|c|k\nOverrides [Strategic Event Settings] TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN\n \nThe Queen sends a massive counterattack to Drassen.",
+	L"|C|i|t|y |C|o|u|n|t|e|r|a|t|t|a|c|k|s\nOverrides [Strategic Event Settings] AGGRESSIVE_STRATEGIC_AI\n \nThe Queen can send a massive counterattack to cities other than Drassen.\n \nNot compatible with Multiple Counterattacks.",
+	L"|M|u|l|t|i|p|l|e |C|o|u|n|t|e|r|a|t|t|a|c|k|s\nOverrides [Strategic Event Settings] AGGRESSIVE_STRATEGIC_AI\n \nThe Queen can send massive counterattacks to cities other than Drassen.\nThis can occur multiple times.\n \nThis is a harder variant of City Counterattacks.",
+	L"|I|n|t|e|l\nOverrides [Intel Settings] RESOURCE_INTEL\n \nA new resource gained through covert means.",
+	L"|P|r|i|s|o|n|e|r|s\nOverrides [Strategic Gameplay Settings] ALLOW_TAKE_PRISONERS\n \nCapture enemy soldiers and interrogate them.\n \nConfigurable Options:\nENEMY_CAN_SURRENDER\nDISPLAY_SURRENDER_VALUES\nSURRENDER_MULTIPLIER\nPRISONER_RETURN_TO_ARMY_CHANCE\nPRISONER_DEFECT_CHANCE\nPRISONER_INTEL_CHANCE\nPRISONER_RANSOM_CHANCE\nPRISONER_INTERROGATION_POINTS_ADMIN\nPRISONER_INTERROGATION_POINTS_REGULAR\nPRISONER_INTERROGATION_POINTS_ELITE\nPRISONER_INTERROGATION_POINTS_OFFICER\nPRISONER_INTERROGATION_POINTS_GENERAL\nPRISONER_INTERROGATION_POINTS_CIVILIAN",
+	L"|M|i|n|e|s |R|e|q|u|i|r|e |W|o|r|k|e|r|s\nOverrides [Financial Settings] MINE_REQUIRES_WORKERS\n \nMines require workers to operate.\n \nConfigurable Options:\nWORKERRATE_PRESENT_INITIALLY\nWORKER_TRAINING_COST\nWORKER_TRAINING_POINTS",
+	L"|E|n|e|m|y |A|m|b|u|s|h|e|s\nOverrides [Tactical Difficulty Settings] ENABLE_CHANCE_OF_ENEMY_AMBUSHES\n \nEnemy forces can ambush your mercs as they move in the strategic view.\n \nConfigurable Options:\nENEMY_AMBUSHES_CHANCE_MODIFIER\nAMBUSH_MERCS_SPREAD\nAMBUSH_MERCS_SPREAD_RADIUS\nAMBUSH_ENEMY_ENCIRCLEMENT\nAMBUSH_ENEMY_ENCIRCLEMENT_RADIUS1\nAMBUSH_ENEMY_ENCIRCLEMENT_RADIUS2",
+	L"|E|n|e|m|y |A|s|s|a|s|s|i|n|s\nOverrides [Tactical Difficulty Settings] ENEMY_ASSASSINS\n \nAssassins can infiltrate your militia.\nRequires the new trait system.\n \nConfigurable Options:\nASSASSIN_MINIMUM_PROGRESS\nASSASSIN_MINIMUM_MILITIA\nASSASSIN_PROPABILITY_MODIFIER",
+	L"|E|n|e|m|y |R|o|l|e|s\nOverrides [Tactical Enemy Role Settings] ENEMYROLES\n \nSpecialists can appear in enemy groups.\n \nConfigurable Options:\nENEMYROLES_TURNSTOUNCOVER",
+	L"|E|n|e|m|y |R|o|l|e|: |M|e|d|i|c\nOverrides [Tactical Enemy Role Settings] ENEMY_MEDICS\n \nMedics can appear in enemy groups.\nRequires the Enemy Roles feature to be enabled.\n \nConfigurable Options:\nENEMY_MEDICS_MEDKITDRAINFACTOR\nENEMY_MEDICS_SEARCHRADIUS\nENEMY_MEDICS_WOUND_MINAMOUNT\nENEMY_MEDICS_HEAL_SELF",
+	L"|E|n|e|m|y |R|o|l|e|: |O|f|f|i|c|e|r\nOverrides [Tactical Enemy Role Settings] ENEMY_OFFICERS\n \nOfficers can appear in enemy groups.\nRequires the Enemy Roles feature to be enabled.\n \nConfigurable Options:\nENEMY_OFFICERS_REQUIREDTEAMSIZE\nENEMY_OFFICERS_MAX\nENEMY_OFFICERS_SUPPRESSION_RESISTANCE_BONUS\nENEMY_OFFICERS_MORALE_MODIFIER\nENEMY_OFFICERS_SURRENDERSTRENGTHBONUS",
+	L"|E|n|e|m|y |R|o|l|e|: |G|e|n|e|r|a|l\nOverrides [Tactical Enemy Role Settings] ENEMY_GENERALS\n \nGenerals increase enemy strategic movement and decision speeds.\nRequires the Enemy Roles feature to be enabled.\n \nConfigurable Options:\nENEMY_GENERALS_NUMBER\nENEMY_GENERALS_BODYGUARDS_NUMBER\nENEMY_GENERALS_STRATEGIC_DECISION_SPEEDBONUS\nENEMY_GENERALS_STRATEGIC_MOVEMENT_SPEEDBONUS",
+	L"|K|e|r|b|e|r|u|s\nOverrides [PMC Settings] PMC\n \nHire militia from a private military company.\n \nConfigurable Options:\nPMC_MAX_REGULARS\nPMC_MAX_VETERANS",
+	L"|F|o|o|d\nOverrides [Tactical Food Settings] FOOD\n \nYour mercs require food and water to survive.\n \nConfigurable Options:\nFOOD_DIGESTION_HOURLY_BASE_FOOD\nFOOD_DIGESTION_HOURLY_BASE_DRINK\nFOOD_DIGESTION_SLEEP\nFOOD_DIGESTION_TRAVEL_VEHICLE\nFOOD_DIGESTION_TRAVEL\nFOOD_DIGESTION_ASSIGNMENT\nFOOD_DIGESTION_ONDUTY\nFOOD_DIGESTION_COMBAT\nFOOD_DECAY_IN_SECTORS\nFOOD_DECAY_MODIFICATOR\nFOOD_EATING_SOUNDS",
+	L"|D|i|s|e|a|s|e\nOverrides [Disease Settings] DISEASE\n \nYour mercs can catch diseases.\n \nConfigurable Options:\nDISEASE_STRATEGIC\nDISEASE_WHO_SUBSCRIPTIONCOST\nDISEASE_CONTAMINATES_ITEMS\nDISEASE_SEVERE_LIMITATIONS",
+	L"|D|y|n|a|m|i|c |O|p|i|n|i|o|n|s\nOverrides [Dynamic Opinion Settings] DYNAMIC_OPINIONS\n \nMercs can form dynamic opinions of each other, affecting morale.\n \nConfigurable Options:\nDYNAMIC_OPINIONS_SHOWCHANGE\nWAGE_ACCEPTANCE_FACTOR\nSee [Dynamic Opinion Modifiers Settings] in Morale_Settings.ini.",
+	L"|D|y|n|a|m|i|c |D|i|a|l|o|g|u|e\nOverrides [Dynamic Dialogue Settings] DYNAMIC_DIALOGUE\n \nMercs can make brief comments, changing their relationship to each other.\nRequires the Dynamic Opinions feature to be active.\n \nConfigurable Options:\nDYNAMIC_DIALOGUE_TIME_OFFSET",
+	L"|A|S|D\nOverrides [Strategic Additional Enemy AI Settings] ASD_ACTIVE\n \nThe Arulcan army gains mechanised forces.\n \nConfigurable Options:\nASD_COST_FUEL/JEEP/TANK/ROBOT\nASD_TIME_FUEL/JEEP/TANK/ROBOT\nASD_ASSIGNS_JEEPS/TANKS/ROBOTS\nASD_FUEL_REQUIRED_JEEP/TANK/ROBOT\nJEEP_MINIMUM_PROGRESS\nTANK_MINIMUM_PROGRESS\nROBOT_MINIMUM_PROGRESS",
+	L"|A|S|D |H|e|l|i|c|o|p|t|e|r|s\nOverrides [Enemy Helicopter Settings] ENEMYHELI_ACTIVE\n \nThe AI can use helicopters to deploy troops.\nRequires the Arulco Special Division feature to be enabled.\n \nConfigurable Options:\nASD_COST_HELI\nASD_TIME_HELI\nENEMYHELI_DEFINITE_UNLOCK_AT_PROGRESS\nENEMYHELI_HP\nENEMYHELI_HP_REPAIRTIME\nENEMYHELI_HP_COST\nENEMYHELI_FUEL\nENEMYHELI_FUEL_REFUELTIME",
+	L"|E|n|e|m|y |V|e|h|i|c|l|e|s |C|a|n |M|o|v|e\nOverrides [Tactical Gameplay Settings] ENEMY_TANKS_CAN_MOVE_IN_TACTICAL\n \nHostile jeeps and tanks can move in combat.\n \nConfigurable Options:\nALLOW_TANKS_DRIVING_OVER_PEOPLE\nTANKS_RAMMING_MAX_STRUCTURE_ARMOUR\nENEMY_JEEP_RAMMING_MAX_STRUCTURE_ARMOUR",
+	L"|Z|o|m|b|i|e|s\nOverrides the \"Allow Zombies\" toggle in the options menu.\n \nThe dead walk!\n \nConfigurable Options:\nZOMBIE_RISE_BEHAVIOUR\nZOMBIE_SPAWN_WAVES\nZOMBIE_RISE_WAVE_FREQUENCY\nZOMBIE_CAN_CLIMB\nZOMBIE_CAN_JUMP_WINDOWS\nZOMBIE_EXPLODING_CIVS\nZOMBIE_DAMAGE_RESISTANCE\nZOMBIE_BREATH_DAMAGE_RESISTANCE\nZOMBIE_ONLY_HEADSHOTS_WORK\nZOMBIE_DIFFICULTY_LEVEL\nZOMBIE_RISE_WITH_ARMOUR\nZOMBIE_ONLY_HEADSHOTS_PERMANENTLY_KILL",
+	L"|B|l|o|o|d|c|a|t |R|a|i|d|s\nOverrides [Raid Settings] RAID_BLOODCATS\n \nHungry predators stalk the night.\n \nConfigurable Options:\nRAID_MAXSIZE_BLOODCATS\nRAID_MAXATTACKSPERNIGHT_BLOODCATS",
+	L"|B|a|n|d|i|t |R|a|i|d|s\nOverrides [Raid Settings] RAID_BANDITS\n \nOpportunistic bandits may attack your towns.\n \nConfigurable Options:\nRAID_MAXSIZE_BANDITS\nRAID_MAXATTACKSPERNIGHT_BANDITS",
+	L"|Z|o|m|b|i|e |R|a|i|d|s\nOverrides [Raid Settings] RAID_ZOMBIES\n \nThe dead raid!\nRequires the Zombies feature to be enabled.\n \nConfigurable Options:\nRAID_MAXSIZE_ZOMBIES\nRAID_MAXATTACKSPERNIGHT_ZOMBIES",
+	L"|M|i|l|i|t|i|a |V|o|l|u|n|t|e|e|r |P|o|o|l\nOverrides [Militia Volunteer Pool Settings] MILITIA_VOLUNTEER_POOL\n \nVolunteers are required to train militia.\n \nConfigurable Options:\nMILITIA_VOLUNTEER_POOL_GAINFACTOR_LIBERATION\nMILITIA_VOLUNTEER_POOL_MULTIPLIER_FARM\nMILITIA_VOLUNTEER_POOL_GAINFACTOR_HOURLY",
+	L"|T|a|c|t|i|c|a|l |M|i|l|i|t|i|a |C|o|m|m|a|n|d\nOverrides [Tactical Interface Settings] ALLOW_TACTICAL_MILITIA_COMMAND\n \nIssue commands to militia in tactical view.",
+	L"|S|t|r|a|t|e|g|i|c |M|i|l|i|t|i|a |C|o|m|m|a|n|d\nOverrides [Militia Strategic Movement Settings] ALLOW_MILITIA_STRATEGIC_COMMAND\n \nIssue commands to militia in the strategic map.\n \nConfigurable Options:\nMILITIA_STRATEGIC_COMMAND_REQUIRES_MERC",
+	L"|M|i|l|i|t|i|a |U|s|e|s |S|e|c|t|o|r |E|q|u|i|p|m|e|n|t\nOverrides [Militia Equipment Settings] MILITIA_USE_SECTOR_EQUIPMENT\n \nMilitia uses gear from their current sector.\nNot compatible with the Militia Requires Resources feature.\n \nConfigurable Options:\nMILITIA_USE_SECTOR_EQUIPMENT_ARMOUR\nMILITIA_USE_SECTOR_EQUIPMENT_FACE\nMILITIA_USE_SECTOR_EQUIPMENT_MELEE\nMILITIA_USE_SECTOR_EQUIPMENT_GUN\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO\nMILITIA_USE_SECTOR_EQUIPMENT_GUN_ATTACHMENTS\nMILITIA_USE_SECTOR_EQUIPMENT_GRENADE\nMILITIA_USE_SECTOR_EQUIPMENT_LAUNCHER\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_MIN\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_MAX\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_OPTIMAL_MAG_COUNT\nMILITIA_USE_SECTOR_EQUIPMENT_CLASS_SPECIFIC_TABOOS",
+	L"|M|i|l|i|t|i|a |R|e|q|u|i|r|e|s |R|e|s|o|u|r|c|e|s\nOverrides [Militia Resource Settings] MILITIA_REQUIRE_RESOURCES\n \nMilitia require resources to be trained.\nNot compatible with the Militia Uses Sector Equipment feature.\n \nConfigurable Options:\nMILITIA_RESOURCES_PROGRESSFACTOR\nMILITIA_RESOURCES_ITEMCLASSMOD_AMMO_BULLET\nMILITIA_RESOURCES_ITEMCLASSMOD_GUN\nMILITIA_RESOURCES_ITEMCLASSMOD_ARMOUR\nMILITIA_RESOURCES_ITEMCLASSMOD_MELEE\nMILITIA_RESOURCES_ITEMCLASSMOD_BOMB\nMILITIA_RESOURCES_ITEMCLASSMOD_GRENADE\nMILITIA_RESOURCES_ITEMCLASSMOD_FACE\nMILITIA_RESOURCES_ITEMCLASSMOD_LBE\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_LOW\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_MEDIUM\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_HIGH\nMILITIA_RESOURCES_WEAPONMOD_PISTOL\nMILITIA_RESOURCES_WEAPONMOD_M_PISTOL\nMILITIA_RESOURCES_WEAPONMOD_SMG\nMILITIA_RESOURCES_WEAPONMOD_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_SN_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_AS_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_LMG\nMILITIA_RESOURCES_WEAPONMOD_SHOTGUN",
+	L"|E|n|h|a|n|c|e|d |C|l|o|s|e |C|o|m|b|a|t\nOverrides [Tactical Gameplay Settings] ENHANCED_CLOSE_COMBAT_SYSTEM\n \nA general improvement to the close combat system.",
+	L"|I|m|p|r|o|v|e|d |I|n|t|e|r|r|u|p|t |S|y|s|t|e|m\nOverrides [Tactical Gameplay Settings] IMPROVED_INTERRUPT_SYSTEM\n \nAn overhaul of the interrupt mechanic.\n \nConfigurable Options:\nBASIC_PERCENTAGE_APS_REGISTERED\nPERCENTAGE_APS_REGISTERED_PER_EXP_LEVEL\nBASIC_REACTION_TIME_LENGTH\nALLOW_COLLECTIVE_INTERRUPTS\nALLOW_INSTANT_INTERRUPTS_ON_SPOTTING",
+	L"|O|v|e|r|h|e|a|t|i|n|g\nOverrides [Tactical Weapon Overheating Settings] OVERHEATING\n \nWeapons can overheat.\n \nConfigurable Options:\nOVERHEATING_DISPLAY_JAMPERCENTAGE\nOVERHEATING_DISPLAY_THERMOMETER_RED_OFFSET\nOVERHEATING_COOLDOWN_MODIFICATOR_LONELYBARREL",
+	L"|W|e|a|t|h|e|r|: |R|a|i|n\nOverrides [Tactical Weather Settings] ALLOW_RAIN\n \nRain can reduce visibility.\n \nConfigurable Options:\nRAIN_EVENTS_PER_DAY\nRAIN_CHANCE_PER_DAY\nRAIN_MIN_LENGTH_IN_MINUTES\nRAIN_MAX_LENGTH_IN_MINUTES\nMAX_RAIN_DROPS\nWEAPON_RELIABILITY_REDUCTION_RAIN\nBREATH_GAIN_REDUCTION_RAIN\nVISUAL_DISTANCE_DECREASE_RAIN\nHEARING_REDUCTION_RAIN",
+	L"|W|e|a|t|h|e|r|: |L|i|g|h|t|n|i|n|g\nOverrides [Tactical Weather Settings] ALLOW_LIGHTNING\n \nLightning may occur during rainstorms.\nRequires Weather: Rain\n \nConfigurable Options:\nMIN_INTERVAL_BETWEEN_LIGHTNINGS_IN_REAL_TIME_SECONDS\nMAX_INTERVAL_BETWEEN_LIGHTNINGS_IN_REAL_TIME_SECONDS\nMIN_INTERVAL_BETWEEN_LIGHTNING_AND_THUNDERCLAPS_IN_SECONDS\nMAX_INTERVAL_BETWEEN_LIGHTNING_AND_THUNDERCLAPS_IN_SECONDS\nDELAY_IN_SECONDS_IF_SEEN_SOMEONE_DURING_LIGHTNING_IN_TURNBASED\nCHANCE_TO_DO_LIGHTNING_BETWEEN_TURNS\nWEAPON_RELIABILITY_REDUCTION_THUNDERSTORM\nBREATH_GAIN_REDUCTION_THUNDERSTORM\nVISUAL_DISTANCE_DECREASE_THUNDERSTORM\nHEARING_REDUCTION_THUNDERSTORM",
+	L"|W|e|a|t|h|e|r|: |S|a|n|d|s|t|o|r|m|s\nOverrides [Tactical Weather Settings] ALLOW_SANDSTORMS\n \nSevere sandstorms make the battlefield more painful for everyone.\n \nConfigurable Options:\nSANDSTORM_EVENTS_PER_DAY\nSANDSTORM_CHANCE_PER_DAY\nSANDSTORM_MIN_LENGTH_IN_MINUTES\nSANDSTORM_MAX_LENGTH_IN_MINUTES\nWEAPON_RELIABILITY_REDUCTION_SANDSTORM\nBREATH_GAIN_REDUCTION_SANDSTORM\nVISUAL_DISTANCE_DECREASE_SANDSTORM\nHEARING_REDUCTION_SANDSTORM",
+	L"|W|e|a|t|h|e|r|: |S|n|o|w\nOverrides [Tactical Weather Settings] ALLOW_SNOW\n \nSnowstorms decrease visibility.\n \nConfigurable Options:\nSNOW_EVENTS_PER_DAY\nSNOW_CHANCE_PER_DAY\nSNOW_MIN_LENGTH_IN_MINUTES\nSNOW_MAX_LENGTH_IN_MINUTES\nWEAPON_RELIABILITY_REDUCTION_SNOW\nBREATH_GAIN_REDUCTION_SNOW\nVISUAL_DISTANCE_DECREASE_SNOW\nHEARING_REDUCTION_SNOW",
+	L"|M|i|n|i |E|v|e|n|t|s\nOverrides [Mini Events Settings] MINI_EVENTS_ENABLED\n \nRandom events can occur.\n \nConfigurable Options:\nMINI_EVENTS_MIN_HOURS_BETWEEN_EVENTS\nMINI_EVENTS_MAX_HOURS_BETWEEN_EVENTS\n \nSee MiniEvents.lua for more details.",
+	L"|A|R|C\nOverrides [Rebel Command Settings] REBEL_COMMAND_ENABLED\n \nCommand the rebel movement at the strategic level, and upgrade captured towns.\n \nFor tweakable values, see RebelCommand_Settings.ini.",
+};
+
+STR16	z113FeaturesPanelText[] =
+{
+	L"Use the options here to enable some of 1.13's many features. If enabled, the toggle boxes here will take precedence over some booleans in JA2_Options.ini. If disabled, these boxes will have no effect.",
+	L"New Chance to Hit (NCTH) is a complete overhaul of the vanilla chance-to-hit system. Compared to the vanilla system, it takes into account more variables when determining the trajectory of a fired bullet.",
+	L"This controls whether enemies drop all of their items when they are killed. If enabled, everything is dropped. Otherwise, regular drop chances are used.",
+	L"This controls whether enemies drop all of their items when they are killed. If enabled, everything is dropped, and the drop chances are used to determine whether an item is severely damaged.",
+	L"Suppression Fire is a way of controlling a battlefield. When under heavy fire, a character accumulates suppression, causing AP loss. In addition to AP loss, Suppression SHOCK can also be accumulated, which makes the character less useful - both Chance-to-Hit and chance to be hit are reduced. Characters can go into negative APs when under suppression fire, losing APs off their NEXT turn. Use suppression fire to prevent enemies from approaching, pin them down, and then advance and kill them while they are hiding. Note that they will try to do the same thing to you!",
+	L"When you first capture Drassen, the Queen actually follows through on her command to retake Drassen. This will make holding Drassen VERY difficult in the early game and enabling this option is not recommended for new players!",
+	L"Similar to the Drassen Counterattack, other cities can be subjected to massive counterattacks by the Queen after you capture them.",
+	L"If City Counterattacks still aren't enough for you, try enabling this! Not only will the Queen send counterattacks, but she may also try to retake multiple cities at the same time.",
+	L"You can acquire and spend Intel, a resource closely tied to espionage and information brokering. Intel can be gained by spies, interrogating prisoners, and other ways. It can then be spent at a black market for rare weapons, or at the Recon Intelligence Services website for enemy info.",
+	L"Allows you to take prisoners, which can be done by demanding their surrender in combat, or by handcuffing incapacitated soldiers. Once captured, they can be sent to a prison you own and interrogated, which can result in money, intel, or their defection to your militia.",
+	L"You will need to invest a little bit in a mine before you can reap its full benefits. Workers are trained like militia, costing time and money. Note that losing control of a sector may cause worker loss!",
+	L"Enemy groups have a chance to ambush your squad. If your squad is ambushed, they will be placed in the centre of the map with the enemy group encircling them.",
+	L"The queen can now send out assassins. These are elite soldiers that are covert ops experts. They will disguise as members of your militia, and, when the time is right, they will suddenly attack your mercs. New trait system required and new inventory system recommended.",
+	L"A variety of enemy types can appear in enemy groups, increasing their overall effectiveness. A small icon will appear next to an enemy who has been observed to have a role. Roles include weapon and equipment specialists, and soldiers carrying keys or keycards.",
+	L"Requires the Enemy Roles feature to be enabled. Enemy medics can bandage their wounded comrades and perform field surgery on them.",
+	L"Requires the Enemy Roles feature to be enabled. Enemy lieutenants and captains provide sector-wide bonuses for their squad.",
+	L"Requires the Enemy Roles feature to be enabled. Generals provide strategic bonuses to the enemy army and may be present in enemy-controlled towns. As high-value targets, they are protected by a small retinue of bodyguards and may flee when they sense danger.",
+	L"Some time after you have trained militia, Kerberus will offer its services to you. On their website, you can order security personnel from them, which will act as militia. They require a high down payment but require no training time.",
+	L"Your team needs food and water to survive. Without them, they will starve and suffer severe penalties. Keep an eye on the quality of food you're consuming!",
+	L"It is possible for your team to catch illnesses from a variety of sources: open wounds, corpses, swamp insects, etc. A disease will give certain mali, and in extreme cases, cause death. Most diseases can be treated by doctors or medicines, and there are items that can provide protection.",
+	L"Mercs can form dynamic opinions of each other from a variety of events. These opinion events directly influence a merc's morale and can be both positive and negative. While an opinion event can occur once per day, the impact of one of these events can last for a few days, so it's possible for events to compound over this time period.",
+	L"This is an add-on to the Dynamic Opinions feature. This feature allows mercs to talk to each other whenever an opinion event occurs. These dialogue choices may have further impacts on how mercs see each other. If an IMP merc takes part in this, you have a brief window to choose how that character responds.",
+	L"The Arulco Special Division is responsible for ordering and deploying mechanised units to the Arulcan army. It uses income gained from mines to purchase vehicles for use against you.",
+	L"Requires the Arulco Strategic Division feature to be enabled. At a certain point in your campaign, the ASD can start using helicopters to deploy small squads of elite soldiers to harass you.",
+	L"Enemy jeeps and tanks can move around during combat, and may even try to run over your mercs. They will also destroy some obstacles by ramming them.",
+	L"Zombies rise from corpses!",
+	L"Arulco's deadly bloodcats can attack vulnerable town sectors at night. Civilian deaths will cause loyalty losses.",
+	L"Taking advantage of open warfare, bandits can attack vulnerable town sectors. Civilian deaths will cause loyalty losses.",
+	L"Requires the Zombies feature to be enabled. Zombies can swarm town sectors. Civilian deaths will cause loyalty losses.",
+	L"Before you can train militia, you need willing volunteers. You will need to control both town sectors and the surrounding farmland to bolster your recruit pool.",
+	L"Allows you to give commands to militia while in the tactical view. To do this, speak with any militia and a command menu will appear. Mercs wearing Extended Ears or Radio Sets can issue commands to militia that are out of line of sight.",
+	L"Allows you to give sector movement commands to militia while in the strategic map. You may need to be in the same sector (unless you have a Radio Operator or someone staffing an HQ) to issue strategic movement orders.",
+	L"Militia gear will not be randomly generated, but taken from the sector the militia is currently stationed in. Militia will return their gear to their sector when a new sector is loaded. Gear can be manually dropped in tactical via the 'Ctrl' + '.' menu, under 'militia inspection'. Gear can be prohibited to the militia by hovering over it in the strategic inventory and pressing 'TAB' + 'LMB'. It is up to you to sufficiently distribute gear to your militia.",
+	L"In order to be trained, militia require 3 resources: Guns, Armour, and Misc. These can be obtained by converting dropped items in the strategic item view, and ALT + Right clicking on an item. Green Militia just require a Gun, Veteran Militia require a Gun + Armour, and Elite Militia require Gun + Armour + Misc.",
+	L"General improvements to the close combat system. Head strikes deal more damage, but are harder to hit. Leg strikes are easier to land, but do less damage. Damage increased to surprised and prone targets. Stealing all items is possible on a knocked-down victim. Several other minor tweaks.",
+	L"The Improved Interrupt System (IIS) completely changes how the game determines whether an interrupt occurs. Instead of interrupting as soon as a hostile enters line of sight, the game tracks several variables to simulate a soldier's ability to react and gain an interrupt.",
+	L"Weapon barrels heat up as you fire them, potentially opening the door for jams, misfires, and faster weapon degradation. Weapons with replaceable barrels will probably be very useful to keep things cool.",
+	L"Toggle rain in tactical. Rain will slightly decrease overall visibility and make it harder to hear things.",
+	L"Toggle lightning and thunderstorms during rain. Lightning can reveal soldier positions for both you and the enemy. Thunder makes it significantly harder to hear, and overall breath regeneration is somewhat lowered.",
+	L"Toggle sandstorms. Fighting in a sandstorm applies noticable maluses to all combatants - vision and hearing ranges are reduced, weapon degradation is significantly increased, and it is much harder to regain breath.",
+	L"Toggle snow. In a snowstorm, it is harder to see, weapons degrade faster, and it is a little harder to regain breath.",
+	L"During the course of a campaign, brief events can pop up. You can select one of two responses, which may have positive and/or negative effects. Events can affect a wide variety of things, but mostly your mercs.",
+	L"After completing the food delivery quest for the rebels, they will grant you access to their command website (A.R.C.). You can set the rebels' country-wide directive there, and capturing towns allows you to enact policies in that region that provide powerful bonuses. This comes at a price - town loyalty will rise slower, so you will need to work harder to have the locals trust you.",
 };
 
 
@@ -6354,6 +6519,7 @@ STR16		zOptionsToggleText[] =
 	L"Snap Cursor to Doors",
 	L"Make Items Glow",
 	L"Show Tree Tops",
+	L"Smart Tree Tops",
 	L"Show Wireframes",
 	L"Show 3D Cursor",
 	L"Show Chance to Hit on Cursor",
@@ -6372,10 +6538,9 @@ STR16		zOptionsToggleText[] =
 	L"Silent Skyrider",
 	L"Enhanced Description Box",
 	L"Forced Turn Mode",					// add forced turn mode
-	L"Stat Progress Bars",					// Show progress towards stat increase
 	L"Alternate Strategy Map Colors",		// Change color scheme of Strategic Map
 	L"Alternate Bullet Graphics",			// Show alternate bullet graphics (tracers)
-	L"Logical Bodytypes (WIP)",
+	L"Logical Bodytypes",
 	L"Show Merc Ranks",						// shows mercs ranks
 	L"Show Face Gear Graphics",
 	L"Show Face Gear Icons",
@@ -6465,6 +6630,9 @@ STR16	zOptionsScreenHelpText[] =
 	//toggle tree tops
 	L"When ON, shows the |Tree tops.",
 
+	//smart tree tops
+	L"When ON, hides tree tops near visible mercs and cursor position.",
+
 	//toggle wireframe
 	L"When ON, displays Wireframes for obscured walls. (|C|t|r|l+|A|l|t+|W)",
 
@@ -6474,7 +6642,7 @@ STR16	zOptionsScreenHelpText[] =
 	L"When ON, the chance to hit is shown on the cursor.",
 	L"When ON, GL burst uses burst cursor.",
 	L"When ON, enemies will occasionally comment certain actions.", // Changed from Enemies Drop All Items - SANDRO
-	L"When ON, grenade launchers fire grenades at higher angles. (|Q)",
+	L"When ON, grenade launchers fire grenades at higher angles. (|A|l|t+|Q)",
 	L"When ON, will not enter turn-based mode when sneaking unnoticed and seeing an enemy unless |C|t|r|l+|X is pressed. (|C|t|r|l+|S|h|i|f|t+|X)", // Changed from Restrict Extra Aim Levels - SANDRO
 	L"When ON, |S|p|a|c|e selects next squad automatically.",
 	L"When ON, item shadows will be shown.",
@@ -6487,10 +6655,9 @@ STR16	zOptionsScreenHelpText[] =
 	L"When ON, Skyrider will not talk anymore.",
 	L"When ON, enhanced descriptions will be shown for items and weapons.",
 	L"When ON and enemy present, turn-based mode persists until sector is free. (|C|t|r|l+|T)",	// add forced turn mode
-	L"When ON, shows character progress towards gaining levels.",
 	L"When ON, the strategic map will be colored differently based on exploration.",
 	L"When ON, alternate bullet graphics will be shown when you shoot.",
-	L"When ON, mercenary body graphic can change along with equipped gear.\n(not fully implemented yet, will make mercs invisible if activated)",
+	L"When ON, mercenary body graphic can change along with equipped gear.",
 	L"When ON, ranks will be displayed before merc names in the strategic view.",
 	L"When ON, equipped face gear will be shown on the merc portraits.",
 	L"When ON, icons for the equipped face gear will be shown on the merc portraits in the lower right corner.",
@@ -7019,6 +7186,7 @@ STR16 gzLaptopHelpText[] =
 	L"Militia Overview",
 	L"Recon Intelligence Services",
 	L"Controlled factories",
+	L"Arulco Rebel Command",
 };
 
 
@@ -8493,6 +8661,8 @@ STR16 szUDBGenSecondaryStatsTooltipText[]=
 	L"|A|d|m|i|n|i|s|t|r|a|t|i|o|n |M|o|d|i|f|i|e|r",
 	L"|H|a|c|k|i|n|g |M|o|d|i|f|i|e|r",
 	L"|M|e|d|i|c|a|l |S|p|l|i|n|t",
+	L"|F|i|r|e |R|e|t|a|r|d|a|n|t |A|m|m|o",				// 49
+	L"|I|n|c|e|n|d|i|a|r|y |A|m|m|o",
 };
 
 STR16 szUDBGenSecondaryStatsExplanationsTooltipText[]=
@@ -8546,6 +8716,8 @@ STR16 szUDBGenSecondaryStatsExplanationsTooltipText[]=
 	L"\n \nThis item makes you more effective at\nadministrative work by %i%%.",
 	L"\n \nThis item improves your hacking skills by %i%%.",
 	L"\n \nOnce applied, this item increases the healing\nspeed of severe wounds to either your arms or legs.",
+	L"\n \nThis ammo can extinguish fire.",	// 49
+	L"\n \nThis ammo can cause fire.",
 };
 
 STR16 szUDBAdvStatsTooltipText[]=
@@ -11641,6 +11813,193 @@ STR16	szTurncoatText[] =
 	L"How to convince the soldier to join your forces?",
 	L"Do it",
 	L"%d turncoats present",
+};
+
+// rftr: better lbe tooltips
+STR16 gLbeStatsDesc[14] =
+{
+	L"MOLLE Space Available:",
+	L"MOLLE Space Required:",
+	L"MOLLE Small Slot Count:",
+	L"MOLLE Medium Slot Count:",
+	L"MOLLE Pouch Size: Small",
+	L"MOLLE Pouch Size: Medium",
+	L"MOLLE Pouch Size: Medium (Hydration)",
+	L"Thigh Rig",
+	L"Vest",
+	L"Combat Pack",
+	L"Backpack", // 10
+	L"MOLLE Pouch",
+	L"Compatible backpacks:",
+	L"Compatible combat packs:",
+};
+
+STR16 szRebelCommandText[] =
+{
+	L"Arulco Rebel Command - National Overview",
+	L"Arulco Rebel Command - Regional Overview",
+	L"Switch to Regional Overview",
+	L"Switch to National Overview",
+	L"Supplies:",
+	L"Incoming Supplies",
+	L"/day",
+	L"Current Directive",
+	L"Improve Directive ($%d)",
+	L"Improving the selected directive will cost $%d. Confirm expenditure?",
+	L"Insufficient funds.",
+	L"New directive will take effect at 00:00.",
+	L"Militia Overview",
+	L"Green:",
+	L"Regular:",
+	L"Elite:",
+	L"Projected Daily Total:",
+	L"Volunteer Pool:",
+	L"Resources Available:",
+	L"Guns:",
+	L"Armour:",
+	L"Misc:",
+	L"Training Cost:",
+	L"Upkeep Cost Per Soldier Per Day:",
+	L"Training Speed Bonus:",
+	L"Combat Bonuses:",
+	L"Physical Stats Bonus:",
+	L"Marksmanship Bonus:",
+	L"Upgrade Stats ($%d)",
+	L"Upgrading militia stats will cost $%d. Confirm expenditure?",
+	L"Region:",
+	L"Next",
+	L"Previous",
+	L"Administration Team:",
+	L"None",
+	L"Active",
+	L"Inactive",
+	L"Loyalty:",
+	L"Maximum Loyalty:",
+	L"Deploy Administration Team (%d supplies)",
+	L"Reactivate Administration Team (%d supplies)",
+	L"It is currently not safe to deploy an administration team to this region. You must establish a foothold by controlling at least one town sector first.",
+	L"No regional actions available in Omerta.",
+	L"Administration teams can be deployed to other regions once you capture at least one town sector. Once active, they will be able to expand your influence and power in the region. However, they will need supplies to operate and enact policies.",
+	L"Be mindful of where you choose to direct supplies. Enacting regional policies will increase supply costs for other policies in the same region and nationally (to a lesser extent).",
+	L"Administrative Actions:",
+	L"Establish %s",
+	L"Improve %s",
+	L"Current Tier: %d",
+	L"Taking any administrative action in this region will cost %d supplies.",
+	L"Dead drop intel gain: %d",
+	L"Smuggler supply gain: %d",
+	L"A small group of militia from a nearby safehouse have joined the battle!",
+	L"[A.R.C. WEBSITE AVAILABLE] With the delivery of food and basic supplies to Omerta, you have convinced the rebels that you're here to make an impact. You have been granted access to the command system they've been working on, which is now available through your laptop.",
+	L"It is currently not safe to reactivate the administration team here. Recapture a town sector first.",
+	L"Mine raid successful. Stole $%d.",
+	L"Insufficient Intel to create turncoats!",
+	L"Change Admin Action",
+	L"Cancel",
+	L"Confirm",
+	L"<",
+	L">",
+	L"Changing this Admin Action will cost $%d and reset its tier. Confirm expenditure?",
+};
+
+STR16 szRebelCommandHelpText[] =
+{
+	L"|S|u|p|p|l|i|e|s\n \nFood, water, medical supplies, weapons, and anything else that\nthe rebels might find useful. Supplies are obtained automatically\nby the rebels.",
+	L"|I|n|c|o|m|i|n|g |S|u|p|p|l|i|e|s\n \nEach day, the rebels will gather supplies on their own. As you\ntake over more towns, the amount of supplies they will be\nable to find per day will increase.",
+	L"|C|u|r|r|e|n|t |D|i|r|e|c|t|i|v|e\n \nYou can choose how the rebels will prioritise their strategic\nobjectives. New directives will become available as you make\nprogress.",
+	L"|A|d|m|i|n|i|s|t|r|a|t|i|o|n |T|e|a|m\n \nOnce deployed, an admin team is responsible for handling the\nday-to-day affairs of the region. This includes supporting\nlocals, creating rebel propaganda, establishing regional\npolicies, and more.",
+	L"|L|o|y|a|l|t|y\n \nThe effectiveness of many Administrative Actions depends on\nthe region's loyalty to your cause. It is in your best interest\nto raise loyalty as high as possible.",
+	L"|M|a|x|i|m|u|m |L|o|y|a|l|t|y\n \nYou will need to convince the locals to fully trust you. This\ncan be done by creating a supply line to them, showing that\nyou intend to improve their quality of life.",
+	L"|G|r|a|n|t |S|u|p|p|l|i|e|s\n \nSend supplies to the admin team here and allow them to use them\nas needed. This will increase the region's loyalty by a small amount\neach time you do this. However, doing this will slightly increase\nthe cost of enacting regional policies.",
+	L"This Admin Action applies its bonus to town sectors only.",
+	L"This Admin Action applies its bonus to town sectors, and\nsectors immediately adjacent to them.",
+	L"This Admin Action applies its bonus to town sectors, one\nsector away at Tier 1, and up to two sectors away at Tier 2.",
+	L"This Admin Action applies its bonus to town sectors, up to\ntwo sectors away at Tier 1, and up to three sectors away at Tier 2.",
+};
+
+// follows a specific format:
+// x:	"Admin Action Button Text",
+// x+1:	"Admin action description text",
+STR16 szRebelCommandAdminActionsText[] =
+{
+	L"Supply Line",
+	L"Distribute much-needed supplies amongst the local population. Increases maximum regional loyalty.",
+	L"Rebel Radio",
+	L"Begin broadcasting rebel public radio in the region. The town gains loyalty daily.",
+	L"Safehouses",
+	L"Construct rebel safehouses in the countryside, far from prying eyes. Bonus militia may join you in combat when operating in this region.",
+	L"Supply Disruption",
+	L"The rebels will try to disrupt enemy movements in the area by targetting their supplies. Enemies fighting in this region are weaker.",
+	L"Scout Patrols",
+	L"Start regular scout patrols to monitor hostile activity in the area. Enemy groups will be spotted further from town.",
+	L"Dead Drops",
+	L"Set up dead drops for rebel scouts and infiltrators to deliver their intel. Provides daily intel.",
+	L"Smugglers",
+	L"Enlist the aid of smugglers to bring in supplies for the rebels. Provides an unreliable daily supply boost.",
+	L"Militia Warehouses",
+	L"Construct warehouses in remote areas, allowing the rebels to stockpile weapons for the militia. Provides daily militia resources.",
+	L"Regional Taxes",
+	L"Collect money from the locals to assist your efforts. This is a permanent action. Increases daily income, but regional loyalty falls daily.",
+	L"Civilian Aid",
+	L"Assign some rebels to directly assist and support civilians in the area. Increases daily volunteer pool growth.",
+	L"Merc Support",
+	L"Set up facilities to directly support your mercs assigned in the town. Increases the effectiveness of merc assignments (doctoring, repairing, militia training, etc).",
+	L"Mining Policy",
+	L"Import better equipment and work with the town's miners to create more balanced and efficient shift schedules. Increases the town's mine income.",
+	L"Pathfinders",
+	L"The locals guide your teams through shortcuts in the area. Reduces on-foot travel time in the region.",
+	L"Harriers",
+	L"The rebels harass nearby enemy groups, significantly increasing their travel time in the region.",
+	L"Fortifications",
+	L"Set up killzones and defensive positions. Friendly forces are more effective when fighting in this town. Autoresolve only.",
+};
+
+// follows a specific format:
+// x:	"Directive Name",
+// x+1:	"Directive Bonus Description",
+// x+2:	"Directive Help Text",
+// x+3:	"Directive Improvement Button Description",
+STR16 szRebelCommandDirectivesText[] =
+{
+	L"Gather Supplies",
+	L"Gain an additional %.0f supplies per day.",
+	L"Increase daily supply income by amassing supplies from\nsympathetic locals, and seeking aid from international aid groups.",
+	L"Improving this directive will increase the amount of supplies that the rebels can gather daily.",
+	L"Support Militia",
+	L"Reduce militia daily upkeep costs. Militia daily upkeep cost modifier: %.2f.",
+	L"The rebels will help out with logistics about the militia\nyou've trained, reducing the strain on your wallet.",
+	L"Improving this directive will reduce the daily upkeep costs of your militia.",
+	L"Train Militia",
+	L"Reduce militia training costs and increase militia training speed. Militia training cost modifier: %.2f. Militia training speed modifier: %.2f.",
+	L"The rebels will assist when you are training militia,\nincreasing the efficiency at which you can train them.",
+	L"Improving this directive will further reduce training cost and increase training speed.",
+	L"Propaganda Campaign",
+	L"Town loyalty rises faster. Loyalty gain modifier: %.2f.",
+	L"Your victories and feats will be embellished as news reaches\nthe locals.",
+	L"Improving this directive will increase how quickly town loyalty rises.",
+	L"Deploy Elites",
+	L"%.0f elite militia appear in Omerta each day.",
+	L"The rebels release a small number of their highly-trained forces to your command.",
+	L"Improving this directive will increase the number of militia that appear each day.",
+	L"High Value Target Strikes",
+	L"Enemy groups are less likely to have specialised soldiers.",
+	L"Surgical strikes will be conducted against enemy groups. Officers,\nmedics, radio operators, and other specialists are targetted.",
+	L"Improving this directive will make strikes more successful and effective.",
+	L"Spotter Teams",
+	L"When in combat, approximate enemy locations are revealed in the overhead map (press INSERT button in tactical).",
+	L"A small team will be attached to each of your squads, providing\napproximate locations of enemies when in combat.",
+	L"Improving this directive will make the locations of unspotted enemies more precise.",
+	L"Raid Mines",
+	L"Steal some income from mines not under your control. This directive becomes less useful as you claim mines.",
+	L"Conduct smash-and-grab raids on hostile mines. While not always\nsuccessful, the raids that do succeed should provide a\nsmall income bump.",
+	L"Improving this directive will increase the maximum value of stolen income.",
+	L"Create Turncoats",
+	L"Create %.0f turncoats in a random enemy group per day. Consumes %.1f Intel per day.",
+	L"Convince enemy soldiers to betray their army and work for you\nthrough a combination of bribery, threats, and blackmail.",
+	L"Improving this directive will increase the number of soldiers turned daily.",
+	L"Draft Civilians",
+	L"Gain %.0f volunteers each day. All towns lose some loyalty each day.",
+	L"Draft civilians as recruits for militia. The general population\nprobably won't be too happy about it, though. Effectiveness\nincreases as you capture more towns.",
+	L"Improving this directive will increase the number of volunteers gained per day.",
 };
 
 #endif //ENGLISH

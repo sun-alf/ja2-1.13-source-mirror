@@ -80,6 +80,12 @@ void StrategicHandlePlayerTeamMercDeath( SOLDIERTYPE *pSoldier )
 	//if the soldier HAS a profile
 	if( pSoldier->ubProfile != NO_PROFILE )
 	{
+		//shadooow: moved here so the "merc is dead" message appears before "history log changed" which is what happens in tactical
+		if (guiCurrentScreen != GAME_SCREEN || !pSoldier->bInSector)
+		{
+			ScreenMsg(FONT_RED, MSG_INTERFACE, pMercDeadString[0], pSoldier->name);
+		}
+
 		//add to the history log the fact that the merc died and the circumstances
 		if( pSoldier->ubAttackerID != NOBODY )
 		{
@@ -109,13 +115,8 @@ void StrategicHandlePlayerTeamMercDeath( SOLDIERTYPE *pSoldier )
 		}
 	}
 
-	if ( guiCurrentScreen != GAME_SCREEN )
-	{
-		ScreenMsg( FONT_RED, MSG_INTERFACE, pMercDeadString[ 0 ], pSoldier->name );
-	}
-
-	// robot and EPCs don't count against death rate - the mercs back home don't particularly give a damn about locals & machines!
-	if ( !AM_AN_EPC( pSoldier ) && !AM_A_ROBOT( pSoldier ) )
+	// robot, vehicles and EPCs don't count against death rate - the mercs back home don't particularly give a damn about locals & machines!
+	if ( !AM_AN_EPC( pSoldier ) && !AM_A_ROBOT( pSoldier ) && !(pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE))
 	{
 		// keep track of how many mercs have died under player's command (for death rate, can't wait until removed from team)
 		gStrategicStatus.ubMercDeaths++;
@@ -601,7 +602,10 @@ void MercDailyUpdate()
 	HandleSnitchCheck();
 
 	// Flugente: dynmaic opinion rollover
-	HandleDynamicOpinionsDailyRefresh( );
+	if (gGameExternalOptions.fDynamicOpinions)
+	{
+		HandleDynamicOpinionsDailyRefresh();
+	}
 
 	// Flugente: disease
 	HandleDiseaseDailyRefresh();

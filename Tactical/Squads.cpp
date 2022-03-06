@@ -389,7 +389,7 @@ BOOLEAN AddCharacterToSquad( SOLDIERTYPE *pCharacter, INT8 bSquadValue )
 
 			if( bSquadValue == ( INT8 ) iCurrentTacticalSquad )
 			{
-				CheckForAndAddMercToTeamPanel( Squad[ iCurrentTacticalSquad ][ bCounter ] );
+				CheckForAndAddMercToTeamPanel( pCharacter );
 			}
 
 			if ( pCharacter->ubID == gusSelectedSoldier )
@@ -911,6 +911,20 @@ BOOLEAN SetCurrentSquad( INT32 iCurrentSquad, BOOLEAN fForce )
 				CheckForAndAddMercToTeamPanel( Squad[ iCurrentTacticalSquad ][ iCounter ] );
 			}
 		}
+		SOLDIERTYPE *pDeadSoldier = NULL;
+		for (iCounter = 0; iCounter < NUMBER_OF_SOLDIERS_PER_SQUAD; iCounter++)
+		{
+			if (sDeadMercs[iCurrentTacticalSquad][iCounter] != -1)
+			{
+				pDeadSoldier = FindSoldierByProfileID((UINT8)(sDeadMercs[iCurrentTacticalSquad][iCounter]), TRUE);
+
+				if (pDeadSoldier)
+				{
+					// squad set, now add soldiers in
+					CheckForAndAddMercToTeamPanel(pDeadSoldier);
+				}
+			}
+		}
 	}
 
 	// check if the currently selected guy is on this squad, if not, get the first one on the new squad
@@ -1366,6 +1380,11 @@ BOOLEAN IsSquadInSector( SOLDIERTYPE *pSoldier, UINT8 ubSquad )
 	}
 
 	if( pSoldier->bAssignment == ASSIGNMENT_POW )
+	{
+		return( FALSE );
+	}
+
+	if( pSoldier->bAssignment == ASSIGNMENT_MINIEVENT )
 	{
 		return( FALSE );
 	}

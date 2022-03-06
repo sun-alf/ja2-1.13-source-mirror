@@ -4,7 +4,7 @@
 	#include "sgp.h"
 	#include "overhead types.h"
 	#include "Sound Control.h"
-
+	#include "Cheats.h"
 	#include "overhead.h"
 	#include "Event Pump.h"
 	#include "weapons.h"
@@ -1991,6 +1991,11 @@ void PlayWeaponSound(SOLDIERTYPE *pSoldier, OBJECTTYPE *pObjHand, OBJECTTYPE *pO
 	UINT32	uiResult = SOUND_ERROR;
 	BOOLEAN fSkipSound = FALSE;
 
+	//shadooow: fixes playing full burst sound with just one or two bullets in chamber
+	if ((*pObjHand)[0]->data.gun.ubGunShotsLeft < bShotsToFire)
+	{
+		bShotsToFire = (*pObjHand)[0]->data.gun.ubGunShotsLeft;
+	}
 	if (usNoisefactor < gGameExternalOptions.gubMaxPercentNoiseSilencedSound || Weapon[usUBItem].ubAttackVolume <= 10)
 	{
 		fSilenced = TRUE;
@@ -2027,7 +2032,11 @@ void PlayWeaponSound(SOLDIERTYPE *pSoldier, OBJECTTYPE *pObjHand, OBJECTTYPE *pO
 			bTerrainType = FLAT_FLOOR;
 		if (pSector)
 			ubSectorType = pSector->ubTraversability[THROUGH_STRATEGIC_MOVE];
-		if (InARoom(pSoldier->sGridNo, NULL) && pSoldier->pathing.bLevel == 0 && bTerrainType == FLAT_FLOOR && CheckRoof(pSoldier->sGridNo))
+		if (InARoom(pSoldier->sGridNo, NULL) && 
+			pSoldier->pathing.bLevel == 0 && 
+			bTerrainType == FLAT_FLOOR && 
+			CheckRoof(pSoldier->sGridNo) &&
+			pSoldier->bDoBurst <= 1)
 			fRoom = TRUE;
 		if (pSoldier->ubAttackingHand == HANDPOS)
 			fMainHand = TRUE;
@@ -2451,6 +2460,30 @@ BOOLEAN UseGunNCTH( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 	OBJECTTYPE* pObjAttHand = pSoldier->GetUsedWeapon( &pSoldier->inv[ pSoldier->ubAttackingHand ] );
 	UINT16 usUBItem = pSoldier->GetUsedWeaponNumber( &pSoldier->inv[ pSoldier->ubAttackingHand ] );
 
+	// sevenfm: reduce shock when firing gun, for autofire shots - apply once
+	SOLDIERTYPE* pTarget = SimpleFindSoldier(sTargetGridNo, pSoldier->bTargetLevel);
+	if (gGameExternalOptions.fNewSuppressionCode &&
+		Item[usUBItem].usItemClass == IC_GUN && 
+		pTarget && 
+		(pSoldier->bDoBurst == 1 || pSoldier->bDoBurst == 0))
+	{
+		UINT16 noisefactor = GetPercentNoiseVolume(pObjHand);
+		UINT8 ubDamage = Weapon[usUBItem].ubImpact;
+
+		INT8 bShotsToFire = 1;
+		if (pSoldier->bDoBurst)
+		{
+			bShotsToFire = pSoldier->bDoAutofire ? pSoldier->bDoAutofire : GetShotsPerBurst(pObjHand);
+		}
+		// calculate shock reduction value 0-50%
+		UINT8 ubShockReductPercent = (50 - 400 / (bShotsToFire + 8)) * noisefactor * Weapon[usUBItem].ubAttackVolume / (50 * 100);
+		if (pSoldier->IsValidSecondHandShot())
+			ubShockReductPercent = ubShockReductPercent * 3 / 2;
+		ubShockReductPercent = __min(50, ubShockReductPercent);
+
+		pSoldier->aiData.bShock -= pSoldier->aiData.bShock * ubShockReductPercent / 100;
+	}
+
 	// CALC MUZZLE SWAY
 	if ( Item[ usUBItem ].usItemClass == IC_THROWING_KNIFE )
 	{
@@ -2493,17 +2526,20 @@ BOOLEAN UseGunNCTH( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 		PlayWeaponSound(pSoldier, pObjHand, pObjAttHand, usUBItem);
 
 		// ONLY DEDUCT FOR THE FIRST HAND when doing two-pistol attacks
-		if (pSoldier->IsValidSecondHandShot() && (*pObjHand)[0]->data.gun.bGunStatus >= USABLE && (*pObjHand)[0]->data.gun.bGunAmmoStatus > 0)
+		if ( !pSoldier->usBarrelCounter )
 		{
-			// only deduct APs when the main gun fires
-			if (pSoldier->ubAttackingHand == HANDPOS)
+			if ( pSoldier->IsValidSecondHandShot() && ( *pObjHand )[0]->data.gun.bGunStatus >= USABLE && ( *pObjHand )[0]->data.gun.bGunAmmoStatus > 0 )
 			{
-				DeductPoints(pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT);
+				// only deduct APs when the main gun fires
+				if ( pSoldier->ubAttackingHand == HANDPOS )
+				{
+					DeductPoints( pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT );
+				}
 			}
-		}
-		else
-		{
-			DeductPoints(pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT);
+			else
+			{
+				DeductPoints( pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT );
+			}
 		}
 	}
 
@@ -2527,17 +2563,20 @@ BOOLEAN UseGunNCTH( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 					{
 						INT16 ammoReliability = Item[(*pObjAttHand)[0]->data.gun.usGunAmmoItem].bReliability;
 						// HEADROCK HAM 5: Variable base chance
-						if ( UsingNewCTHSystem() == true)
-						{	
+						INT32 depreciatetest = 0;
+						if ( UsingNewCTHSystem() == true )
+						{
 							UINT16 usBaseChance = gGameCTHConstants.BASIC_RELIABILITY_ODDS;
-							FLOAT dReliabilityRatio = 3.0f * ((FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance); // Compare original odds to new odds.
-							uiDepreciateTest = usBaseChance + (INT16)( dReliabilityRatio * (Item[ iter->usItem ].bReliability + ammoReliability) );
-							uiDepreciateTest = max(0, uiDepreciateTest);
+							FLOAT dReliabilityRatio = 3.0f * ( (FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance ); // Compare original odds to new odds.
+							depreciatetest = usBaseChance + (INT16)( dReliabilityRatio * ( Item[iter->usItem].bReliability + ammoReliability ) );
 						}
 						else
 						{
-							uiDepreciateTest = max( 0, gItemSettings.usBasicDeprecateChance + 3 * (Item[iter->usItem].bReliability + ammoReliability) );
+							depreciatetest = gItemSettings.usBasicDeprecateChance + 3 * ( Item[iter->usItem].bReliability + ammoReliability );
 						}
+
+						uiDepreciateTest = min( 100, max( 0, depreciatetest ) );
+
 						if ( !PreRandom( uiDepreciateTest ) && ( (*pObjAttHand)[0]->data.objectStatus > 1) )
 						{
 							(*pA)[0]->data.objectStatus--;
@@ -2886,6 +2925,11 @@ BOOLEAN UseGunNCTH( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 	{
 		// Here, remove the knife...	or (for now) rocket launcher
 		pSoldier->inv[ HANDPOS ].RemoveObjectsFromStack(1);
+		//shadooow: if we have another throwing knife in second hand, move it to main hand
+		if (pSoldier->inv[SECONDHANDPOS].exists() && (Item[pSoldier->inv[SECONDHANDPOS].usItem].usItemClass & IC_THROWING_KNIFE))
+		{
+			SwapObjs(pSoldier, SECONDHANDPOS, HANDPOS, TRUE);
+		}
 		DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
 	}
 	else if ( Item[usUBItem].rocketlauncher )
@@ -3025,17 +3069,19 @@ BOOLEAN UseGunNCTH( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 
 	// Flugente: Added a malus to reliability for overheated guns
 	// HEADROCK HAM 5: Variable NCTH base change
-	if ( UsingNewCTHSystem() == true)
+	INT32 depreciatetest = 0;
+	if ( UsingNewCTHSystem() == true )
 	{
 		UINT16 usBaseChance = gGameCTHConstants.BASIC_RELIABILITY_ODDS;
-		FLOAT dReliabilityRatio = 3.0f * ((FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance); // Compare original odds to new odds.
-		uiDepreciateTest = (UINT32)((usBaseChance + (INT16)( dReliabilityRatio * GetReliability( &(pSoldier->inv[pSoldier->ubAttackingHand]) ) - iOverheatReliabilityMalus)) / dirtincreasefactor);
-		uiDepreciateTest = max(0, uiDepreciateTest);
+		FLOAT dReliabilityRatio = 3.0f * ( (FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance ); // Compare original odds to new odds.
+		depreciatetest = ( usBaseChance + (INT16)( dReliabilityRatio * GetReliability( &( pSoldier->inv[pSoldier->ubAttackingHand] ) ) - iOverheatReliabilityMalus ) ) / dirtincreasefactor;
 	}
 	else
 	{
-		uiDepreciateTest = max( (UINT32)((gItemSettings.usBasicDeprecateChance + 3 * GetReliability( pObjAttHand ) - iOverheatReliabilityMalus) / dirtincreasefactor), 0 );
+		depreciatetest = ( gItemSettings.usBasicDeprecateChance + 3 * GetReliability( pObjAttHand ) - iOverheatReliabilityMalus ) / dirtincreasefactor;
 	}
+
+	uiDepreciateTest = min( 100, max( 0, depreciatetest ) );
 
 	if ( !PreRandom( uiDepreciateTest ) && ( (*pObjAttHand)[0]->data.objectStatus > 1) )
 	{
@@ -3179,6 +3225,30 @@ BOOLEAN UseGun( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 
 	usItemNum = pSoldier->usAttackingWeapon;
 
+	// sevenfm: reduce shock when firing gun, for autofire shots - apply once
+	SOLDIERTYPE* pTarget = SimpleFindSoldier(sTargetGridNo, pSoldier->bTargetLevel);
+	if (gGameExternalOptions.fNewSuppressionCode &&
+		Item[usUBItem].usItemClass == IC_GUN && 
+		pTarget && 
+		(pSoldier->bDoBurst == 1 || pSoldier->bDoBurst == 0))
+	{
+		UINT16 noisefactor = GetPercentNoiseVolume(pObjUsed);
+		UINT8 ubDamage = Weapon[usUBItem].ubImpact;
+
+		INT8 bShotsToFire = 1;
+		if (pSoldier->bDoBurst)
+		{
+			bShotsToFire = pSoldier->bDoAutofire ? pSoldier->bDoAutofire : GetShotsPerBurst(pObjUsed);
+		}
+		// calculate shock reduction value 0-50%
+		UINT8 ubShockReductPercent = (50 - 400 / (bShotsToFire + 8)) * noisefactor * Weapon[usUBItem].ubAttackVolume / (50 * 100);
+		if (pSoldier->IsValidSecondHandShot())
+			ubShockReductPercent = ubShockReductPercent * 3 / 2;
+		ubShockReductPercent = __min(50, ubShockReductPercent);
+
+		pSoldier->aiData.bShock -= pSoldier->aiData.bShock * ubShockReductPercent / 100;
+	}
+
 	// DEDUCT APs
 	if (pSoldier->bDoBurst)
 	{
@@ -3201,17 +3271,20 @@ BOOLEAN UseGun( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 		PlayWeaponSound(pSoldier, pObjHand, pObjAttHand, usUBItem);
 
 		// ONLY DEDUCT FOR THE FIRST HAND when doing two-pistol attacks
-		if (pSoldier->IsValidSecondHandShot() && (*pObjUsed)[0]->data.gun.bGunStatus >= USABLE && (*pObjUsed)[0]->data.gun.bGunAmmoStatus > 0)
+		if ( !pSoldier->usBarrelCounter )
 		{
-			// only deduct APs when the main gun fires
-			if (pSoldier->ubAttackingHand == HANDPOS)
+			if ( pSoldier->IsValidSecondHandShot() && ( *pObjUsed )[0]->data.gun.bGunStatus >= USABLE && ( *pObjUsed )[0]->data.gun.bGunAmmoStatus > 0 )
 			{
-				DeductPoints(pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT);
+				// only deduct APs when the main gun fires
+				if ( pSoldier->ubAttackingHand == HANDPOS )
+				{
+					DeductPoints( pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT );
+				}
 			}
-		}
-		else
-		{
-			DeductPoints(pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT);
+			else
+			{
+				DeductPoints( pSoldier, sAPCost, iBPCost, AFTERSHOT_INTERRUPT );
+			}
 		}
 	}
 
@@ -3252,17 +3325,20 @@ BOOLEAN UseGun( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 					{
 						INT16 ammoReliability = Item[(*pObjUsed)[0]->data.gun.usGunAmmoItem].bReliability;
 						// HEADROCK HAM 5: Variable base chance
+						INT32 depreciatetest = 0;
 						if ( UsingNewCTHSystem() == true )
 						{
 							UINT16 usBaseChance = gGameCTHConstants.BASIC_RELIABILITY_ODDS;
-							FLOAT dReliabilityRatio = 3.0f * ((FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance); // Compare original odds to new odds.
-							uiDepreciateTest = usBaseChance + (INT16)( dReliabilityRatio * (Item[ iter->usItem ].bReliability + ammoReliability) );
-							uiDepreciateTest = __max(0, uiDepreciateTest);
+							FLOAT dReliabilityRatio = 3.0f * ( (FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance ); // Compare original odds to new odds.
+							depreciatetest = usBaseChance + (INT16)( dReliabilityRatio * ( Item[iter->usItem].bReliability + ammoReliability ) );
 						}
 						else
 						{
-							uiDepreciateTest = __max( 0, gItemSettings.usBasicDeprecateChance + 3 * (Item[iter->usItem].bReliability + ammoReliability) );
+							depreciatetest = gItemSettings.usBasicDeprecateChance + 3 * ( Item[iter->usItem].bReliability + ammoReliability );
 						}
+
+						uiDepreciateTest = min( 100, max( 0, depreciatetest ) );
+
 						if ( !PreRandom( uiDepreciateTest ) && ( (*pObjUsed)[0]->data.objectStatus > 1) )
 						{
 							(*pA)[0]->data.objectStatus--;
@@ -3643,6 +3719,11 @@ BOOLEAN UseGun( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 	{
 		// Here, remove the knife...	or (for now) rocket launcher
 		pSoldier->inv[ HANDPOS ].RemoveObjectsFromStack(1);
+		//shadooow: if we have another throwing knife in second hand, move it to main hand
+		if (pSoldier->inv[SECONDHANDPOS].exists() && (Item[pSoldier->inv[SECONDHANDPOS].usItem].usItemClass & IC_THROWING_KNIFE))
+		{
+			SwapObjs(pSoldier, SECONDHANDPOS, HANDPOS, TRUE);
+		}
 		DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
 	}
 	else if ( Item[usUBItem].rocketlauncher )
@@ -3784,17 +3865,19 @@ BOOLEAN UseGun( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 	}
 
 	// Flugente: Added a malus to reliability for overheated guns
+	INT32 depreciatetest = 0;
 	if ( UsingNewCTHSystem() == true )
 	{
 		UINT16 usBaseChance = gGameCTHConstants.BASIC_RELIABILITY_ODDS;
-		FLOAT dReliabilityRatio = 3.0f * ((FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance); // Compare original odds to new odds.
-		uiDepreciateTest = (UINT32)(usBaseChance + (INT16)( dReliabilityRatio * GetReliability( &(pSoldier->inv[ pSoldier->ubAttackingHand ])) - iOverheatReliabilityMalus) / dirtincreasefactor);
-		uiDepreciateTest = max(0, uiDepreciateTest);
+		FLOAT dReliabilityRatio = 3.0f * ( (FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance ); // Compare original odds to new odds.
+		depreciatetest = usBaseChance + (INT16)( dReliabilityRatio * GetReliability( &( pSoldier->inv[pSoldier->ubAttackingHand] ) ) - iOverheatReliabilityMalus ) / dirtincreasefactor;
 	}
 	else
 	{
-		uiDepreciateTest = max( (UINT32)((gItemSettings.usBasicDeprecateChance + 3 * (GetReliability( pObjUsed )) - iOverheatReliabilityMalus) / dirtincreasefactor), 0 );
+		depreciatetest = ( gItemSettings.usBasicDeprecateChance + 3 * ( GetReliability( pObjUsed ) ) - iOverheatReliabilityMalus ) / dirtincreasefactor;
 	}
+
+	uiDepreciateTest = min( 100, max( 0, depreciatetest ) );
 
 	if ( !PreRandom( uiDepreciateTest ) && ( (*pObjUsed)[0]->data.objectStatus > 1) )
 	{
@@ -3831,7 +3914,7 @@ BOOLEAN UseBlade( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 	BOOLEAN							fSurpriseAttack;
 
 	// Deduct points!
- 	sAPCost = CalcTotalAPsToAttack( pSoldier, sTargetGridNo, FALSE, pSoldier->aiData.bAimTime );
+ 	sAPCost = CalcTotalAPsToAttack( pSoldier, sTargetGridNo, FALSE, (pSoldier->aiData.bAimTime / 2) );
 
 	DeductPoints( pSoldier, sAPCost, 0, AFTERACTION_INTERRUPT );
 
@@ -3898,7 +3981,7 @@ BOOLEAN UseBlade( SOLDIERTYPE *pSoldier , INT32 sTargetGridNo )
 			iImpact = ( iImpact * WEAPON_STATUS_MOD( (*pObj)[0]->data.objectStatus) ) / 100;
 			
 			// modify by hit location
-			AdjustImpactByHitLocation( iImpact, pSoldier->bAimShotLocation, &iImpact, &iImpactForCrits );
+			AdjustImpactByHitLocation( iImpact, pSoldier->bAimMeleeLocation, &iImpact, &iImpactForCrits );
 
 			// bonus for surprise
 			if ( fSurpriseAttack )
@@ -4058,7 +4141,7 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 	// Punch the enemy
 	if (!fStealing)
 	{
- 		sAPCost = CalcTotalAPsToAttack( pSoldier, sTargetGridNo, FALSE, pSoldier->aiData.bAimTime );
+ 		sAPCost = CalcTotalAPsToAttack( pSoldier, sTargetGridNo, FALSE, (pSoldier->aiData.bAimTime / 2));
 		DeductPoints( pSoldier, sAPCost, 0, AFTERACTION_INTERRUPT );
 	}
 	// Steal from the enemy
@@ -4087,7 +4170,7 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 			{
 				iHitChance = 100;
 			}
-			else if ( AM_A_ROBOT( pTargetSoldier ) || ARMED_VEHICLE( pTargetSoldier ) || CREATURE_OR_BLOODCAT( pTargetSoldier ) || (SOLDIER_CLASS_MILITIA( pTargetSoldier->ubSoldierClass ) && (gGameExternalOptions.ubMilitiaDropEquipment != 2)) ) // added militia here - SANDRO
+			else if ( AM_A_ROBOT( pTargetSoldier ) || ENEMYROBOT( pTargetSoldier ) || ARMED_VEHICLE( pTargetSoldier ) || CREATURE_OR_BLOODCAT( pTargetSoldier ) || (SOLDIER_CLASS_MILITIA( pTargetSoldier->ubSoldierClass ) && (gGameExternalOptions.ubMilitiaDropEquipment != 2)) ) // added militia here - SANDRO
 			{
 				iHitChance = 0;
 			}
@@ -4446,7 +4529,7 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 			}
 
 			// Give some experience
-			if ( iHitChance > 0 && pSoldier->bTeam == gbPlayerNum && pTargetSoldier->bTeam != gbPlayerNum && !(pTargetSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE) && !AM_A_ROBOT( pTargetSoldier ) && !ARMED_VEHICLE( pTargetSoldier ) )
+			if ( iHitChance > 0 && pSoldier->bTeam == gbPlayerNum && pTargetSoldier->bTeam != gbPlayerNum && !(pTargetSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE) && !AM_A_ROBOT( pTargetSoldier ) && !ARMED_VEHICLE( pTargetSoldier ) && !ENEMYROBOT( pTargetSoldier ) )
 			{
 				if (fFailure == FALSE)
 				{
@@ -4560,12 +4643,12 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 					if (gGameExternalOptions.fEnhancedCloseCombatSystem)
 					{ 
 						// Increased EXP for head strike
-						if (pSoldier->bAimShotLocation == AIM_SHOT_HEAD)
+						if (pSoldier->bAimMeleeLocation == AIM_SHOT_HEAD)
 						{
 							ubExpGain += 2;
 						}
 						// Decreased EXP for leg strike
-						else if (pSoldier->bAimShotLocation == AIM_SHOT_LEGS)
+						else if (pSoldier->bAimMeleeLocation == AIM_SHOT_LEGS)
 						{
 							ubExpGain -= 4;
 						}
@@ -4578,7 +4661,7 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 						}
 					}
 
-					if ( pTargetSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE || AM_A_ROBOT( pTargetSoldier ) || ARMED_VEHICLE( pTargetSoldier ) )
+					if ( pTargetSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE || AM_A_ROBOT( pTargetSoldier ) || ARMED_VEHICLE( pTargetSoldier ) || ENEMYROBOT( pTargetSoldier ) )
 					{
 						ubExpGain = 0;
 					}
@@ -4610,12 +4693,12 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 					if (gGameExternalOptions.fEnhancedCloseCombatSystem)
 					{ 
 						// Increased EXP for head strike
-						if (pSoldier->bAimShotLocation == AIM_SHOT_HEAD)
+						if (pSoldier->bAimMeleeLocation == AIM_SHOT_HEAD)
 						{
 							ubExpGain += 1;
 						}
 						// Decreased EXP for leg strike
-						else if (pSoldier->bAimShotLocation == AIM_SHOT_LEGS)
+						else if (pSoldier->bAimMeleeLocation == AIM_SHOT_LEGS)
 						{
 							ubExpGain -= 2;
 						}
@@ -4628,7 +4711,7 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 						}
 					}
 
-					if ( pTargetSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE || AM_A_ROBOT( pTargetSoldier ) || ARMED_VEHICLE( pTargetSoldier ) )
+					if ( pTargetSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE || AM_A_ROBOT( pTargetSoldier ) || ARMED_VEHICLE( pTargetSoldier ) || ENEMYROBOT( pTargetSoldier ) )
 					{
 						ubExpGain = 0;
 					}
@@ -4768,15 +4851,15 @@ BOOLEAN UseHandToHand( SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, BOOLEAN fStea
 					if (pTargetSoldier->bActionPoints >= MinAPsToAttack(pTargetSoldier, pSoldier->sGridNo, TRUE, 1, 0) && Chance(EffectiveStrength(pTargetSoldier, FALSE) / 4))
 						pTargetSoldier->aiData.bAimTime = 1;
 
-					pTargetSoldier->bAimShotLocation = AIM_SHOT_RANDOM;
+					pTargetSoldier->bAimMeleeLocation = AIM_SHOT_RANDOM;
 					if (gAnimControl[pSoldier->usAnimState].ubEndHeight > ANIM_PRONE)
 					{
 						if (Chance((6 + EffectiveDexterity(pTargetSoldier, FALSE) / 10 + 5 * NUM_SKILL_TRAITS(pTargetSoldier, MARTIAL_ARTS_NT)) * 100 / (100 + pSoldier->bBreath)))
-							pTargetSoldier->bAimShotLocation = AIM_SHOT_HEAD;
+							pTargetSoldier->bAimMeleeLocation = AIM_SHOT_HEAD;
 						else if (Chance(pSoldier->bBreath * EffectiveWisdom(pTargetSoldier) / (100 + EffectiveDexterity(pTargetSoldier, FALSE))))
-							pTargetSoldier->bAimShotLocation = AIM_SHOT_LEGS;
+							pTargetSoldier->bAimMeleeLocation = AIM_SHOT_LEGS;
 						else
-							pTargetSoldier->bAimShotLocation = AIM_SHOT_TORSO;
+							pTargetSoldier->bAimMeleeLocation = AIM_SHOT_TORSO;
 					}
 
 					HandleItem(pTargetSoldier, pSoldier->sGridNo, pTargetSoldier->pathing.bLevel, pTargetSoldier->inv[HANDPOS].usItem, FALSE);
@@ -5614,7 +5697,8 @@ void StructureHit( INT32 iBullet, UINT16 usWeaponIndex, INT16 bWeaponStatus, UIN
 	// Get Structure pointer and damage it!
 	if ( usStructureID != INVALID_STRUCTURE_ID )
 	{
-		pStructure = FindStructureByID( sGridNo, usStructureID );
+		// Flugente: if possible, take the gridno of the bullet. Otherwise we often get the issue that the calculated gridno is not the one where the structure is, leading to the structure being undamaged
+		pStructure = FindStructureByID( pBullet ? pBullet->sGridNo : sGridNo, usStructureID );
 
 		DamageStructure( pStructure, (UINT8)iImpact, STRUCTURE_DAMAGE_GUNFIRE, sGridNo, sXPos, sYPos, ubAttackerID, pBullet->usFlags & BULLET_FLAG_ANTIMATERIEL ? pBullet->iImpact - pBullet->iImpactReduction : 0 );
 	}
@@ -5788,14 +5872,13 @@ void StructureHit( INT32 iBullet, UINT16 usWeaponIndex, INT16 bWeaponStatus, UIN
 	}
 	else
 	{
-		if ( sZPos == 0 )
-		{
+		if (Water(sGridNo, bLevel))
+			PlayJA2Sample(S_WATER_IMPACT1, RATE_11025, uiMissVolume, 1, SoundDir(sGridNo));
+		else if ( sZPos == 0 )
 			PlayJA2Sample( MISS_G2 , RATE_11025, 5, 1, SoundDir( sGridNo ) );
-		}
 		else
-		{
 			PlayJA2Sample( MISS_1 + Random(8), RATE_11025, 5, 1, SoundDir( sGridNo ) );
-		}
+
 		RemoveBullet( iBullet );
 	}
 
@@ -5831,14 +5914,12 @@ void StructureHit( INT32 iBullet, UINT16 usWeaponIndex, INT16 bWeaponStatus, UIN
 
 			if ( !fStopped || !DoSpecialEffectAmmoMiss( ubAttackerID, usWeaponIndex, sGridNo, sXPos, sYPos, sZPos, FALSE, TRUE, iBullet ) )
 			{
-				if ( sZPos == 0 )
-				{
+				if (Water(sGridNo, bLevel))
+					PlayJA2Sample(S_WATER_IMPACT1, RATE_11025, uiMissVolume, 1, SoundDir(sGridNo));
+				else if ( sZPos == 0 )
 					PlayJA2Sample( MISS_G2 , RATE_11025, uiMissVolume, 1, SoundDir( sGridNo ) );
-				}
 				else
-				{
 					PlayJA2Sample( MISS_1 + Random(8), RATE_11025, uiMissVolume, 1, SoundDir( sGridNo ) );
-				}
 
 				// Default hit is the ground
 				usMissTileIndex = FIRSTMISS1;
@@ -6175,7 +6256,7 @@ UINT32 CalcNewChanceToHitGun(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 ubAimTi
 
 	iSightRange = 0;
 
-	if (ubTargetID != NOBODY && pSoldier->aiData.bOppList[ubTargetID] == SEEN_CURRENTLY || gbPublicOpplist[pSoldier->bTeam][ubTargetID] == SEEN_CURRENTLY)
+	if (ubTargetID != NOBODY && (pSoldier->aiData.bOppList[ubTargetID] == SEEN_CURRENTLY || gbPublicOpplist[pSoldier->bTeam][ubTargetID] == SEEN_CURRENTLY))
 	{
 		iSightRange = SoldierToSoldierLineOfSightTest( pSoldier, MercPtrs[ubTargetID], TRUE, NO_DISTANCE_LIMIT, pSoldier->bAimShotLocation, false );
 	}
@@ -6866,7 +6947,7 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 ubAimTime,
 
 		// if target sees us, he may have a chance to dodge before the gun goes off
 		// but ability to dodge is reduced if crouched or prone!
-		if ( pTarget->aiData.bOppList[pSoldier->ubID] == SEEN_CURRENTLY && !ARMED_VEHICLE( pTarget ) && !(pSoldier->ubBodyType != QUEENMONSTER) )
+		if ( pTarget->aiData.bOppList[pSoldier->ubID] == SEEN_CURRENTLY && !ARMED_VEHICLE( pTarget ) && !ENEMYROBOT( pTarget ) && !(pSoldier->ubBodyType != QUEENMONSTER) )
 		{
 			iPenalty = ( EffectiveAgility( pTarget, FALSE ) / 5 + EffectiveExpLevel( pTarget ) * 2);
 			switch( gAnimControl[ pTarget->usAnimState ].ubHeight )
@@ -6881,7 +6962,7 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 ubAimTime,
 
 			// reduce dodge ability by the attacker's stats
 			iBonus = ( EffectiveDexterity( pSoldier, FALSE ) / 5 + EffectiveExpLevel( pSoldier ) * 2);
-			if ( ARMED_VEHICLE( pTarget ) || (pSoldier->ubBodyType != QUEENMONSTER) )
+			if ( ARMED_VEHICLE( pTarget ) || ENEMYROBOT( pTarget ) || (pSoldier->ubBodyType != QUEENMONSTER) )
 			{
 				// reduce ability to track shots
 				iBonus = iBonus / 2;
@@ -7451,7 +7532,7 @@ UINT32 CalcChanceToHitGun(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 ubAimTime,
 	// be an effective CTH of only 1/5000 (50 chances to get a 1 out of 100 CTH, hehehe)
 	if (iChance <= gGameExternalOptions.ubMinimumCTH)
 	{
-		if ( ARMED_VEHICLE( pSoldier ) )
+		if ( ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) )
 		{
 			// allow absolute minimums
 			iChance = 0;
@@ -7679,7 +7760,7 @@ INT32 ArmourProtection( SOLDIERTYPE * pTarget, UINT16 ubArmourType, INT16 * pbSt
 	iCoverage = Armour [ ubArmourType ].ubCoverage;
 	if ( *plateHit ) iCoverage = 100;
 
-	if ( !AM_A_ROBOT( pTarget ) )
+	if ( !(AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget )) )
 	{
 		// check for the bullet missing armor due to coverage
 		iFailure = PreRandom( 100 ) + 1 - iCoverage;
@@ -7754,7 +7835,7 @@ INT32 ArmourProtection( SOLDIERTYPE * pTarget, UINT16 ubArmourType, INT16 * pbSt
 		}
 	}
 
-	if ( !AM_A_ROBOT( pTarget ) )
+	if ( !(AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget )) )
 	{
 		*pbStatus -= (iAppliedProtection * Armour[ubArmourType].ubDegradePercent) / 100;
 	}
@@ -7974,9 +8055,9 @@ INT32 BulletImpact( SOLDIERTYPE *pFirer, BULLET *pBullet, SOLDIERTYPE * pTarget,
 	{
 		damagefactor *= AmmoTypes[ubAmmoType].dDamageModifierZombie;
 	}
-	else if ( pTarget->flags.uiStatusFlags & SOLDIER_VEHICLE )
+	else if ( pTarget->flags.uiStatusFlags & SOLDIER_VEHICLE || pTarget->flags.uiStatusFlags & SOLDIER_ROBOT )
 	{
-		if ( COMBAT_JEEP( pTarget ) || AM_A_ROBOT( pTarget ) )
+		if ( COMBAT_JEEP( pTarget ) || AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget ))
 		{
 			damagefactor *= AmmoTypes[ubAmmoType].dDamageModifierArmouredVehicle;
 		}
@@ -8074,7 +8155,7 @@ INT32 BulletImpact( SOLDIERTYPE *pFirer, BULLET *pBullet, SOLDIERTYPE * pTarget,
 		ShutupaYoFace( pTarget->iFaceIndex );
 	}
 			
-	if ( iImpact > 0 && !ARMED_VEHICLE( pTarget ) )
+	if ( iImpact > 0 && !ARMED_VEHICLE( pTarget ) && !ENEMYROBOT( pTarget ) )
 	{
 		// Flugente: any bullet can have drug effects it set so in the magazine item
 		if ( ammoitem != NOTHING )
@@ -8232,7 +8313,7 @@ INT32 BulletImpact( SOLDIERTYPE *pFirer, BULLET *pBullet, SOLDIERTYPE * pTarget,
 		}
 	}
 
-	if ( AM_A_ROBOT( pTarget ) )
+	if ( AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget ) )
 	{
 		iImpactForCrits = 0;
 	}
@@ -8290,7 +8371,7 @@ INT32 BulletImpact( SOLDIERTYPE *pFirer, BULLET *pBullet, SOLDIERTYPE * pTarget,
 			}
 		}
 
-		if (iImpactForCrits > 0 && iImpactForCrits < pTarget->stats.bLife && !(pTarget->flags.uiStatusFlags & SOLDIER_MONSTER) ) // not to monsters - SANDRO
+		if (iImpactForCrits > 0 && iImpactForCrits < pTarget->stats.bLife && !(pTarget->flags.uiStatusFlags & SOLDIER_MONSTER) && !(pTarget->flags.uiStatusFlags & SOLDIER_VEHICLE) && (!(gTacticalStatus.uiFlags & GODMODE) || pTarget->bTeam != OUR_TEAM))
 		{
 			UINT32 uiCritChance = 0;
 			if (fFragment)
@@ -8403,6 +8484,7 @@ INT32 BulletImpact( SOLDIERTYPE *pFirer, BULLET *pBullet, SOLDIERTYPE * pTarget,
 								if ( bStatLoss > 0 )
 								{
 									pTarget->stats.bLifeMax -= bStatLoss;
+									pTarget->bBleeding -= bStatLoss;
 									// SANDRO - added this for healing lost stats feature
 									pTarget->ubCriticalStatDamage[DAMAGED_STAT_HEALTH] += bStatLoss;
 
@@ -8587,7 +8669,7 @@ INT32 HTHImpact( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pTarget, INT32 iHitBy, BO
 		
 		iImpact += EffectiveStrength( pSoldier, FALSE ) / 20; // 0 to 5 for strength, adjusted by damage taken
 
-		if ( AM_A_ROBOT( pTarget ) )
+		if ( AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget) )
 		{
 			iImpact /= 4;
 		}
@@ -8604,7 +8686,7 @@ INT32 HTHImpact( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pTarget, INT32 iHitBy, BO
 			{
 				iImpact += GetDamage(&pSoldier->inv[HANDPOS]);
 
-				if ( AM_A_ROBOT( pTarget ) )
+				if ( AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget ) )
 				{
 					iImpact /= 2;
 				}
@@ -8615,7 +8697,7 @@ INT32 HTHImpact( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pTarget, INT32 iHitBy, BO
 				{
 					iImpact += GetDamage(&pSoldier->inv[HANDPOS]);
 				}
-				if ( AM_A_ROBOT( pTarget ) )
+				if ( AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget ) )
 				{
 					iImpact /= 2;
 				}
@@ -8639,7 +8721,7 @@ INT32 HTHImpact( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pTarget, INT32 iHitBy, BO
 			// only the item impact is multiplied, not the level and strength bonus, but here it does
 			iImpact = (INT32)(iImpact * gGameExternalOptions.iMeleeDamageModifier / 100 ); 
 
-			if ( AM_A_ROBOT( pTarget ) )
+			if ( AM_A_ROBOT( pTarget ) || ENEMYROBOT( pTarget ) )
 			{
 				iImpact = 0;
 			}
@@ -8741,11 +8823,11 @@ INT32 HTHImpact( SOLDIERTYPE * pSoldier, SOLDIERTYPE * pTarget, INT32 iHitBy, BO
 		// Enhanced Close Combat System - aiming at body parts makes difference
 		if ( !autoresolve && gGameExternalOptions.fEnhancedCloseCombatSystem)
 		{
-			if ( pSoldier->bAimShotLocation == AIM_SHOT_HEAD )
+			if ( pSoldier->bAimMeleeLocation == AIM_SHOT_HEAD )
 			{
 				iBonus += 25; // Punch or kick to head deal more damage (vs -20% accuracy)
 			}
-			else if	( pSoldier->bAimShotLocation == AIM_SHOT_LEGS )
+			else if	( pSoldier->bAimMeleeLocation == AIM_SHOT_LEGS )
 			{
 				// Punch or kick to legs deal less damage but takes some AP per damage out of target adjusted by AP_MAXIMUM
 				// NO, better to make hit to legs have a much better chance to hit, while only 50% damage is dealt
@@ -9511,9 +9593,11 @@ UINT32 CalcChanceHTH( SOLDIERTYPE * pAttacker,SOLDIERTYPE *pDefender, INT16 ubAi
 	else
 	{
 		// Changed from DG by CJC to give higher chances of hitting with a stab or punch
-		// sevenfm: lowered base chance
-		iChance = 50 + (iAttRating - iDefRating) / 3;
-		//iChance = 67 + (iAttRating - iDefRating) / 3;
+		// sevenfm: lowered chance for boxers
+		if (pAttacker->flags.uiStatusFlags & SOLDIER_BOXER)
+			iChance = 50 + (iAttRating - iDefRating) / 3;
+		else
+			iChance = 67 + (iAttRating - iDefRating) / 3;
 
 		// SANDRO - Enhanced Close Combat System - chances to hit for punches aimed at body parts
 		if (gGameExternalOptions.fEnhancedCloseCombatSystem)
@@ -9525,12 +9609,12 @@ UINT32 CalcChanceHTH( SOLDIERTYPE * pAttacker,SOLDIERTYPE *pDefender, INT16 ubAi
 				iChance += gSkillTraitValues.bMAAimedPunchCtHModifier * NUM_SKILL_TRAITS( pAttacker, MARTIAL_ARTS_NT );
 			}
 
-			if ( pAttacker->bAimShotLocation == AIM_SHOT_HEAD )
+			if ( pAttacker->bAimMeleeLocation == AIM_SHOT_HEAD )
 			{
 				// Harder to hit head (but higher damage there)
 				iChance -= 20;
 			}
-			else if( pAttacker->bAimShotLocation == AIM_SHOT_LEGS )
+			else if( pAttacker->bAimMeleeLocation == AIM_SHOT_LEGS )
 			{
 				// easy to hit legs (but low damage there)
 				iChance += 25;
@@ -9538,7 +9622,7 @@ UINT32 CalcChanceHTH( SOLDIERTYPE * pAttacker,SOLDIERTYPE *pDefender, INT16 ubAi
 		}
 		else
 		{
-			if ( pAttacker->bAimShotLocation == AIM_SHOT_HEAD )
+			if ( pAttacker->bAimMeleeLocation == AIM_SHOT_HEAD )
 			{
 				// make this harder!
 				iChance -= 20;
@@ -10049,38 +10133,45 @@ UINT32 CalcThrownChanceToHit(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 ubAimTi
 		iChance = ( EffectiveDexterity( pSoldier, FALSE ) + EffectiveMarksmanship( pSoldier ) + EffectiveWisdom( pSoldier ) + (pSoldier->stats.bExpLevel * 10) ) / 4;
 
 		////////////////////////////////////////////////////////////////////////////////////////////////
-		// SANDRO - old/new traits
-		if ( gGameOptions.fNewTraitSystem ) 
+		// sevenfm: apply penalty to enemy/militia only if traits can be assigned to compensate
+		// otherwise AI will not be able to shoot because of extremely low CTH
+		if (pSoldier->bTeam == OUR_TEAM ||
+			pSoldier->bTeam == ENEMY_TEAM && gGameExternalOptions.fAssignTraitsToEnemy ||
+			pSoldier->bTeam == MILITIA_TEAM && gGameExternalOptions.fAssignTraitsToMilitia)
 		{
-			if ( Item[ usHandItem ].mortar )
+			// SANDRO - old/new traits
+			if (gGameOptions.fNewTraitSystem)
 			{
-				if (HAS_SKILL_TRAIT( pSoldier, HEAVY_WEAPONS_NT ))
-					iChance += gSkillTraitValues.sCtHModifierMortar * max( 0, 100 - gSkillTraitValues.ubHWMortarCtHPenaltyReduction * NUM_SKILL_TRAITS( pSoldier, HEAVY_WEAPONS_NT )) / 100;
+				if (Item[usHandItem].mortar)
+				{
+					if (HAS_SKILL_TRAIT(pSoldier, HEAVY_WEAPONS_NT))
+						iChance += gSkillTraitValues.sCtHModifierMortar * max(0, 100 - gSkillTraitValues.ubHWMortarCtHPenaltyReduction * NUM_SKILL_TRAITS(pSoldier, HEAVY_WEAPONS_NT)) / 100;
+					else
+						iChance += gSkillTraitValues.sCtHModifierMortar; // -60% for untrained mercs
+				}
 				else
-					iChance += gSkillTraitValues.sCtHModifierMortar; // -60% for untrained mercs
+				{
+					iChance += gSkillTraitValues.bCtHModifierGrenadeLaunchers; // -25% for untrained mercs
+
+					if (HAS_SKILL_TRAIT(pSoldier, HEAVY_WEAPONS_NT))
+						iChance += gSkillTraitValues.ubHWBonusCtHGrenadeLaunchers * NUM_SKILL_TRAITS(pSoldier, HEAVY_WEAPONS_NT); // +25% per trait - SANDRO
+				}
 			}
 			else
 			{
-				iChance += gSkillTraitValues.bCtHModifierGrenadeLaunchers; // -25% for untrained mercs
+				// This feature is available only if not having new traits on - SANDRO
+				// Also.. this was moved here before the Heavy Weapons bonus
+				// HEADROCK HAM 3.2: External divisor for CTH with mortars, now that they are more prevalent in the battlefield.
+				if (Item[usHandItem].mortar)
+				{
+					iChance = iChance / gGameExternalOptions.ubMortarCTHDivisor;
+				}
 
-				if (HAS_SKILL_TRAIT( pSoldier, HEAVY_WEAPONS_NT ))
-					iChance += gSkillTraitValues.ubHWBonusCtHGrenadeLaunchers * NUM_SKILL_TRAITS( pSoldier, HEAVY_WEAPONS_NT ); // +25% per trait - SANDRO
-			}
-		}
-		else
-		{
-			// This feature is available only if not having new traits on - SANDRO
-			// Also.. this was moved here before the Heavy Weapons bonus
-			// HEADROCK HAM 3.2: External divisor for CTH with mortars, now that they are more prevalent in the battlefield.
-			if ( Item[ usHandItem ].mortar )
-			{
-				iChance = iChance / gGameExternalOptions.ubMortarCTHDivisor;
-			}
-
-			// heavy weapons trait helps out
-			if (HAS_SKILL_TRAIT( pSoldier, HEAVY_WEAPS_OT ))
-			{
-				iChance += gbSkillTraitBonus[HEAVY_WEAPS_OT] * NUM_SKILL_TRAITS( pSoldier, HEAVY_WEAPS_OT );
+				// heavy weapons trait helps out
+				if (HAS_SKILL_TRAIT(pSoldier, HEAVY_WEAPS_OT))
+				{
+					iChance += gbSkillTraitBonus[HEAVY_WEAPS_OT] * NUM_SKILL_TRAITS(pSoldier, HEAVY_WEAPS_OT);
+				}
 			}
 		}
 		////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10702,18 +10793,18 @@ BOOLEAN WasPrevBulletATracer( SOLDIERTYPE *pSoldier, OBJECTTYPE *pWeapon )
 	}
  }
 
-UINT8 GetAutofireShotsPerFiveAPs( OBJECTTYPE *pObj )
+UINT8 GetAutofireShotsPerFiveAPs( UINT16 usItem )
 {
 //	 DebugMsg(TOPIC_JA2,DBG_LEVEL_3,String("GetAutofireShotsPerFiveAPs"));
 
 //	HEADROCK HAM B2.6: Added overall modifier
-	if (Weapon[ pObj->usItem ].bAutofireShotsPerFiveAP > 0)
+	if (Weapon[ usItem ].bAutofireShotsPerFiveAP > 0)
 	{
-		UINT8 usAutoFireShots = Weapon[ pObj->usItem ].bAutofireShotsPerFiveAP;
+		UINT8 usAutoFireShots = Weapon[ usItem ].bAutofireShotsPerFiveAP;
 
 		// modify by ini values
-		if ( Item[ pObj->usItem ].usItemClass == IC_GUN )
-			usAutoFireShots *= gItemSettings.fAFShotsPer5APModifierGun[ Weapon[ pObj->usItem ].ubWeaponType ];
+		if ( Item[ usItem ].usItemClass == IC_GUN )
+			usAutoFireShots *= gItemSettings.fAFShotsPer5APModifierGun[ Weapon[ usItem ].ubWeaponType ];
 
 		// WANNE: Fix by Headrock
 		// Weapons shouldn't ever lose their Bp5AP due to this modifier.
@@ -10721,10 +10812,15 @@ UINT8 GetAutofireShotsPerFiveAPs( OBJECTTYPE *pObj )
 		
 		//return __max((Weapon[ pObj->usItem ].bAutofireShotsPerFiveAP + gGameExternalOptions.bAutofireBulletsPer5APModifier), 0);
 	}
-	else
-		return 0;
 
+	return 0;
 }
+
+UINT8 GetAutofireShotsPerFiveAPs( OBJECTTYPE *pObj )
+{
+	return GetAutofireShotsPerFiveAPs( pObj->usItem );
+}
+
 UINT16 GetMagSize( OBJECTTYPE *pObj, UINT8 subObject )
 {
 //	 DebugMsg(TOPIC_JA2,DBG_LEVEL_3,String("GetMagSize"));

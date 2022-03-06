@@ -156,7 +156,7 @@ Incident_Stats::AddStat( SOLDIERTYPE* pSoldier, UINT8 aType )
 
 		case ENEMY_TEAM:
 		{
-			if ( ARMED_VEHICLE( pSoldier ) )
+			if ( ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) )
 				group = CAMPAIGNHISTORY_SD_ENEMY_TANK;
 			else if ( pSoldier->ubSoldierClass == SOLDIER_CLASS_ADMINISTRATOR )
 				group = CAMPAIGNHISTORY_SD_ENEMY_ADMIN;
@@ -736,7 +736,10 @@ void FinishIncident(INT16 sX, INT16 sY, INT8 sZ)
 		gCurrentIncident.usOneTimeEventFlags |= INCIDENT_ONETIMEEVENT_OMERTA;
 
 	// dynamic opinions
-	HandleDynamicOpinionBattleFinished( (gCurrentIncident.usIncidentFlags & INCIDENT_WIN) != 0 );
+	if (gGameExternalOptions.fDynamicOpinions)
+	{
+		HandleDynamicOpinionBattleFinished((gCurrentIncident.usIncidentFlags & INCIDENT_WIN) != 0);
+	}
 
 	gCampaignStats.AddNewIncident(gCurrentIncident);
 	

@@ -5,62 +5,31 @@
 #include "end game.h"
 #include "Morale.h"
 #else
-#include <stdio.h>
-#include <string.h>
-#include "stdlib.h"
 #include "debug.h"
-//#include "soldier control.h"
 #include "weapons.h"
-#include "handle items.h"
-#include "worlddef.h"
 #include "worldman.h"
-#include "rotting corpses.h"
-#include "tile cache.h"
-#include "isometric utils.h"
-#include "animation control.h"
-#include "utilities.h"
 #include "game clock.h"
-#include "soldier create.h"
 #include "renderworld.h"
-#include "soldier add.h"
 #include "explosion control.h"
-#include "tile animation.h"
 #include "sound control.h"
-#include "weapons.h"
-#include "handle items.h"
-#include "world items.h"
 #include "structure wrap.h"
-#include "tiledef.h"
-#include "tiledat.h"
 #include "interactive tiles.h"
 #include "SaveLoadMap.h"
 #include "Message.h"
 #include "Random.h"
 #include "smokeeffects.h"
-#include "handle ui.h"
 #include "pathai.h"
-#include "campaign Types.h"
-#include "strategicmap.h"
 #include "strategic.h"
 #include "Action Items.h"
-#include "Soldier Profile.h"
-#include "Quests.h"
 #include "Interface Dialogue.h"
 #include "LightEffects.h"
 #include "AI.h"
 #include "Soldier tile.h"
-#include "lighting.h"
 #include "Render Fun.h"
 #include "Opplist.h"
 #include "smell.h"
-#include "GameSettings.h"
-#include "Interface.h"
 #include "end game.h"
-#include "WorldDat.h"
-#include "environment.h"
 #include "Buildings.h"
-#include "Keys.h"
-#include "Morale.h"
 #include "fov.h"
 #include "Map Information.h"
 #include "Soldier Functions.h"//dnl ch40 200909
@@ -94,7 +63,6 @@
 class OBJECTTYPE;
 class SOLDIERTYPE;
 //DBrot: More Rooms
-//BOOLEAN HookerInRoom( UINT8 ubRoom );
 BOOLEAN HookerInRoom( UINT16 usRoom );
 
 // MODULE FOR EXPLOSIONS
@@ -411,11 +379,14 @@ void InternalIgniteExplosion( UINT8 ubOwner, INT16 sX, INT16 sY, INT16 sZ, INT32
 		Item[usItem].usBuddyItem == 0 &&
 		Explosive[Item[usItem].ubClassIndex].ubDamage > 20)
 	{
-		UINT16 usSmokeItem = SMOKE_GRENADE;
-		if (HasItemFlag(usItem, JUMP_GRENADE))
-			NewSmokeEffect(sGridNo, usSmokeItem, bLevel, ubOwner, 0, 1, 0);
-		else
-			NewSmokeEffect(sGridNo, usSmokeItem, bLevel, ubOwner, 0, 2, 1);
+		UINT16 usSmokeItem = GetHandGrenadeOfType(SMOKE_GRENADE, EXPLOSV_SMOKE);
+		if (usSmokeItem)
+		{
+			if (HasItemFlag(usItem, JUMP_GRENADE))
+				NewSmokeEffect(sGridNo, usSmokeItem, bLevel, ubOwner, 0, 1, 0);
+			else
+				NewSmokeEffect(sGridNo, usSmokeItem, bLevel, ubOwner, 0, 2, 1);
+		}		
 	}
 }
 
@@ -682,7 +653,9 @@ void HandleFencePartnerCheck( INT32 sStructGridNo )
 
 
 
-BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNextCurrent,  INT32 sGridNo, INT16 sWoundAmt, UINT32 uiDist, BOOLEAN *pfRecompileMovementCosts, BOOLEAN fOnlyWalls, BOOLEAN fSubSequentMultiTilesTransitionDamage, UINT8 ubOwner, INT8 bLevel )
+INT8 ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNextCurrent,  INT32 sGridNo, INT16 sWoundAmt, UINT32 uiDist,
+	BOOLEAN *pfRecompileMovementCosts, BOOLEAN fOnlyWalls, BOOLEAN fSubSequentMultiTilesTransitionDamage, UINT8 ubOwner, INT8 bLevel,
+	UINT8 ubReason )
 {
 #ifdef JA2BETAVERSION
 	if (is_networked) {
@@ -702,7 +675,7 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 	DB_STRUCTURE_TILE ** ppTile;
 	INT8 bDestructionPartner=-1;
 	INT8	bDamageReturnVal;
-	BOOLEAN fContinue;
+	INT8 docontinue(0);
 	UINT32 uiTileType;
 	INT32 sBaseGridNo;
 	BOOLEAN fExplosive;
@@ -713,7 +686,7 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 	if ( DoesO3SectorStatueExistHere( sGridNo ) && uiDist <= 1 )
 	{
 		ChangeO3SectorStatue( TRUE );
-		return( TRUE );
+		return( 1 );
 	}
 #ifdef JA2UB	
 	//JA25 UB
@@ -736,12 +709,12 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 	// ATE: Continue if we are only looking for walls
 	if ( fOnlyWalls && !( pCurrent->fFlags & STRUCTURE_WALLSTUFF ) )
 	{
-		return( TRUE );
+		return( 1 );
 	}
 
 	if ( bLevel > 0 )
 	{
-		return( TRUE );
+		return( 1 );
 	}
 
 	// Is this a corpse?
@@ -759,7 +732,6 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 		// Damage structure!
 		if ( ( bDamageReturnVal = DamageStructure( pCurrent, (UINT8)sWoundAmt, STRUCTURE_DAMAGE_EXPLOSION, sGridNo, sX, sY, NOBODY ) ) != 0 )
 		{
-			fContinue = FALSE;
 #ifdef JA2UB			
 			//Ja25 ub
 			//are we exploding the Fan in the power gen facility
@@ -773,9 +745,14 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 			sBaseGridNo = pBase->sGridNo;
 
 			// if the structure is openable, destroy all items there
-			if ( pBase->fFlags & STRUCTURE_OPENABLE && !(pBase->fFlags & STRUCTURE_DOOR ) )
+			// Flugente: only if the structure has been entirely destroyed (why would we destroy what's inside if the structure still exists?)
+			if ( bDamageReturnVal == 1 &&
+				pBase->fFlags & STRUCTURE_OPENABLE &&
+				!(pBase->fFlags & STRUCTURE_DOOR ) )
 			{
-				RemoveAllUnburiedItems( pBase->sGridNo, bLevel );
+				// explosions destroy items inside
+				if ( ubReason == STRUCTURE_DAMAGE_EXPLOSION )
+					RemoveAllUnburiedItems( pBase->sGridNo, bLevel );
 			}
 
 			fExplosive = ( ( pCurrent->fFlags & STRUCTURE_EXPLOSIVE ) != 0 );
@@ -794,7 +771,7 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 
 			if ( bDamageReturnVal == 1 )
 			{
-				fContinue = TRUE;
+				docontinue = 1;
 			}
 			// Check for a damaged looking graphic...
 			else if ( bDamageReturnVal == 2 )
@@ -807,11 +784,11 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 
 					GetTileType( pNode->usIndex, &uiTileType );
 
-					fContinue = 2;
+					docontinue = 2;
 				}
 			}
 
-			if ( fContinue )
+			if ( docontinue )
 			{
 				// Remove the beast!
 				while ( (*ppNextCurrent) != NULL && (*ppNextCurrent)->usStructureID == pCurrent->usStructureID )
@@ -1301,7 +1278,7 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 				ApplyMapChangesToMapTempFile( FALSE );
 
 				// OK, if we are to swap structures, do it now...
-				if ( fContinue == 2 )
+				if ( docontinue == 2 )
 				{
 					// We have a levelnode...
 					// Get new index for new grpahic....
@@ -1312,8 +1289,6 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 					AddStructToHead( sBaseGridNo, usTileIndex );
 
 					ApplyMapChangesToMapTempFile( FALSE );
-
-
 				}
 
 				// Rerender world!
@@ -1343,9 +1318,9 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 					}
 				}
 
-				if ( fContinue == 2 )
+				if ( docontinue == 2 )
 				{
-					return( FALSE );
+					return( 1 );
 				}
 			}
 
@@ -1355,12 +1330,13 @@ BOOLEAN ExplosiveDamageStructureAtGridNo( STRUCTURE * pCurrent, STRUCTURE **ppNe
 	}
 
 	return( 1 );
-
 }
 
 STRUCTURE *gStruct;
 
-void ExplosiveDamageGridNo( INT32 sGridNo, INT16 sWoundAmt, UINT32 uiDist, BOOLEAN *pfRecompileMovementCosts, BOOLEAN fOnlyWalls, INT8 bMultiStructSpecialFlag, BOOLEAN fSubSequentMultiTilesTransitionDamage, UINT8 ubOwner, INT8 bLevel )
+void ExplosiveDamageGridNo( INT32 sGridNo, INT16 sWoundAmt, UINT32 uiDist, BOOLEAN *pfRecompileMovementCosts, 
+	BOOLEAN fOnlyWalls, INT8 bMultiStructSpecialFlag, BOOLEAN fSubSequentMultiTilesTransitionDamage, UINT8 ubOwner, INT8 bLevel,
+	UINT8 ubReason )
 {
 #ifdef JA2BETAVERSION
 	if (is_networked) {
@@ -1438,7 +1414,7 @@ void ExplosiveDamageGridNo( INT32 sGridNo, INT16 sWoundAmt, UINT32 uiDist, BOOLE
 		// Check level!
 		if (pCurrent->sCubeOffset == sDesiredLevel )
 		{
-			fExplodeDamageReturn = ExplosiveDamageStructureAtGridNo( pCurrent, &pNextCurrent,	sGridNo, sWoundAmt, uiDist, pfRecompileMovementCosts, fOnlyWalls, 0, ubOwner, bLevel );
+			fExplodeDamageReturn = ExplosiveDamageStructureAtGridNo( pCurrent, &pNextCurrent,	sGridNo, sWoundAmt, uiDist, pfRecompileMovementCosts, fOnlyWalls, 0, ubOwner, bLevel, ubReason );
 
 			// Are we overwriting damage due to multi-tile...?
 			if ( fExplodeDamageReturn )
@@ -1506,11 +1482,11 @@ void ExplosiveDamageGridNo( INT32 sGridNo, INT16 sWoundAmt, UINT32 uiDist, BOOLE
 										// If we just damaged it, use same damage value....
 										if ( fMultiStructSpecialFlag )
 										{
-											ExplosiveDamageGridNo( sNewGridNo2, sWoundAmt, uiDist, pfRecompileMovementCosts, fOnlyWalls, bMultiStructSpecialFlag, 1, ubOwner, bLevel );
+											ExplosiveDamageGridNo( sNewGridNo2, sWoundAmt, uiDist, pfRecompileMovementCosts, fOnlyWalls, bMultiStructSpecialFlag, 1, ubOwner, bLevel, ubReason );
 										}
 										else
 										{
-											ExplosiveDamageGridNo( sNewGridNo2, sWoundAmt, uiDist, pfRecompileMovementCosts, fOnlyWalls, bMultiStructSpecialFlag, 2, ubOwner, bLevel );
+											ExplosiveDamageGridNo( sNewGridNo2, sWoundAmt, uiDist, pfRecompileMovementCosts, fOnlyWalls, bMultiStructSpecialFlag, 2, ubOwner, bLevel, ubReason );
 										}
 
 										{
@@ -1653,7 +1629,7 @@ BOOLEAN DamageSoldierFromBlast( UINT8 ubPerson, UINT8 ubOwner, INT32 sBombGridNo
 				sNewWoundAmt = (INT16)(sNewWoundAmt * (100 + gSkillTraitValues.ubDEDamageOfBombsAndMines) / 100.0f + 0.5f);
 			}
 			// Heavy Weapons trait bonus damage to tanks
-			if ( HAS_SKILL_TRAIT( MercPtrs[ubOwner], HEAVY_WEAPONS_NT ) && ARMED_VEHICLE( pSoldier ) &&
+			if ( HAS_SKILL_TRAIT( MercPtrs[ubOwner], HEAVY_WEAPONS_NT ) && (ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier )) &&
 				Explosive[Item[usItem].ubClassIndex].ubType == EXPLOSV_NORMAL )
 			{
 				sNewWoundAmt = (INT16)(sNewWoundAmt * (100 + gSkillTraitValues.ubHWDamageTanksBonusPercent * NUM_SKILL_TRAITS( MercPtrs[ ubOwner ], HEAVY_WEAPONS_NT )) / 100.0f + 0.5f); // +30%
@@ -1688,7 +1664,7 @@ BOOLEAN DamageSoldierFromBlast( UINT8 ubPerson, UINT8 ubOwner, INT32 sBombGridNo
 			;
 		// we can loose stats due to being hit by the blast
 		else if ( gGameOptions.fNewTraitSystem && Explosive[Item[usItem].ubClassIndex].ubType == EXPLOSV_NORMAL && 
-				  !AM_A_ROBOT( pSoldier ) && !(pSoldier->flags.uiStatusFlags & SOLDIER_MONSTER) && !ARMED_VEHICLE( pSoldier ) &&
+				  !AM_A_ROBOT( pSoldier ) && !(pSoldier->flags.uiStatusFlags & SOLDIER_MONSTER) && !ARMED_VEHICLE( pSoldier ) && !ENEMYROBOT( pSoldier ) &&
 			sNewWoundAmt > 2 && sNewWoundAmt < pSoldier->stats.bLife )
 		{
 			if ( PreRandom( sNewWoundAmt ) > gSkillTraitValues.ubDamageNeededToLoseStats )
@@ -1842,6 +1818,7 @@ BOOLEAN DamageSoldierFromBlast( UINT8 ubPerson, UINT8 ubOwner, INT32 sBombGridNo
 					if ( ubStatLoss > 0 )
 					{
 						pSoldier->stats.bLifeMax -= ubStatLoss;
+						pSoldier->bBleeding -= ubStatLoss;
 						pSoldier->ubCriticalStatDamage[DAMAGED_STAT_HEALTH] += ubStatLoss;
 
 						if (pSoldier->ubProfile != NO_PROFILE)
@@ -1955,7 +1932,7 @@ BOOLEAN DishOutGasDamage( SOLDIERTYPE * pSoldier, EXPLOSIVETYPE * pExplosive, IN
 	FLOAT fGasBreathDamageModifier = 1.0;
 	INT8	bPosOfMask = NO_SLOT;
 
-	if (!pSoldier->bActive || !pSoldier->bInSector || !pSoldier->stats.bLife || AM_A_ROBOT( pSoldier ) )
+	if (!pSoldier->bActive || !pSoldier->bInSector || !pSoldier->stats.bLife || AM_A_ROBOT( pSoldier ) || ENEMYROBOT( pSoldier ) )
 	{
 		return( fRecompileMovementCosts );
 	}
@@ -2028,7 +2005,7 @@ BOOLEAN DishOutGasDamage( SOLDIERTYPE * pSoldier, EXPLOSIVETYPE * pExplosive, IN
 			}
 
 		}
-		else if ( pExplosive->ubType == EXPLOSV_SMOKE || pExplosive->ubType == EXPLOSV_SMOKE_DEBRIS )//dnl ch40 200909
+		else if ( pExplosive->ubType == EXPLOSV_SMOKE || pExplosive->ubType == EXPLOSV_SMOKE_DEBRIS || pExplosive->ubType == EXPLOSV_SMOKE_FIRERETARDANT )//dnl ch40 200909
 		{
 			// robots are unaffected by smoke
 			if( AM_A_ROBOT(pSoldier) )
@@ -2135,6 +2112,7 @@ BOOLEAN DishOutGasDamage( SOLDIERTYPE * pSoldier, EXPLOSIVETYPE * pExplosive, IN
 			break;
 		case EXPLOSV_SMOKE://dnl ch40 200909
 		case EXPLOSV_SMOKE_DEBRIS:
+		case EXPLOSV_SMOKE_FIRERETARDANT:
 			pSoldier->flags.fHitByGasFlags |= HIT_BY_SMOKEGAS;
 			break;
 		default:
@@ -2289,6 +2267,12 @@ BOOLEAN ExpAffect( INT32 sBombGridNo, INT32 sGridNo, UINT32 uiDist, UINT16 usIte
 			bSmokeEffectType = DEBRIS_SMOKE_EFFECT;
 			fBlastEffect = FALSE;
 			break;
+
+		case EXPLOSV_SMOKE_FIRERETARDANT:
+			fSmokeEffect = TRUE;
+			bSmokeEffectType = FIRERETARDANT_SMOKE_EFFECT;
+			fBlastEffect = FALSE;
+			break;
 		}
 	}
 
@@ -2389,14 +2373,14 @@ BOOLEAN ExpAffect( INT32 sBombGridNo, INT32 sGridNo, UINT32 uiDist, UINT16 usIte
 				}
 			}
 			
-			ExplosiveDamageGridNo( sGridNo, sStructDmgAmt, uiDist, &fRecompileMovementCosts, FALSE, -1, 0 , ubOwner, bLevel );
+			ExplosiveDamageGridNo( sGridNo, sStructDmgAmt, uiDist, &fRecompileMovementCosts, FALSE, -1, 0 , ubOwner, bLevel, STRUCTURE_DAMAGE_EXPLOSION );
 
 			// ATE: Look for damage to walls ONLY for next two gridnos
 			sNewGridNo = NewGridNo( sGridNo, DirectionInc( NORTH ) );
 
 			if ( GridNoOnVisibleWorldTile( sNewGridNo ) )
 			{
-				ExplosiveDamageGridNo( sNewGridNo, sStructDmgAmt, uiDist, &fRecompileMovementCosts, TRUE, -1, 0, ubOwner, bLevel );
+				ExplosiveDamageGridNo( sNewGridNo, sStructDmgAmt, uiDist, &fRecompileMovementCosts, TRUE, -1, 0, ubOwner, bLevel, STRUCTURE_DAMAGE_EXPLOSION );
 			}
 
 			// ATE: Look for damage to walls ONLY for next two gridnos
@@ -2404,22 +2388,36 @@ BOOLEAN ExpAffect( INT32 sBombGridNo, INT32 sGridNo, UINT32 uiDist, UINT16 usIte
 
 			if ( GridNoOnVisibleWorldTile( sNewGridNo ) )
 			{
-				ExplosiveDamageGridNo( sNewGridNo, sStructDmgAmt, uiDist, &fRecompileMovementCosts, TRUE, -1, 0, ubOwner, bLevel );
+				ExplosiveDamageGridNo( sNewGridNo, sStructDmgAmt, uiDist, &fRecompileMovementCosts, TRUE, -1, 0, ubOwner, bLevel, STRUCTURE_DAMAGE_EXPLOSION );
 			}
 		}
 
 		// Add burn marks to ground randomly....
-		//if ( Random( 50 ) < 15 && uiDist == 1 )
-		//{
+		INT8 bOverTerrainType = GetTerrainType( sGridNo );
+
+		if ( pExplosive->ubType == EXPLOSV_NORMAL &&
+			( bOverTerrainType == FLAT_GROUND || bOverTerrainType == DIRT_ROAD || bOverTerrainType == LOW_GRASS || bOverTerrainType == HIGH_GRASS || bOverTerrainType == PAVED_ROAD ) &&
+			uiDist == 0 &&
+			bLevel == 0 &&
+			!HasItemFlag( usItem, JUMP_GRENADE ) &&
+			sWoundAmt > (INT16)Random( 100 ) )
+			//Random( 50 ) < 15 && 
+			//sWoundAmt / (4 * uiDist + 1) > Random( 100 ) )            
+			//pExplosive->ubDamage > Random( 100 ) )
+		{
+			UINT16 usObjectIndex;
+			UINT16 usTileIndex;
 			//if ( !TypeRangeExistsInObjectLayer( sGridNo, FIRSTEXPLDEBRIS, SECONDEXPLDEBRIS, &usObjectIndex ) )
-			//{
-			// GetTileIndexFromTypeSubIndex( SECONDEXPLDEBRIS, (UINT16)( Random( 10 ) + 1 ), &usTileIndex );
-			// AddObjectToHead( sGridNo, usTileIndex );
-
-			// SetRenderFlags(RENDER_FLAG_FULL);
-
-			//}
-		//}
+			if ( !TypeRangeExistsInObjectLayer( sGridNo, FIRSTEXPLDEBRIS, SECONDLARGEEXPDEBRIS10, &usObjectIndex ) )
+			{
+				//GetTileIndexFromTypeSubIndex( SECONDEXPLDEBRIS, (UINT16)( Random( 10 ) + 1 ), &usTileIndex );
+				GetTileIndexFromTypeSubIndex( SECONDEXPLDEBRIS, (UINT16)( 1 + 3 * Random( 2 ) ), &usTileIndex );
+				ApplyMapChangesToMapTempFile( TRUE );
+				AddObjectToHead( sGridNo, usTileIndex );
+				ApplyMapChangesToMapTempFile( FALSE );
+				SetRenderFlags( RENDER_FLAG_FULL );
+			}
+		}
 
 		// NB radius can be 0 so cannot divide it by 2 here
 		if (!fStunEffect && (uiDist * 2 <= pExplosive->ubRadius)	)
@@ -2477,6 +2475,15 @@ BOOLEAN ExpAffect( INT32 sBombGridNo, INT32 sGridNo, UINT32 uiDist, UINT16 usIte
 	}
 	else if ( fSmokeEffect )
 	{
+		// Flugente: if adding fire retardant, remove fire
+		if ( pExplosive->ubType == EXPLOSV_SMOKE_FIRERETARDANT )
+		{
+			if ( gpWorldLevelData[sGridNo].ubExtFlags[bLevel] & MAPELEMENT_EXT_BURNABLEGAS )
+			{
+				RemoveSmokeEffectFromTile( sGridNo, bLevel );
+			}
+		}
+
 		// If tear gar, determine turns to spread.....
 		if ( sSubsequent == ERASE_SPREAD_EFFECT )
 		{
@@ -2686,7 +2693,7 @@ void GetRayStopInfo( UINT32 uiNewSpot, UINT8 ubDir, INT8 bLevel, BOOLEAN fSmokeE
 	BOOLEAN		fTravelCostObs = FALSE;
 	UINT32		uiRangeReduce;
    INT32 sNewGridNo;
-	STRUCTURE * pBlockingStructure;
+	STRUCTURE * pBlockingStructure = NULL;
 	BOOLEAN		fBlowWindowSouth = FALSE;
 	BOOLEAN	fReduceRay = TRUE;
 
@@ -2958,7 +2965,15 @@ void SpreadEffect( INT32 sGridNo, UINT8 ubRadius, UINT16 usItem, UINT8 ubOwner, 
 		gfMPDebugOutputRandoms = true;
 #endif
 	}
-		
+	
+	// Flugente: if tile has a fire retardant effect, don't create new fire
+	if ( Explosive[Item[usItem].ubClassIndex].ubType == EXPLOSV_BURNABLEGAS )
+	{
+		if ( gpWorldLevelData[sGridNo].ubExtFlags[bLevel] & MAPELEMENT_EXT_FIRERETARDANT_SMOKE )
+		{
+			return;
+		}
+	}
 
 	INT32 uiNewSpot, uiTempSpot, uiBranchSpot, cnt, branchCnt;
 	INT32	uiTempRange, ubBranchRange;
@@ -2978,7 +2993,7 @@ void SpreadEffect( INT32 sGridNo, UINT8 ubRadius, UINT16 usItem, UINT8 ubOwner, 
 	case EXPLOSV_CREATUREGAS:
 	case EXPLOSV_SIGNAL_SMOKE:
 	case EXPLOSV_SMOKE_DEBRIS:
-
+	case EXPLOSV_SMOKE_FIRERETARDANT:
 		fSmokeEffect = TRUE;
 		break;
 	}
@@ -3152,7 +3167,8 @@ void SpreadEffect( INT32 sGridNo, UINT8 ubRadius, UINT16 usItem, UINT8 ubOwner, 
 
 		// if anything has been done to change movement costs and this is a potential POW situation, check
 		// paths for POWs
-		if ( gWorldSectorX == 13 && gWorldSectorY == MAP_ROW_I )
+		if (((gWorldSectorX == gModSettings.ubInitialPOWSectorX && gWorldSectorY == gModSettings.ubInitialPOWSectorY) ||
+			(gWorldSectorX == gModSettings.ubTixaPrisonSectorX && gWorldSectorY == gModSettings.ubTixaPrisonSectorY)) && gbWorldSectorZ == 0)
 		{
 			DoPOWPathChecks();
 		}
@@ -4023,7 +4039,7 @@ void HandleExplosionQueue( void )
 					CallAvailableEnemiesTo( sGridNo );
 					//RemoveItemFromPool( sGridNo, gWorldBombs[ uiWorldBombIndex ].iItemIndex, 0 );
 				}
-				else if ( (*pObj)[0]->data.misc.usBombItem == TRIP_FLARE )
+				else if ( (*pObj)[0]->data.misc.usBombItem == TRIP_FLARE || Item[pObj->usItem].flare)
 				{				
 					// sevenfm: changed pObj->usItem to Item[pObj->usItem].ubClassIndex as it should be correct explosives index
 					// NewLightEffect( sGridNo, (UINT8)Explosive[pObj->usItem].ubDuration, (UINT8)Explosive[pObj->usItem].ubStartRadius );
@@ -4311,9 +4327,6 @@ void HandleExplosionQueue( void )
 	}
 }
 
-// Flugente: riot shields
-extern void ShowRiotShield( SOLDIERTYPE* pSoldier );
-
 // Flugente: show warnings around armed timebombs both in map and inventories
 void HandleExplosionWarningAnimations( )
 {
@@ -4388,26 +4401,6 @@ void HandleExplosionWarningAnimations( )
 				// if conditions don't apply, deactivate skill. This will cause it to update to status changes very fast
 				pSoldier->usSoldierFlagMask2 &= ~SOLDIER_TRAIT_FOCUS;
 				pSoldier->sFocusGridNo = NOWHERE;
-			}
-		}
-	}
-
-	// show riot shields
-	for ( UINT32 cnt = 0; cnt < TOTAL_SOLDIERS; ++cnt )
-	{
-		SOLDIERTYPE* pSoldier = MercPtrs[cnt];
-
-		if ( pSoldier && pSoldier->bActive && pSoldier->bInSector )
-		{
-			if ( (pSoldier->ubDirection == EAST ||
-				pSoldier->ubDirection == SOUTHEAST || 
-				pSoldier->ubDirection == SOUTH || 
-				pSoldier->ubDirection == SOUTHWEST ||
-				pSoldier->ubDirection == NORTHEAST)
-				&& pSoldier->bVisible != -1
-				&& pSoldier->IsRiotShieldEquipped( ) )
-			{
-				ShowRiotShield( pSoldier );
 			}
 		}
 	}
@@ -4764,7 +4757,7 @@ BOOLEAN SetOffBombsInGridNo( UINT8 ubID, INT32 sGridNo, BOOLEAN fAllBombs, INT8 
 					if ( !fAllBombs && ubID != NOBODY && Item[pObj->usItem].antitankmine )
 					{
 						// if this is not a vehicle, not a robot and not a tank, don't activate
-						if ( !(MercPtrs[ubID]->flags.uiStatusFlags & SOLDIER_VEHICLE) && !AM_A_ROBOT( MercPtrs[ubID] ) && !ARMED_VEHICLE( MercPtrs[ubID] ) )
+						if ( !(MercPtrs[ubID]->flags.uiStatusFlags & SOLDIER_VEHICLE) && !AM_A_ROBOT( MercPtrs[ubID] ) && !ARMED_VEHICLE( MercPtrs[ubID] ) && !ENEMYROBOT( MercPtrs[ubID] ) )
 							continue;
 					}
 					
@@ -5926,7 +5919,7 @@ void SoldierDropThroughRoof( SOLDIERTYPE* pSoldier, INT32 sGridNo )
 	pSoldier->SoldierTakeDamage( ANIM_CROUCH, damage, damage * 100, TAKE_DAMAGE_FALLROOF, NOBODY, NOWHERE, 0, TRUE );
 }
 
-gridnoarmourvector GetConnectedRoofGridnoArmours( INT32 sGridNo )
+gridnoarmourvector GetConnectedRoofGridnoArmours( INT32 sGridNo, UINT8& arBestArmour )
 {
 	gridnoarmourvector vec;
 
@@ -5940,12 +5933,14 @@ gridnoarmourvector GetConnectedRoofGridnoArmours( INT32 sGridNo )
 	if ( pStruct )
 		armour = gubMaterialArmour[pStruct->pDBStructureRef->pDBStructure->ubArmour];
 
+	arBestArmour = armour;
+
 	vec.push_back( std::make_pair( sGridNo, armour ) );
 
 	// starting from sGridNo, we inspect neighbouring gridnos to detect tiles of the same roof, and detect wether there is a wall below them
 	// if there is indeed a wall, note its armour level
 	// if we already intersected a roof by deleting roof tiles, this function will only detect the connected roof part
-
+	
 	UINT32 cnt = 0;
 	while ( cnt < vec.size( ) )
 	{
@@ -5964,16 +5959,21 @@ gridnoarmourvector GetConnectedRoofGridnoArmours( INT32 sGridNo )
 
 			if ( !TileIsOutOfBounds( nextgridno ) && IsRoofPresentAtGridNo( nextgridno ) )
 			{
-				UINT8 armour = 0;
-				STRUCTURE* pStruct = FindStructure( nextgridno, (STRUCTURE_WALL) );
+				armour = 0;
+				pStruct = FindStructure( nextgridno, (STRUCTURE_WALL) );
 
 				if ( pStruct )
 					armour = gubMaterialArmour[pStruct->pDBStructureRef->pDBStructure->ubArmour];
 
 				gridnoarmourpair pair( nextgridno, armour );
 
-				if ( std::find( vec.begin( ), vec.end( ), pair ) == vec.end( ) )
+				if ( std::find( vec.begin(), vec.end(), pair ) == vec.end() )
+				{
 					vec.push_back( pair );
+
+					if ( arBestArmour < armour )
+						arBestArmour = armour;
+				}
 			}
 		}
 	}
@@ -5992,6 +5992,8 @@ gridnoarmournetworkmap GetConnectedRoofNetworks( gridnoarmourvector& arNetwork )
 
 	UINT16 networkcounter = 0;
 
+	UINT8 bestarmour = 0;
+
 	// at first, each nod is its own network. Ignore nodes that have already been destroyed (those that don't have a roof anymore)
 	for ( gridnoarmourvector::iterator it = networkcpy.begin( ); it != networkcpy.end( ); ++it )
 	{
@@ -5999,7 +6001,7 @@ gridnoarmournetworkmap GetConnectedRoofNetworks( gridnoarmourvector& arNetwork )
 
 		if ( IsRoofPresentAtGridNo( pair.first ) )
 		{
-			gridnoarmourvector vect = GetConnectedRoofGridnoArmours( pair.first );
+			gridnoarmourvector vect = GetConnectedRoofGridnoArmours( pair.first, bestarmour );
 
 			// delete all nodes further down in networkcpy that are also present in vect
 			for ( gridnoarmourvector::iterator tmpit = vect.begin( ); tmpit != vect.end( ); ++tmpit )
@@ -6242,34 +6244,30 @@ void HandleRoofDestruction( INT32 sGridNo, INT16 sDamage )
 	// only if there is significant damage done
 	if ( sDamage < 1 || !gGameExternalOptions.fRoofCollapse  || TileIsOutOfBounds( sGridNo ) || !IsRoofPresentAtGridNo( sGridNo ) )
 		return;
-		
-	gridnoarmourvector floorarmourvector = GetConnectedRoofGridnoArmours( sGridNo );
 
-	INT16 bestarmour = 0;
-	gridnoarmourvector::iterator itend = floorarmourvector.end( );
-	for ( gridnoarmourvector::iterator it = floorarmourvector.begin( ); it != itend; ++it )
-		bestarmour = max( bestarmour, (INT16)(*it).second );
-
+	UINT8 bestarmour = 0;		
+	gridnoarmourvector floorarmourvector = GetConnectedRoofGridnoArmours( sGridNo, bestarmour );
+	
 	// armour above 127 is deemed indestructable
 	if ( bestarmour >= 127 )
 		return;
 
+	// we can't do anything if damage is lower than armour in the first place
+	if ( sDamage <= bestarmour )
+		return;
+
 	ApplyMapChangesToMapTempFile( TRUE );
 
-	for ( gridnoarmourvector::iterator it = floorarmourvector.begin( ); it != itend; ++it )
+	for ( gridnoarmourvector::iterator it = floorarmourvector.begin( ), itend = floorarmourvector.end(); it != itend; ++it )
 	{
-		INT32 sNewGridno = (*it).first;
-
-		INT16 distance = PythSpacesAway( sGridNo, sNewGridno );
-
 		// for formula reasons, distance is at least 1
-		distance = max( distance, 1);
+		INT16 distance = max( 1, PythSpacesAway( sGridNo, ( *it ).first ) );
 
 		// only remove tile if enough damage has been done
 		// it might be necessary to tweak the damage formula here
 		if ( sDamage > distance * bestarmour )
 		{
-			if ( DamageRoof( sNewGridno, sDamage - distance * bestarmour ) )
+			if ( DamageRoof( ( *it ).first, sDamage - distance * bestarmour ) )
 				(*it).second = 0;
 		}
 	}
@@ -6278,8 +6276,7 @@ void HandleRoofDestruction( INT32 sGridNo, INT16 sDamage )
 	gridnoarmournetworkmap roofnetworkmap = GetConnectedRoofNetworks( floorarmourvector );
 
 	// for each remaining node, determine the distance to the closest node with a wall-connection inside the remaining network. If the distance is high enough, the roof will come down
-	gridnoarmournetworkmap::iterator roofnetworkitend = roofnetworkmap.end( );
-	for ( gridnoarmournetworkmap::iterator roofnetworkit = roofnetworkmap.begin( ); roofnetworkit != roofnetworkitend; ++roofnetworkit )
+	for ( gridnoarmournetworkmap::iterator roofnetworkit = roofnetworkmap.begin( ), roofnetworkitend = roofnetworkmap.end(); roofnetworkit != roofnetworkitend; ++roofnetworkit )
 	{
 		gridnoarmourvector roofnetwork = (*roofnetworkit).second;
 
@@ -6291,7 +6288,7 @@ void HandleRoofDestruction( INT32 sGridNo, INT16 sDamage )
 		{
 			gridnoarmourvector roofarmoursharednetwork = GetArmourSharedRoofNetwork( roofnetwork );
 
-			for ( gridnoarmourvector::iterator it = roofarmoursharednetwork.begin( ); it != roofarmoursharednetwork.end( ); ++it )
+			for ( gridnoarmourvector::iterator it = roofarmoursharednetwork.begin( ), itend = roofarmoursharednetwork.end(); it != itend; ++it )
 			{
 				gridnoarmourpair pair = (*it);
 
@@ -6313,14 +6310,21 @@ void HandleRoofDestruction( INT32 sGridNo, INT16 sDamage )
 		else
 		{
 			// for now, determine the best armour for each remaining network, and collapse it if there is no armour - and thus no wall connection - left
+			// this means that if ANY armour is found, we won't collapse this network, so we can stop the search for better armour
 			bestarmour = 0;
-			for ( gridnoarmourvector::iterator it = roofnetwork.begin( ); it != roofnetwork.end( ); ++it )
-				bestarmour = max( bestarmour, (*it).second );
+			for ( gridnoarmourvector::iterator it = roofnetwork.begin(), itend = roofnetwork.end(); it != itend; ++it )
+			{
+				if ( ( *it ).second > 0 )
+				{
+					bestarmour = ( *it ).second;
+					break;
+				}
+			}
 
 			// if a network has no wall connection at all, collapse the entire thing
 			if ( bestarmour < 1 )
 			{
-				for ( gridnoarmourvector::iterator it = roofnetwork.begin( ); it != roofnetwork.end( ); ++it )
+				for ( gridnoarmourvector::iterator it = roofnetwork.begin( ), itend = roofnetwork.end(); it != itend; ++it )
 				{
 					if ( DamageRoof( (*it).first, 255 ) )
 						(*it).second = 0;

@@ -122,7 +122,9 @@ INT16 TerrainActionPoints( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bDir, INT8
 
 	//CHRISL: We can't jump a fence while wearing a backpack, to consider fences as impassible
 	// SANDRO - Headrocks change to backpack check implemented
-	if(sSwitchValue == TRAVELCOST_FENCE && UsingNewInventorySystem() == true && FindBackpackOnSoldier( pSoldier ) != ITEM_NOT_FOUND)
+	if(sSwitchValue == TRAVELCOST_FENCE && UsingNewInventorySystem() == true && pSoldier->inv[BPACKPOCKPOS].exists() == true
+		&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)pSoldier->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[pSoldier->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
+		&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[pSoldier->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
 	{
 		return(-1);
 	}
@@ -542,6 +544,19 @@ INT16 ActionPointCost( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bDir, UINT16 u
 			sPoints = max(1.0f, ( sPoints * (100 - (FLOAT)gSkillTraitValues.ubATAPsMovementReduction) / 100.0f ) );
 		}
 
+		if (usMovementMode == RUNNING && pSoldier->usAnimState != RUNNING)
+		{
+			// CHRISL
+			if ((UsingNewInventorySystem() == true) && FindBackpackOnSoldier(pSoldier) != ITEM_NOT_FOUND)
+			{
+				sPoints += GetAPsStartRun(pSoldier) + 2; // changed by SANDRO
+			}
+			else
+			{
+				sPoints += GetAPsStartRun(pSoldier); // changed by SANDRO
+			}
+		}
+
 		// Flugente: riot shields lower movement speed
 		if ( pSoldier->IsRiotShieldEquipped( ) )
 			sPoints *= gItemSettings.fShieldMovementAPCostModifier;
@@ -933,9 +948,8 @@ BOOLEAN EnoughPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT32 iBPCost, BOOLE
 		// AI guy on special move off map
 		return( TRUE );
 	}
-
 	// IN realtime.. only care about BPs
-	if ( ( gTacticalStatus.uiFlags & REALTIME ) || !(gTacticalStatus.uiFlags & INCOMBAT ) )
+	if ( ( gTacticalStatus.uiFlags & REALTIME ) || !(gTacticalStatus.uiFlags & INCOMBAT ) || !pSoldier->bInSector)
 	{
 		sAPCost = 0;
 	}
@@ -992,10 +1006,16 @@ void DeductPoints( SOLDIERTYPE *pSoldier, INT16 sAPCost, INT32 iBPCost, UINT8 ub
 		pSoldier->usSoldierFlagMask2 |= SOLDIER_SPENT_AP;
 
 		pSoldier->StopChatting();
+
+		// sevenfm: stop muzzle flash
+		if (pSoldier->flags.fMuzzleFlash)
+		{
+			EndMuzzleFlash(pSoldier);
+		}
 	}
 
 	// in real time, there IS no AP cost, (only breath cost)
-	if (!(gTacticalStatus.uiFlags & TURNBASED) || !(gTacticalStatus.uiFlags & INCOMBAT ) )
+	if (!(gTacticalStatus.uiFlags & TURNBASED) || !(gTacticalStatus.uiFlags & INCOMBAT ) || !pSoldier->bInSector)
 	{
 		sAPCost = 0;
 	}
@@ -1697,15 +1717,15 @@ INT16 CalcAPsToBurst( INT16 bBaseActionPoints, OBJECTTYPE * pObj, SOLDIERTYPE* p
 }
 
 // HEADROCK HAM 4: Same as above, without percent modifiers.
-INT16 CalcAPsToBurstNoModifier( INT16 bBaseActionPoints, OBJECTTYPE * pObj )
+INT16 CalcAPsToBurstNoModifier( INT16 bBaseActionPoints, UINT16 usItem )
 {
 	INT32 aps, iModifiedAPs;
 
-	iModifiedAPs = Weapon[ pObj->usItem ].bBurstAP;
+	iModifiedAPs = Weapon[ usItem ].bBurstAP;
 	// modify by ini values
 	// although the function says "no modifier" the ini values represent our new base value
-	if ( Item[ pObj->usItem ].usItemClass == IC_GUN )
-		iModifiedAPs *= gItemSettings.fBurstAPModifierGun[ Weapon[ pObj->usItem ].ubWeaponType ];
+	if ( Item[ usItem ].usItemClass == IC_GUN )
+		iModifiedAPs *= gItemSettings.fBurstAPModifierGun[ Weapon[ usItem ].ubWeaponType ];
 
 	aps =	( iModifiedAPs * bBaseActionPoints + (APBPConstants[AP_MAXIMUM] - 1) ) / APBPConstants[AP_MAXIMUM];
 
@@ -1715,6 +1735,11 @@ INT16 CalcAPsToBurstNoModifier( INT16 bBaseActionPoints, OBJECTTYPE * pObj )
 	else if ( aps > APBPConstants[AP_MAXIMUM] ) aps = APBPConstants[AP_MAXIMUM];
 
 	return (UINT8) aps;
+}
+
+INT16 CalcAPsToBurstNoModifier( INT16 bBaseActionPoints, OBJECTTYPE * pObj )
+{
+	return CalcAPsToBurstNoModifier( bBaseActionPoints, pObj->usItem );
 }
 
 INT16 CalcAPsToAutofire( INT16 bBaseActionPoints, OBJECTTYPE * pObj, UINT8 bDoAutofire, SOLDIERTYPE* pSoldier )
@@ -1778,14 +1803,13 @@ INT16 CalcAPsToAutofire( INT16 bBaseActionPoints, OBJECTTYPE * pObj, UINT8 bDoAu
 }
 
 // HEADROCK HAM 4: Same as above, without modifiers
-INT16 CalcAPsToAutofireNoModifier( INT16 bBaseActionPoints, OBJECTTYPE * pObj, UINT8 bDoAutofire )
+INT16 CalcAPsToAutofireNoModifier( INT16 bBaseActionPoints, UINT16 usItem, UINT8 bDoAutofire )
 {
- 
-	INT32 aps=APBPConstants[AP_MAXIMUM] + 1;
-	if ( GetAutofireShotsPerFiveAPs (pObj) )
+	INT32 aps = APBPConstants[AP_MAXIMUM] + 1;
+	if ( GetAutofireShotsPerFiveAPs ( usItem ) )
 	{
 		const INT32 autofireaps =
-		aps = ( ( APBPConstants[AUTOFIRE_SHOTS_AP_VALUE] * bDoAutofire * bBaseActionPoints ) / GetAutofireShotsPerFiveAPs(pObj) + (APBPConstants[AP_MAXIMUM] - 1) ) / APBPConstants[AP_MAXIMUM];
+		aps = ( ( APBPConstants[AUTOFIRE_SHOTS_AP_VALUE] * bDoAutofire * bBaseActionPoints ) / GetAutofireShotsPerFiveAPs( usItem ) + (APBPConstants[AP_MAXIMUM] - 1) ) / APBPConstants[AP_MAXIMUM];
 
 		aps = __max( aps, ( autofireaps + 1 ) / 2 );
 
@@ -1793,6 +1817,11 @@ INT16 CalcAPsToAutofireNoModifier( INT16 bBaseActionPoints, OBJECTTYPE * pObj, U
 	}
 
 	return (UINT8) aps;
+}
+
+INT16 CalcAPsToAutofireNoModifier( INT16 bBaseActionPoints, OBJECTTYPE * pObj, UINT8 bDoAutofire )
+{
+	return CalcAPsToAutofireNoModifier( bBaseActionPoints, pObj->usItem, bDoAutofire );
 }
 
 INT16 CalcTotalAPsToAttack( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubAddTurningCost, INT16 bAimTime )
@@ -1903,100 +1932,73 @@ INT16 CalcTotalAPsToAttack( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubAddTur
 
 	if ( uiItemClass == IC_PUNCH || uiItemClass == IC_BLADE || uiItemClass == IC_TENTACLES )//dnl ch73 031013, silversurfer: tentacles are melee too
 	{
-		// IF we are at this gridno, calc min APs but if not, calc cost to goto this lication
+		// IF we are at this gridno, calc min APs but if not, calc cost to goto this location
 		if ( pSoldier->sGridNo != sGridNo )
 		{
 			sAdjustedGridNo = NOWHERE;
 
-			// OK, in order to avoid path calculations here all the time... save and check if it's changed!
-			if ( pSoldier->sWalkToAttackGridNo == sGridNo )
+			// See if we can get there to stab
+			if (pSoldier->ubBodyType == BLOODCAT)
 			{
-				sAdjustedGridNo = sGridNo;
-				sAPCost += (UINT8)( pSoldier->sWalkToAttackWalkToCost );
+				sActionGridNo = FindNextToAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
+			}
+			else if (CREATURE_OR_BLOODCAT(pSoldier) && PythSpacesAway(pSoldier->sGridNo, sGridNo) > 1)
+			{
+				sActionGridNo = FindNextToAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
+				if (sActionGridNo == -1)
+				{
+					sActionGridNo = FindAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
+				}
 			}
 			else
 			{
-				//INT32		cnt;
-				//INT16		sSpot;
-				UINT8		ubGuyThere;
-				INT32		sGotLocation = NOWHERE;
-				BOOLEAN	fGotAdjacent = FALSE;
-				SOLDIERTYPE	*pTarget;
-
-				ubGuyThere = WhoIsThere2( sGridNo, pSoldier->pathing.bLevel );
-
-				if ( ubGuyThere != NOBODY )
-				{
-
-					pTarget = MercPtrs[ ubGuyThere ];
-
-					if ( pSoldier->ubBodyType == BLOODCAT )
-					{
-						sGotLocation = FindNextToAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-						if ( sGotLocation == -1 )
-						{
-							sGotLocation = NOWHERE;
-						}
-					}
-					else
-					{
-						sGotLocation = FindAdjacentPunchTarget( pSoldier, pTarget, &sAdjustedGridNo, &ubDirection );
-					}
-				}
+				// See if we can get there to stab
+				sActionGridNo = FindAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE, true);
+			}
 				
-				if (TileIsOutOfBounds(sGotLocation) && pSoldier->ubBodyType != BLOODCAT )
+			if (!TileIsOutOfBounds(sActionGridNo))
+			{
+				if (pSoldier->sGridNo == sActionGridNo)
 				{
-					sActionGridNo =	FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-
-					if ( sActionGridNo == -1 )
-					{
-						sGotLocation = NOWHERE;
-					}
-					else
-					{
-						sGotLocation = sActionGridNo;
-					}
-					fGotAdjacent = TRUE;
+					pSoldier->sWalkToAttackWalkToCost = 0;
 				}
-				
-				if (!TileIsOutOfBounds(sGotLocation))
+				else
 				{
-					if (pSoldier->sGridNo == sGotLocation || !fGotAdjacent )
+					// OK, in order to avoid path calculations here all the time... save and check if it's changed!
+					if (pSoldier->sWalkToAttackGridNo == sActionGridNo && pSoldier->sWalkToAttackMovementMode == (UINT8)pSoldier->usUIMovementMode)
 					{
-						pSoldier->sWalkToAttackWalkToCost = 0;
+						sAPCost += (UINT8)(pSoldier->sWalkToAttackWalkToCost);
 					}
 					else
 					{
 						// Save for next time...
-						pSoldier->sWalkToAttackWalkToCost = PlotPath( pSoldier, sGotLocation, NO_COPYROUTE, NO_PLOT, TEMPORARY, (UINT16)pSoldier->usUIMovementMode, NOT_STEALTH, FORWARD, pSoldier->bActionPoints );
-
+						pSoldier->sWalkToAttackMovementMode = (UINT8)pSoldier->usUIMovementMode;
+						pSoldier->sWalkToAttackWalkToCost = PlotPath(pSoldier, sActionGridNo, NO_COPYROUTE, NO_PLOT, TEMPORARY, (UINT16)pSoldier->usUIMovementMode, NOT_STEALTH, FORWARD, pSoldier->bActionPoints);						
+						pSoldier->sWalkToAttackEndDirection = gfPlotPathEndDirection;
 						if (pSoldier->sWalkToAttackWalkToCost == 0)
 						{
-							return( 99 );
+							return(99);
 						}
+						sAPCost += pSoldier->sWalkToAttackWalkToCost;
 					}
 				}
-				else
-				{
-					return( 0 );
-				}
-				sAPCost += pSoldier->sWalkToAttackWalkToCost;
+			}
+			else
+			{
+				return( 0 );
 			}
 
 			// Save old location!
-			pSoldier->sWalkToAttackGridNo = sGridNo;
+			pSoldier->sWalkToAttackGridNo = sActionGridNo;
 
-			// Add points to attack
-			sAPCost += MinAPsToAttack(pSoldier, sAdjustedGridNo, sAPCost>0?FALSE:ubAddTurningCost, bAimTime, 0);//dnl ch73 031013
-			//sAPCost += APsToTurnAround(pSoldier, sAdjustedGridNo);
-		}
-		else
-		{
-			// Add points to attack
-			// Use our gridno
-			sAPCost += MinAPsToAttack( pSoldier, sGridNo, ubAddTurningCost, bAimTime, 0 );
 		}
 
+		// Add points to attack
+		sAPCost += MinAPsToPunch(pSoldier, sAdjustedGridNo);
+
+		// Add points to turn around if needed
+		sAPCost += CalculateActionTurningCost(pSoldier, sActionGridNo, sAdjustedGridNo, pSoldier->sWalkToAttackEndDirection);
+		
 		// Add aim time...
 		sAPCost += (bAimTime*APBPConstants[AP_CLICK_AIM]);
 
@@ -2034,32 +2036,10 @@ INT16 MinAPsToAttack(SOLDIERTYPE *pSoldier, INT32 sGridno, UINT8 ubAddTurningCos
 		// LOOK IN BUDDY'S HAND TO DETERMINE WHAT TO DO HERE
 		uiItemClass = Item[ undbarItem ].usItemClass;
 	}
-#if 0//dnl ch73 290913
-	// bare fist or with brass knuckles
-	if ( !(pSoldier->inv[HANDPOS].exists()) || Item[pSoldier->inv[HANDPOS].usItem].brassknuckles ) 
-	{
-		sAPCost = MinAPsToPunch( pSoldier, sGridno, ubAddTurningCost );
-	}
-	else if ( uiItemClass & ( IC_PUNCH | IC_BLADE | IC_GUN | IC_LAUNCHER | IC_TENTACLES | IC_THROWING_KNIFE ) )
-	{
-		sAPCost = MinAPsToShootOrStab( pSoldier, sGridno, bAimTime, ubAddTurningCost, ubForceRaiseGunCost );
-	}	
-	// thrown items
-	else if ( uiItemClass & ( IC_GRENADE | IC_THROWN ) )
-	{
-		sAPCost = MinAPsToThrow( pSoldier, sGridno, ubAddTurningCost );
-	}
-	// for exceptions
-	else 
-		sAPCost = MinAPsToPunch( pSoldier, sGridno, ubAddTurningCost );
-#else
 	if(uiItemClass & (IC_GUN | IC_LAUNCHER | IC_THROWING_KNIFE))
 		sAPCost = MinAPsToShootOrStab(pSoldier, sGridno, bAimTime, ubAddTurningCost, ubForceRaiseGunCost);
 	else if(uiItemClass & (IC_GRENADE | IC_THROWN))
 		sAPCost = MinAPsToThrow(pSoldier, sGridno, ubAddTurningCost);
-	else 
-		sAPCost = MinAPsToPunch(pSoldier, sGridno, ubAddTurningCost);
-#endif
 	return sAPCost;
 }
 
@@ -2167,26 +2147,26 @@ INT16 BaseAPsToShootOrStab( INT16 bAPs, INT16 bAimSkill, OBJECTTYPE * pObj, SOLD
 }
 
 // HEADROCK HAM 4: Same function as above, except no modifier.
-INT16 BaseAPsToShootOrStabNoModifier( INT16 bAPs, INT16 bAimSkill, OBJECTTYPE * pObj )
+INT16 BaseAPsToShootOrStabNoModifier( INT16 bAPs, INT16 bAimSkill, UINT16 usItem )
 {
 	INT32	Top, Bottom;
 	FLOAT	rof;
 
-	rof = Weapon[ pObj->usItem ].ubShotsPer4Turns;
+	rof = Weapon[usItem].ubShotsPer4Turns;
 
 	// modify by ini values
 	// although this function says "no modifiers" our ini values are supposed to provide new base values
-	if ( Item[ pObj->usItem ].usItemClass == IC_GUN )
-		rof *= gItemSettings.fShotsPer4TurnsModifierGun[ Weapon[ pObj->usItem ].ubWeaponType ];
-	else if ( Item[ pObj->usItem ].usItemClass == IC_LAUNCHER )
+	if ( Item[usItem].usItemClass == IC_GUN )
+		rof *= gItemSettings.fShotsPer4TurnsModifierGun[Weapon[usItem].ubWeaponType];
+	else if ( Item[usItem].usItemClass == IC_LAUNCHER )
 		rof *= gItemSettings.fShotsPer4TurnsModifierLauncher;
-	else if ( Item[ pObj->usItem ].usItemClass == IC_BLADE )
+	else if ( Item[usItem].usItemClass == IC_BLADE )
 		rof *= gItemSettings.fShotsPer4TurnsModifierBlade;
-	else if ( Item[ pObj->usItem ].usItemClass == IC_PUNCH )
+	else if ( Item[usItem].usItemClass == IC_PUNCH )
 		rof *= gItemSettings.fShotsPer4TurnsModifierPunch;
-	else if ( Item[ pObj->usItem ].usItemClass == IC_TENTACLES )
+	else if ( Item[usItem].usItemClass == IC_TENTACLES )
 		rof *= gItemSettings.fShotsPer4TurnsModifierTentacle;
-	else if ( Item[ pObj->usItem ].usItemClass == IC_THROWING_KNIFE )
+	else if ( Item[usItem].usItemClass == IC_THROWING_KNIFE )
 		rof *= gItemSettings.fShotsPer4TurnsModifierThrowKnife;
 
 	Top = 8 * bAPs * 100;
@@ -2199,6 +2179,11 @@ INT16 BaseAPsToShootOrStabNoModifier( INT16 bAPs, INT16 bAimSkill, OBJECTTYPE * 
 	}
 
 	return baseAPsToShootOrStab;
+}
+
+INT16 BaseAPsToShootOrStabNoModifier( INT16 bAPs, INT16 bAimSkill, OBJECTTYPE * pObj )
+{
+	return BaseAPsToShootOrStabNoModifier( bAPs, bAimSkill, pObj->usItem );
 }
 
 void GetAPChargeForShootOrStabWRTGunRaises( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubAddTurningCost, BOOLEAN *pfChargeTurning, BOOLEAN *pfChargeRaise, INT16 bAimTime )
@@ -2304,6 +2289,25 @@ void GetAPChargeForShootOrStabWRTGunRaises( SOLDIERTYPE *pSoldier, INT32 sGridNo
 	(*pfChargeRaise )	= fAddingRaiseGunCost;
 }
 
+UINT16 CalculateActionTurningCost(SOLDIERTYPE *pSoldier, INT32 sActionGridNo, INT32 sAdjustedGridNo, UINT8 ubDirection)
+{
+	UINT16 sAPCost = 0;
+	// if soldier is already at sActionGridNo, use current direction instead of calculated one
+	if (pSoldier->sGridNo == sActionGridNo) ubDirection = pSoldier->ubDirection;
+
+	// Is it the same as direction we need?
+	if (ubDirection != GetDirectionToGridNoFromGridNo(sActionGridNo, sAdjustedGridNo))
+	{
+		OBJECTTYPE *pObjUsed = pSoldier->GetUsedWeapon(&pSoldier->inv[HANDPOS]);
+		UINT16 usItem = pObjUsed->usItem;
+		if (gAnimControl[pSoldier->usAnimState].ubEndHeight == ANIM_PRONE)
+			sAPCost += CalculateTurningCost(pSoldier, usItem, TRUE, ANIM_CROUCH);
+		else
+			sAPCost += CalculateTurningCost(pSoldier, usItem, TRUE);
+	}
+	return sAPCost;
+}
+
 UINT16 CalculateTurningCost(SOLDIERTYPE *pSoldier, UINT16 usItem, BOOLEAN fAddingTurningCost, INT8 bDesiredHeight)//dnl ch72 190913
 {
 	UINT16 usTrueAnimState, usTurningCost = 0;
@@ -2393,8 +2397,6 @@ INT16 MinAPsToShootOrStab(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 bAimTime, 
 		// Flugente: we need a second item in case we are using an underbarrel weapon. Not all checks should apply for that one, as aiming is still done with the main weapon
 		usUBItem = pSoldier->GetUsedWeaponNumber(&pSoldier->inv[HANDPOS]);
 	}
-	if(Item[usUBItem].usItemClass == IC_PUNCH || Item[usUBItem].usItemClass == IC_BLADE || Item[usUBItem].usItemClass == IC_TENTACLES)//dnl ch73 021013 punch and stub generally use identical logic so put all necessary stuff to MinAPsToPunch
-		return(MinAPsToPunch(pSoldier, sGridNo, ubAddTurningCost));
 
 	OBJECTTYPE* pObjUsed = pSoldier->GetUsedWeapon( &(pSoldier->inv[HANDPOS]) );
 
@@ -2580,7 +2582,7 @@ INT16 MinAPsToShootOrStab(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 bAimTime, 
 		}
 	}
 
-	if ( AM_A_ROBOT( pSoldier ) || ARMED_VEHICLE( pSoldier ) || ubForceRaiseGunCost == 2 )//dnl ch64 300813 robots and tanks cannot do this //dnl ch69 150913 need option to override raise gun cost
+	if ( AM_A_ROBOT( pSoldier ) || ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) || ubForceRaiseGunCost == 2 )//dnl ch64 300813 robots and tanks cannot do this //dnl ch69 150913 need option to override raise gun cost
 	{
 		fAddingRaiseGunCost = FALSE;
 	}
@@ -2658,7 +2660,7 @@ INT16 MinAPsToShootOrStab(SOLDIERTYPE *pSoldier, INT32 sGridNo, INT16 bAimTime, 
 	return bAPCost;
 }
 
-INT16 MinAPsToPunch(SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubAddTurningCost)//dnl ch73 290913
+INT16 MinAPsToPunch(SOLDIERTYPE *pSoldier, INT32 sGridNo)
 {
 	INT16 bAPCost = APBPConstants[AP_MIN_AIM_ATTACK];
 
@@ -2689,34 +2691,7 @@ INT16 MinAPsToPunch(SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubAddTurningCost
 				bAPCost += GetAPsToChangeStance(pSoldier, ANIM_STAND);
 		}
 
-		if( ubAddTurningCost )
-		{
-			// ATE: Use standing turn cost....
-			UINT8 ubDirection = GetDirectionFromGridNo(sGridNo, pSoldier);
-			INT32 sSpot = sGridNo;
-			if(usTargID != NOBODY && gAnimControl[MercPtrs[usTargID]->usAnimState].ubEndHeight == ANIM_PRONE)
-				for(INT8 sCnt=0; sCnt<NUM_WORLD_DIRECTIONS; sCnt++)
-				{
-					sSpot = NewGridNo(pSoldier->sGridNo, DirectionInc(sCnt));
-					if(gubWorldMovementCosts[sSpot][sCnt][pSoldier->bTargetLevel] >= TRAVELCOST_BLOCKED)
-						continue;
-					if(WhoIsThere2(sSpot, pSoldier->bTargetLevel) == usTargID)
-					{
-						ubDirection = (UINT8)sCnt;
-						break;
-					}
-				}
-				// Is it the same as he's facing?
-				// Buggler: actual melee ap deduction for turning applies only when target is 1 tile away
-				//UINT16 usRange = GetRangeFromGridNoDiff(pSoldier->sGridNo, sSpot);
-				if(/*usRange == 1 && */ubDirection != pSoldier->ubDirection)
-				{
-					if(gAnimControl[pSoldier->usAnimState].ubEndHeight == ANIM_PRONE)
-						bAPCost += CalculateTurningCost(pSoldier, usItem, TRUE, ANIM_CROUCH);
-					else
-						bAPCost += CalculateTurningCost(pSoldier, usItem, TRUE);
-				}
-		}
+
 	}
 
 	return(bAPCost);
@@ -2791,14 +2766,6 @@ INT8	PtsToMoveDirection(SOLDIERTYPE *pSoldier, INT8 bDirection )
 
 	sCost = ActionPointCost( pSoldier, sGridNo, bDirection , usMoveModeToUse );
 
-	if ( gubWorldMovementCosts[ sGridNo ][ bDirection ][ pSoldier->pathing.bLevel ] != TRAVELCOST_FENCE )
-	{
-		if ( usMoveModeToUse == RUNNING && pSoldier->usAnimState != RUNNING )
-		{
-			sCost += GetAPsStartRun( pSoldier ); // changed by SANDRO
-		}
-	}
-
 	return( (INT8)sCost );
 }
 
@@ -2848,11 +2815,12 @@ INT8 MinAPsToStartMovement( SOLDIERTYPE * pSoldier, UINT16 usMovementMode )
 		default:
 			break;
 	}
-
+	/*
 	if (usMovementMode == RUNNING && pSoldier->usAnimState != RUNNING )
 	{
 		bAPs += GetAPsStartRun( pSoldier ); // changed by SANDRO
 	}
+	*/
 	return( bAPs );
 }
 
@@ -2954,7 +2922,7 @@ void DeductAmmo( SOLDIERTYPE *pSoldier, OBJECTTYPE* pObj )
 	{
 		// tanks never run out of MG ammo!
 		// unlimited cannon ammo is handled in AI
-		if ( ARMED_VEHICLE( pSoldier ) && !Item[pObj->usItem].cannon )
+		if ( (ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier )) && !Item[pObj->usItem].cannon )
 			return;
 
 		if ( Item[pObj->usItem].cannon )
@@ -3189,7 +3157,7 @@ INT16 GetAPsToReloadGunWithAmmo( SOLDIERTYPE *pSoldier, OBJECTTYPE * pGun, OBJEC
 	return GetAPsToReload(pGun); // added by SANDRO - safety check
 }
 
-INT16 GetAPsToAutoReload( SOLDIERTYPE * pSoldier )
+INT16 GetAPsToAutoReload( SOLDIERTYPE * pSoldier, bool aReloadEvenIfNotEmpty )
 {
 	OBJECTTYPE *	pObj;
 	INT8					bSlot, bSlot2, bExcludeSlot;
@@ -3237,11 +3205,17 @@ INT16 GetAPsToAutoReload( SOLDIERTYPE * pSoldier )
 		bSlot = FindAmmoToReload( pSoldier, HANDPOS, NO_SLOT );
 		if (bSlot != NO_SLOT)
 		{
-			// we would reload using this ammo!
-			bAPCost += GetAPsToReloadGunWithAmmo( pSoldier, pObj, &(pSoldier->inv[bSlot] ) );
+			// Flugente: only reload if it's empty, or we really want to
+			if ( aReloadEvenIfNotEmpty || !EnoughAmmo( pSoldier, FALSE, HANDPOS ) )
+			{
+				// we would reload using this ammo!
+				bAPCost += GetAPsToReloadGunWithAmmo( pSoldier, pObj, &( pSoldier->inv[bSlot] ) );
+			}
 		}
 
-		if ( pSoldier->IsValidSecondHandShotForReloadingPurposes( ) )
+		// Flugente: only reload if it's empty, or we really want to
+		if ( pSoldier->IsValidSecondHandShotForReloadingPurposes()
+			&& ( aReloadEvenIfNotEmpty || !EnoughAmmo( pSoldier, FALSE, SECONDHANDPOS ) ) )
 		{
 			// Flugente: check for underbarrel weapons and use that object if necessary
 			pObj = pSoldier->GetUsedWeapon( &(pSoldier->inv[SECONDHANDPOS]) );
@@ -4062,47 +4036,17 @@ INT16 GetBPsToStealItem( SOLDIERTYPE *pSoldier )
 
 INT16 GetAPsToUseJar( SOLDIERTYPE *pSoldier, INT32 usMapPos )
 {
-	INT16						sAPCost = 0;
-
-	sAPCost = PlotPath( pSoldier, usMapPos, NO_COPYROUTE, NO_PLOT, TEMPORARY, (UINT16)pSoldier->usUIMovementMode, NOT_STEALTH, FORWARD, pSoldier->bActionPoints );
-
-	// If point cost is zero, return 0
-	if ( sAPCost != 0 )
-	{
-		// ADD APS TO PICKUP
-		sAPCost += APBPConstants[AP_TAKE_BLOOD];
-	}
-
-	return sAPCost;
-
+	return GetAPsToChangeStance(pSoldier, ANIM_CROUCH) + APBPConstants[AP_TAKE_BLOOD];
 }
 
 INT16 GetAPsToUseCan( SOLDIERTYPE *pSoldier, INT32 usMapPos )
 {
-	INT16	sAPCost = 0;
-
-	sAPCost = PlotPath( pSoldier, usMapPos, NO_COPYROUTE, NO_PLOT, TEMPORARY, (UINT16)pSoldier->usUIMovementMode, NOT_STEALTH, FORWARD, pSoldier->bActionPoints );
-
-	// If point cost is zero, return 0
-	if ( sAPCost != 0 )
-	{
-		// ADD APS TO PICKUP
-		sAPCost += APBPConstants[AP_ATTACH_CAN];
-	}
-
-	return sAPCost;
-
+	return GetAPsToChangeStance(pSoldier, ANIM_CROUCH) + APBPConstants[AP_ATTACH_CAN];
 }
 
 INT16 GetAPsToHandcuff( SOLDIERTYPE *pSoldier, INT32 usMapPos )
 {
-	INT16						sAPCost = 0;
-
-	sAPCost = PlotPath( pSoldier, usMapPos, NO_COPYROUTE, NO_PLOT, TEMPORARY, (UINT16)pSoldier->usUIMovementMode, NOT_STEALTH, FORWARD, pSoldier->bActionPoints );
-		
-	sAPCost += APBPConstants[AP_HANDCUFF];
-
-	return sAPCost;
+	return GetAPsToChangeStance(pSoldier, ANIM_CROUCH) + APBPConstants[AP_HANDCUFF];
 }
 
 INT16 GetAPsToApplyItem( SOLDIERTYPE *pSoldier, INT32 usMapPos )
@@ -4172,6 +4116,9 @@ INT16 GetAPsForInteractiveAction( SOLDIERTYPE *pSoldier, UINT16 usActionType )
 		sAPCost += APBPConstants[AP_SODAMACHINE];
 		break;
 	case INTERACTIVE_STRUCTURE_MINIGAME:
+		sAPCost += APBPConstants[AP_READFILE];
+		break;
+	case INTERACTIVE_STRUCTURE_VARIOUS:
 		sAPCost += APBPConstants[AP_READFILE];
 		break;
 
@@ -4418,7 +4365,7 @@ INT32 GetBPCostPer10APsForGunHolding( SOLDIERTYPE * pSoldier, BOOLEAN fEstimate 
 		return 0;
 	if ( !(gAnimControl[ pSoldier->usAnimState ].uiFlags & (ANIM_FIRE | ANIM_FIREREADY) ) && !fEstimate ) // don't if weapon not raised, but do if we are gonna estimate the cost
 		return 0;
-	if ( ARMED_VEHICLE( pSoldier ) || AM_A_ROBOT( pSoldier ) )
+	if ( ARMED_VEHICLE( pSoldier ) || AM_A_ROBOT( pSoldier ) || ENEMYROBOT( pSoldier ) )
 		return 0;
 	//////////////////////////////////////////////////////////////////////////////
 	// THE BASIC COST FOR HOLDING THE GUN RAISED (per AP)
@@ -4559,7 +4506,7 @@ INT32 GetBPCostForRecoilkick( SOLDIERTYPE * pSoldier )
 		return 0;
 	if ( Item[pSoldier->inv[pSoldier->ubAttackingHand].usItem].usItemClass != IC_GUN && Item[pSoldier->inv[pSoldier->ubAttackingHand].usItem].usItemClass != IC_LAUNCHER )
 		return 0;
-	if ( ARMED_VEHICLE( pSoldier ) || AM_A_ROBOT( pSoldier ) )
+	if ( ARMED_VEHICLE( pSoldier ) || AM_A_ROBOT( pSoldier ) || ENEMYROBOT( pSoldier ) )
 		return 0;
 	//////////////////////////////////////////////////////////////////////////////
 	// THE GUN RECOIL KICK ENERGY COST

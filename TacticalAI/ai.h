@@ -183,6 +183,7 @@ BOOLEAN CanAutoBandage( BOOLEAN fDoFullCheck );
 void DebugAI( STR szOutput );
 enum { AI_MSG_START, AI_MSG_DECIDE, AI_MSG_INFO, AI_MSG_TOPIC };
 void DebugAI(INT8 bMsgType, SOLDIERTYPE *pSoldier, STR szOutput, INT8 bAction = -1);
+void DebugQuestInfo(STR szOutput);
 INT8 DecideAction(SOLDIERTYPE *pSoldier);
 INT8 DecideActionBlack(SOLDIERTYPE *pSoldier);
 INT8 DecideActionEscort(SOLDIERTYPE *pSoldier);
@@ -351,6 +352,7 @@ BOOLEAN CorpseMilitiaTeam(ROTTING_CORPSE *pCorpse);
 BOOLEAN NorthSpot(INT32 sSpot, INT8 bLevel);
 BOOLEAN SoldierAI(SOLDIERTYPE *pSoldier);
 
+BOOLEAN WeAttack(INT8 bTeam);
 BOOLEAN CheckSuppressionDirection(SOLDIERTYPE *pSoldier, INT32 sTargetGridNo, INT8 bTargetLevel);
 
 UINT8 AIDirection(INT32 sSpot1, INT32 sSpot2);
@@ -378,6 +380,8 @@ BOOLEAN AICheckIsMortarOperator(SOLDIERTYPE *pSoldier);
 BOOLEAN AICheckIsGLOperator(SOLDIERTYPE *pSoldier);
 BOOLEAN AICheckIsOfficer(SOLDIERTYPE *pSoldier);
 BOOLEAN AICheckIsCommander(SOLDIERTYPE *pSoldier);
+
+BOOLEAN AICheckSpecialRole(SOLDIERTYPE *pSoldier);
 
 // *************************************************************
 // Knowledge functions

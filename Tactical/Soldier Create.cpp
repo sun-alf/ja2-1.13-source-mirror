@@ -47,6 +47,7 @@
 	#include "Interface.h"	// added by Flugente
 	#include "Soldier macros.h"		// added by Flugente
 	#include "MilitiaIndividual.h"	// added by Flugente
+	#include "Rebel Command.h"
 #endif
 
 #include "connect.h"
@@ -59,6 +60,8 @@
 #endif
 
 #include "GameInitOptionsScreen.h"
+
+extern INT32 GetTheStateOfDepartedMerc(INT32 iId);
 
 // THESE 3 DIFFICULTY FACTORS MUST ALWAYS ADD UP TO 100% EXACTLY!!!
 #define DIFF_FACTOR_PLAYER_PROGRESS			50
@@ -613,9 +616,9 @@ SOLDIERTYPE* TacticalCreateSoldier( SOLDIERCREATE_STRUCT *pCreateStruct, UINT8 *
 			pCreateStruct->fPlayerPlan = 0;
 		}
 
-		if ( is_networked && ARMED_VEHICLE( pCreateStruct ) )
+		if ( is_networked && (ARMED_VEHICLE( pCreateStruct ) || ENEMYROBOT( pCreateStruct )) )
 		{
-			ScreenMsg( FONT_YELLOW, MSG_MPSYSTEM, L"skipping tank");
+			ScreenMsg( FONT_YELLOW, MSG_MPSYSTEM, L"skipping tank/jeep/robot");
 			return NULL;
 		}
 	}
@@ -730,6 +733,13 @@ SOLDIERTYPE* TacticalCreateSoldier( SOLDIERCREATE_STRUCT *pCreateStruct, UINT8 *
 						break;
 
 				}
+				
+				// enemy robot special case
+				if (pCreateStruct->ubBodyType == ROBOTNOWEAPON && pCreateStruct->ubSoldierClass == SOLDIER_CLASS_ROBOT)
+				{
+					Soldier.bTeam = ENEMY_TEAM;
+				}
+
 			}
 		}
 		else
@@ -743,7 +753,7 @@ SOLDIERTYPE* TacticalCreateSoldier( SOLDIERCREATE_STRUCT *pCreateStruct, UINT8 *
 		}
 
 		// Copy the items over for the soldier, only if we have a valid profile id!
-		if ( pCreateStruct->ubProfile != NO_PROFILE )
+		if ( pCreateStruct->ubProfile != NO_PROFILE && (gMercProfiles[pCreateStruct->ubProfile].Type != PROFILETYPE_RPC || GetTheStateOfDepartedMerc(pCreateStruct->ubProfile) == -1))
 		{
 			CopyProfileItems( &Soldier, pCreateStruct );
 			//CHRISL: make sure nails gets his jacket no matter what
@@ -826,7 +836,7 @@ SOLDIERTYPE* TacticalCreateSoldier( SOLDIERCREATE_STRUCT *pCreateStruct, UINT8 *
 
 		// Flugente: disease can affect a soldier's health
 		// not for us, and not for individual militia (their health is affected by their hourly healing instead)
-		if ( gGameExternalOptions.fDisease && gGameExternalOptions.fDiseaseStrategic && Soldier.bTeam != OUR_TEAM && Soldier.bTeam != CREATURE_TEAM && !ARMED_VEHICLE((&Soldier)) &&
+		if ( gGameExternalOptions.fDisease && gGameExternalOptions.fDiseaseStrategic && Soldier.bTeam != OUR_TEAM && Soldier.bTeam != CREATURE_TEAM && !ARMED_VEHICLE((&Soldier)) && !ENEMYROBOT((&Soldier)) &&
 			!( Soldier.bTeam == MILITIA_TEAM && gGameExternalOptions.fIndividualMilitia && gGameExternalOptions.fIndividualMilitia_ManageHealth )  )
 		{
 			UINT8 sector = SECTOR( Soldier.sSectorX, Soldier.sSectorY );
@@ -954,6 +964,12 @@ SOLDIERTYPE* TacticalCreateSoldier( SOLDIERCREATE_STRUCT *pCreateStruct, UINT8 *
 		if ( Soldier.ubBodyType == BIGMALE )
 		{
 			Soldier.uiAnimSubFlags |= SUB_ANIM_BIGGUYTHREATENSTANCE;
+		}
+
+		// sevenfm: max morale for AI soldiers
+		if (Soldier.ubProfile == NO_PROFILE)
+		{
+			Soldier.aiData.bMorale = 60 + 2 * Soldier.stats.bExpLevel + Random(20);
 		}
 
 		//For inventory, look for any face class items that may be located in the big pockets and if found, move
@@ -1754,9 +1770,13 @@ BOOLEAN TacticalCopySoldierFromCreateStruct( SOLDIERTYPE *pSoldier, SOLDIERCREAT
 	pSoldier->flags.bHasKeys							= pCreateStruct->fHasKeys;
 	pSoldier->ubSoldierClass				= pCreateStruct->ubSoldierClass;
 
+	pSoldier->sSectorX = pCreateStruct->sSectorX;
+	pSoldier->sSectorY = pCreateStruct->sSectorY;
+	pSoldier->bSectorZ = pCreateStruct->bSectorZ;
+
 	// Flugente: soldier profiles
 	// silversurfer: Don't replace tanks!
-	if ( !ARMED_VEHICLE( pCreateStruct ) )
+	if ( !ARMED_VEHICLE( pCreateStruct ) && !ENEMYROBOT( pCreateStruct ) )
 	{
 		MILITIA militia;
 		if ( GetMilitia( pSoldier->usIndividualMilitiaID, &militia ) )
@@ -1812,6 +1832,12 @@ BOOLEAN TacticalCopySoldierFromCreateStruct( SOLDIERTYPE *pSoldier, SOLDIERCREAT
 	if ( gGameExternalOptions.fAssignTraitsToMilitia && SOLDIER_CLASS_MILITIA( pSoldier->ubSoldierClass ) )
 		AssignTraitsToSoldier( pSoldier, pCreateStruct );
 
+	// if rebel command is enabled, apply bonuses and penalties
+	if (SOLDIER_CLASS_MILITIA(pSoldier->ubSoldierClass))
+		RebelCommand::ApplyMilitiaBonuses(pSoldier);
+	if ((SOLDIER_CLASS_ENEMY(pSoldier->ubSoldierClass) || pSoldier->ubSoldierClass == SOLDIER_CLASS_BANDIT))
+		RebelCommand::ApplyEnemyPenalties(pSoldier);
+
 	// Flugente: enemy roles
 	if ( gGameExternalOptions.fEnemyRoles && gGameExternalOptions.fEnemyOfficers && SOLDIER_CLASS_ENEMY( pSoldier->ubSoldierClass ) )
 	{
@@ -1822,7 +1848,7 @@ BOOLEAN TacticalCopySoldierFromCreateStruct( SOLDIERTYPE *pSoldier, SOLDIERCREAT
 			UINT8 numofficers = HighestEnemyOfficersInSector( officertype );
 
 			// this guy becomes an officer if there are enough soldiers around, and we aren't already at max of officers
-			if ( numenemies > gGameExternalOptions.usEnemyOfficersPerTeamSize * numofficers && numofficers < gGameExternalOptions.usEnemyOfficersMax )
+			if ( numenemies > gGameExternalOptions.usEnemyOfficersPerTeamSize * numofficers && numofficers < gGameExternalOptions.usEnemyOfficersMax && !RebelCommand::NeutraliseRole(pSoldier) )
 				pSoldier->usSoldierFlagMask |= SOLDIER_ENEMY_OFFICER;
 		}
 	}
@@ -2118,20 +2144,10 @@ void InitSoldierStruct( SOLDIERTYPE *pSoldier )
 	pSoldier->usChatPartnerID			= NOBODY;
 
 	// sevenfm: initialize additional data
-	pSoldier->ubLastShock = 0;
-	pSoldier->ubLastSuppression = 0;
-	pSoldier->ubLastAP = 0;
-	pSoldier->ubLastMorale = 0;
-	pSoldier->ubLastShockFromHit = 0;
-	pSoldier->ubLastMoraleFromHit = 0;
-	pSoldier->ubLastAPFromHit = 0;
-	pSoldier->iLastBulletImpact = 0;
-	pSoldier->iLastArmourProtection = 0;
+	pSoldier->InitializeExtraData();
 
-	pSoldier->usQuickItemId = 0;
-	pSoldier->ubQuickItemSlot = 0;
-
-	pSoldier->usGrenadeItem = 0;
+	pSoldier->sDragGridNo = NOWHERE;
+	pSoldier->sFocusGridNo = NOWHERE;
 }
 
 
@@ -2566,6 +2582,7 @@ void CreateDetailedPlacementGivenBasicPlacementInfo( SOLDIERCREATE_STRUCT *pp, B
 			}
 			break;
 
+		case SOLDIER_CLASS_ROBOT:
 		case SOLDIER_CLASS_TANK:
 		case SOLDIER_CLASS_JEEP:
 			pp->bExpLevel = bp->bRelativeAttributeLevel;
@@ -3250,6 +3267,47 @@ SOLDIERTYPE* TacticalCreateEnemyJeep( )
 
 	return(pSoldier);
 }
+
+// rftr: enemy robots
+SOLDIERTYPE* TacticalCreateEnemyRobot()
+{
+	BASIC_SOLDIERCREATE_STRUCT bp;
+	SOLDIERCREATE_STRUCT pp;
+	UINT8 ubID;
+	SOLDIERTYPE * pSoldier;
+
+	if ( guiCurrentScreen == AUTORESOLVE_SCREEN && !gfPersistantPBI )
+	{
+		pSoldier = ReserveTacticalSoldierForAutoresolve( SOLDIER_CLASS_ROBOT );
+
+		if ( pSoldier )
+			return pSoldier;
+	}
+
+	memset( &bp, 0, sizeof(BASIC_SOLDIERCREATE_STRUCT) );
+	RandomizeRelativeLevel( &(bp.bRelativeAttributeLevel), SOLDIER_CLASS_ELITE );
+	RandomizeRelativeLevel( &(bp.bRelativeEquipmentLevel), SOLDIER_CLASS_ELITE );
+	bp.bTeam = ENEMY_TEAM;
+	bp.bOrders = SEEKENEMY;
+	bp.bAttitude = AGGRESSIVE;
+	bp.ubBodyType = ROBOTNOWEAPON;
+	bp.ubSoldierClass = SOLDIER_CLASS_ROBOT;
+	CreateDetailedPlacementGivenBasicPlacementInfo( &pp, &bp );
+
+	pSoldier = TacticalCreateSoldier( &pp, &ubID );
+	if ( pSoldier )
+	{
+		// send soldier to centre of map, roughly
+		pSoldier->aiData.sNoiseGridno = (CENTRAL_GRIDNO + (Random( CENTRAL_RADIUS * 2 + 1 ) - CENTRAL_RADIUS) + (Random( CENTRAL_RADIUS * 2 + 1 ) - CENTRAL_RADIUS) * WORLD_COLS);
+		pSoldier->aiData.ubNoiseVolume = MAX_MISC_NOISE_DURATION;
+
+		pSoldier->stats.bLifeMax = 80;
+		pSoldier->stats.bLife = pSoldier->stats.bLifeMax;
+	}
+
+	return(pSoldier);
+}
+
 
 //USED BY STRATEGIC AI and AUTORESOLVE
 SOLDIERTYPE* TacticalCreateZombie()
@@ -4866,7 +4924,7 @@ BOOLEAN AssignTraitsToSoldier( SOLDIERTYPE *pSoldier, SOLDIERCREATE_STRUCT *pCre
 		}
 
 		// Now assign the trait
-		if ( Chance( iChance ) )
+		if ( Chance( iChance ) && !RebelCommand::NeutraliseRole(pSoldier) )
 		{
 			if ( !ATraitAssigned )
 			{
@@ -5242,7 +5300,7 @@ BOOLEAN AssignTraitsToSoldier( SOLDIERTYPE *pSoldier, SOLDIERCREATE_STRUCT *pCre
 		if ( gGameOptions.fNewTraitSystem && (!ATraitAssigned || !BTraitAssigned || !CTraitAssigned) )
 		{
 			// if we have a radio set, give us the corresponding trait so we can use it...
-			if ( fRadioSetFound )
+			if ( fRadioSetFound && !RebelCommand::NeutraliseRole(pSoldier))
 			{
 				// this is a minor trait, so try to first fill the minor slot if possible
 				// reasoning: this trait has to be one of the first evaluated - getting a radio set is rare, so e want to make sure we become a radio guy if we're lucky
@@ -5266,7 +5324,7 @@ BOOLEAN AssignTraitsToSoldier( SOLDIERTYPE *pSoldier, SOLDIERCREATE_STRUCT *pCre
 		}
 
 		// HEAVY WEAPONS TRAIT 
-		if ( foundMortar || foundRocketlauncher || foundGrenadelauncher )
+		if ( (foundMortar || foundRocketlauncher || foundGrenadelauncher) && !RebelCommand::NeutraliseRole(pSoldier) )
 		{
 			// setup basic chances based on soldier type
 			if ( ubSolClass == SOLDIER_CLASS_ELITE || ubSolClass == SOLDIER_CLASS_ELITE_MILITIA )
@@ -5796,7 +5854,7 @@ BOOLEAN AssignTraitsToSoldier( SOLDIERTYPE *pSoldier, SOLDIERCREATE_STRUCT *pCre
 		}
 
 		// Flugente: enemy roles: allow medics
-		if ( gGameExternalOptions.fEnemyRoles && gGameExternalOptions.fEnemyMedics && gGameOptions.fNewTraitSystem && (!ATraitAssigned || !BTraitAssigned) )
+		if ( gGameExternalOptions.fEnemyRoles && gGameExternalOptions.fEnemyMedics && gGameOptions.fNewTraitSystem && (!ATraitAssigned || !BTraitAssigned) && !RebelCommand::NeutraliseRole(pSoldier))
 		{
 			// if we have a radio set, give us the corresponding trait so we can use it...
 			if ( fFirstAidKitFound )

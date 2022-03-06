@@ -62,6 +62,8 @@
 	#include "CampaignStats.h"						// added by Flugente
 	#include "PMC.h"								// added by Flugente
 	#include "ASD.h"								// added by Flugente
+	#include "MiniEvents.h"
+	#include "Rebel Command.h"
 #endif
 
 #include "Vehicles.h"
@@ -90,6 +92,7 @@
 
 #include "PostalService.h"
 extern CPostalService gPostalService;
+extern void initMapViewAndBorderCoordinates(void);
 
 class OBJECTTYPE;
 class SOLDIERTYPE;
@@ -103,7 +106,7 @@ extern BOOLEAN gfGamePaused;
 
 extern UNDERGROUND_SECTORINFO* FindUnderGroundSector( INT16 sMapX, INT16 sMapY, UINT8 bMapZ );
 
-UINT8			gubCheatLevel = STARTING_CHEAT_LEVEL;
+UINT8 gubCheatLevel = STARTING_CHEAT_LEVEL;
 
 UINT8			gubScreenCount=0;
 
@@ -498,9 +501,6 @@ void InitStrategicLayer( void )
 	// Flugente: set up VIP locations
 	InitVIPSectors();
 
-	// Flugente: init special AI
-	InitASD();
-
 #ifdef JA2UB
 	LuaInitStrategicLayer(0); //JA25 UB InitStrategicLayer.lua 
 #endif
@@ -538,6 +538,8 @@ void ShutdownStrategicLayer()
 	KillStrategicAI();
 	ClearTacticalMessageQueue();
 }
+
+extern void DebugQuestInfo(STR szOutput);
 
 BOOLEAN InitNewGame( BOOLEAN fReset )
 {	
@@ -582,6 +584,8 @@ fFirstTimeInMapScreen = TRUE;
 	DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"InitNewGame: set initial inventory coords");
 	if( gubScreenCount == 0 )
 	{
+		// Have to initialize map UI Coordinates, because inventory panel layout location depends on them.
+		initMapViewAndBorderCoordinates();
 		if((UsingNewInventorySystem() == true))
 		{
 			InitNewInventorySystem();
@@ -821,6 +825,10 @@ fFirstTimeInMapScreen = TRUE;
 	RequestTriggerExitFromMapscreen( MAP_EXIT_TO_TACTICAL );
 	#endif	
 
+		InitMiniEvents();
+
+		RebelCommand::Init();
+
 		return( TRUE );
 	}
 
@@ -829,8 +837,6 @@ fFirstTimeInMapScreen = TRUE;
 		gubScreenCount = 2;
 		return( TRUE );
 	}
-
-	
 
 	DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"InitNewGame done");
 	return( TRUE );
@@ -1227,7 +1233,9 @@ void ReStartingGame()
 	gpCustomizableTimerCallback = NULL;
 
 	// WANNE - MP: Set cheat level to 0 for mp
-	if (!is_networked)
+	if (gGameExternalOptions.gfCheatMode)
+		gubCheatLevel = 6;
+	else if (!is_networked)
 		gubCheatLevel = STARTING_CHEAT_LEVEL;
 	else
 		gubCheatLevel = 0;

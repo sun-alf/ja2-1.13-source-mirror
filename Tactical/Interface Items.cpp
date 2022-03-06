@@ -101,6 +101,7 @@
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
+extern INV_REGION_DESC gMapScreenInvPocketXY[NUM_INV_SLOTS];	// ARRAY FOR INV PANEL INTERFACE ITEM POSITIONS
 
 //CHRISL: Moved to Interface Items.h for EDB
 //#define		ITEMDESC_FONT							BLOCKFONT2
@@ -451,7 +452,7 @@ void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason );
 // the done descrition button callback
 void ItemDescDoneButtonCallback( GUI_BUTTON *btn, INT32 reason );
 
-
+extern INT32 iLastHandPos;
 extern BOOLEAN fMapInventoryItem;
 BOOLEAN	gfItemPopupRegionCallbackEndFix = FALSE;
 extern void InternalMAPBeginItemPointer( SOLDIERTYPE *pSoldier );
@@ -1064,7 +1065,7 @@ BOOLEAN UseNASDesc(OBJECTTYPE *pObject){
 	if(pObject->exists() == FALSE)
 		return FALSE;
 	// silversurfer: We allow it now but only in EDB.
-	if(guiCurrentScreen == MAP_SCREEN && !UsingEDBSystem() ) //Item[pObject->usItem].usItemClass == IC_LBEGEAR && UsingNewAttachmentSystem()==true && gGameSettings.fOptions[TOPTION_SHOW_LBE_CONTENT])
+	if(guiCurrentScreen == MAP_SCREEN && !UsingEDBSystem() && Item[pObject->usItem].usItemClass & IC_LBEGEAR) //Item[pObject->usItem].usItemClass == IC_LBEGEAR && UsingNewAttachmentSystem()==true && gGameSettings.fOptions[TOPTION_SHOW_LBE_CONTENT])
 		return FALSE;	// the map screen can't support NAS and LBEGEAR.
 	return (/*Item[pObject->usItem].usItemClass != IC_LBEGEAR && Item[pObject->usItem].usItemClass != IC_MONEY && */UsingNewAttachmentSystem()==true);
 }
@@ -1645,14 +1646,13 @@ void RenderInvBodyPanel( SOLDIERTYPE *pSoldier, INT16 sX, INT16 sY )
 
 	// Kaiden: Vehicle Inventory change - Added IF Test, Else function call was
 	// the original statement
-	if ( (gGameExternalOptions.fVehicleInventory) && (pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE) && UsingNewInventorySystem() == false )
+	if ( (gGameExternalOptions.fVehicleInventory) && (pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE) )
 	{
 		BltVideoObjectFromIndex( guiSAVEBUFFER, guiBodyInvVO[4][bSubImageIndex], 0, sX, sY, VO_BLT_SRCTRANSPARENCY, NULL );
 	}
 	else
 	{
 		BltVideoObjectFromIndex( guiSAVEBUFFER, guiBodyInvVO[ pSoldier->ubBodyType ][ bSubImageIndex ], 0, sX, sY, VO_BLT_SRCTRANSPARENCY, NULL );
-
 	}
 }
 
@@ -2592,7 +2592,7 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 					{
 						fHatchItOut = TRUE;
 					}
-					else if ( !pObject->exists() )	// Nothing in sPocket.  Display silouhette.
+					else if ( !pObject->exists() )	// Nothing in sPocket.  Display silhouette.
 					{
 						INVRenderSilhouette( guiSAVEBUFFER, lbePocket, 0, sX, sY, gSMInvData[ sPocket ].sWidth, gSMInvData[ sPocket ].sHeight);
 					}
@@ -2632,7 +2632,7 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 				default:
 					/*if ( pObject->exists() == false )
 					{
-						// Display appropriate silouhette
+						// Display appropriate silhouette
 					}*/
 					break;
 			}
@@ -2642,38 +2642,6 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 	if ( fDirtyLevel == DIRTYLEVEL2 )
 	{
 		// CHECK FOR COMPATIBILITY WITH MAGAZINES
-
-/*	OLD VERSION OF GUN/AMMO MATCH HIGHLIGHTING
-		UINT32	uiDestPitchBYTES;
-		UINT8		*pDestBuf;
-		UINT16	usLineColor;
-
-		if ( ( Item [ pSoldier->inv[ HANDPOS ].usItem ].usItemClass & IC_GUN )  && ( Item[ pObject->usItem ].usItemClass & IC_AMMO ) )
-		{
-			// CHECK
-			if (Weapon[pSoldier->inv[ HANDPOS ].usItem].ubCalibre == Magazine[Item[pObject->usItem].ubClassIndex].ubCalibre )
-			{
-				// IT's an OK calibre ammo, do something!
-				// Render Item with specific color
-				//fOutline = TRUE;
-				//sOutlineColor = Get16BPPColor( FROMRGB( 96, 104, 128 ) );
-				//sOutlineColor = Get16BPPColor( FROMRGB( 20, 20, 120 ) );
-
-				// Draw rectangle!
-				pDestBuf = LockVideoSurface( guiSAVEBUFFER, &uiDestPitchBYTES );
-				SetClippingRegionAndImageWidth( uiDestPitchBYTES, 0, 0, 640, 480 );
-
-				//usLineColor = Get16BPPColor( FROMRGB( 255, 255, 0 ) );
-				usLineColor = Get16BPPColor( FROMRGB( 230, 215, 196 ) );
-				RectangleDraw( TRUE, (sX+1), (sY+1), (sX + gSMInvData[ sPocket ].sWidth - 2 ),( sY + gSMInvData[ sPocket ].sHeight - 2 ), usLineColor, pDestBuf );
-
-				SetClippingRegionAndImageWidth( uiDestPitchBYTES, 0, 0, 640, 480 );
-
-				UnLockVideoSurface( guiSAVEBUFFER );
-			}
-		}
-*/
-
 		if ( gbCompatibleAmmo[ sPocket ] )
 		{
 			fOutline = TRUE;
@@ -2693,8 +2661,9 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 			}
 			else
 			{	
-				newX = !UsingNewInventorySystem( ) ? (14 + xResOffset) : (6 + xResOffset);
-				newY = !UsingNewInventorySystem( ) ? (218 + yResOffset) : (217 + yResOffset);
+				newX = gMapScreenInvPocketXY[SECONDHANDPOS].sX - 10;
+				newY = gMapScreenInvPocketXY[SECONDHANDPOS].sY;
+
 				BltVideoObjectFromIndex( guiSAVEBUFFER, guiMapInvSecondHandBlockout, UsingNewInventorySystem(), newX, newY, VO_BLT_SRCTRANSPARENCY, NULL );
 				RestoreExternBackgroundRect( newX, newY, 102, 24 );
 			}
@@ -2746,6 +2715,19 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 			if ( CanItemFitInPosition( pSoldier, gpItemPointer, (INT8)sPocket, FALSE ) )
 			{
 				fHatchItOut = FALSE;
+				if (UsingInventoryCostsAPSystem() && (gTacticalStatus.uiFlags & INCOMBAT) && pSoldier->bInSector)
+				{
+					//Jenilee: determine the cost of moving this item around in our inventory
+					UINT16 usCostToMoveItem = GetInvMovementCost(gpItemPointer, iLastHandPos, sPocket);
+					// Flugente: backgrounds
+					usCostToMoveItem = (usCostToMoveItem * (100 + pSoldier->GetBackgroundValue(BG_INVENTORY))) / 100;
+
+					//we dont have enough APs to move it to this slot
+					if (usCostToMoveItem > 0 && pSoldier->bActionPoints < usCostToMoveItem && pSoldier->inv[iLastHandPos].usItem == NULL)
+					{
+						fHatchItOut = 2;
+					}
+				}
 			}
 			// Flugente: we call this function a lot, so only call if necessary 
 			else if ( !fHatchItOut && (
@@ -2778,8 +2760,18 @@ void INVRenderINVPanelItem( SOLDIERTYPE *pSoldier, INT16 sPocket, UINT8 fDirtyLe
 
 	if ( fHatchItOut )
 	{
-		UINT32 uiWhichBuffer = ( guiCurrentItemDescriptionScreen == MAP_SCREEN ) ? guiSAVEBUFFER : guiRENDERBUFFER;
-		DrawHatchOnInventory( uiWhichBuffer, sX, sY, (UINT16)(gSMInvData[ sPocket ].sWidth-1), (UINT16)(gSMInvData[ sPocket ].sHeight-1) );
+		//shadooow: hatch all pockets that we cannot put item into due to insufficient action points with red
+		if (fHatchItOut == 2)
+		{
+			UINT16 usColor = Get16BPPColor(FROMRGB(150, 0, 50));
+			UINT32 uiWhichBuffer = (guiCurrentItemDescriptionScreen == MAP_SCREEN) ? guiSAVEBUFFER : guiRENDERBUFFER;
+			DrawHatchOnInventory_MilitiaAccess(uiWhichBuffer, sX, sY, (UINT16)(gSMInvData[sPocket].sWidth - 1), (UINT16)(gSMInvData[sPocket].sHeight - 1), usColor);
+		}
+		else
+		{
+			UINT32 uiWhichBuffer = (guiCurrentItemDescriptionScreen == MAP_SCREEN) ? guiSAVEBUFFER : guiRENDERBUFFER;
+			DrawHatchOnInventory(uiWhichBuffer, sX, sY, (UINT16)(gSMInvData[sPocket].sWidth - 1), (UINT16)(gSMInvData[sPocket].sHeight - 1));
+		}
 	}
 	// Flugente: if we are currently trading, hatch all items that the trade won't accept anyway in red. That way the player doesn't have to manually find out
 	else if ( (guiTacticalInterfaceFlags & INTERFACE_SHOPKEEP_INTERFACE) && pObject->exists( ) && DoesCurrentDealerRefuseToTradeItem( pObject->usItem ) )
@@ -2827,20 +2819,14 @@ BOOLEAN CompatibleGunForAmmo( OBJECTTYPE *pTryObject, OBJECTTYPE *pTestObject )
 	return( FALSE );
 }
 
-BOOLEAN	CompatibleItemForApplyingOnMerc( OBJECTTYPE *pTestObject )
+BOOLEAN	CompatibleItemForApplyingOnMerc(OBJECTTYPE *pTestObject)
 {
 	UINT16 usItem = pTestObject->usItem;
 
-	// ATE: If in mapscreen, return false always....
-	if( guiTacticalInterfaceFlags & INTERFACE_MAPSCREEN )
-	{
-		return( FALSE );
-	}
 
-	// ATE: Would be nice to have flag here to check for these types....
-	if ( Item[usItem].camouflagekit || usItem == ADRENALINE_BOOSTER || usItem == REGEN_BOOSTER ||
-			 usItem == SYRINGE_3		 || usItem == SYRINGE_4 || usItem == SYRINGE_5 ||
-			 Item[usItem].alcohol > 0.0f || Item[usItem].canteen || usItem == JAR_ELIXIR || (usItem == 1022 && gGameExternalOptions.fCamoRemoving) ) // Added rag usable on self - SANDRO
+	//Shadooow: rewritten to use new item flags and check canteen not empty
+	if (((HasItemFlag(usItem, CAMO_REMOVAL) && gGameExternalOptions.fCamoRemoving) || Item[usItem].camouflagekit || usItem == JAR_ELIXIR ||
+	Item[usItem].clothestype || Item[usItem].drugtype || Item[usItem].foodtype)	&& (!Item[usItem].canteen || (*pTestObject)[0]->data.objectStatus > 1))
 	{
 		return( TRUE );
 	}
@@ -2941,14 +2927,21 @@ BOOLEAN IsMutuallyValidAttachmentOrLaunchable(UINT16 usAttItem, UINT16 usItem)//
 
 BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos, BOOLEAN fOn, BOOLEAN fFromMerc   )
 {
-	BOOLEAN			fFound = FALSE;
-	UINT32				cnt;
+	BOOLEAN		fFound = FALSE;
+	UINT32		cnt;
 	OBJECTTYPE  *pObject, *pTestObject ;
-	BOOLEAN			fFoundAttachment = FALSE;
+	BOOLEAN		fFoundAttachment = FALSE;
 
 	if( fFromMerc == FALSE )
 	{
-		pTestObject = &( pInventoryPoolList[ bInvPos ].object );
+		if (gpItemPointer != NULL)
+		{
+			pTestObject = gpItemPointer;
+		}
+		else
+		{
+			pTestObject = &(pInventoryPoolList[bInvPos].object);
+		}
 	}
 	else
 	{
@@ -2977,7 +2970,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 					fFound = TRUE;
 				}
 
-				// IT's an OK calibere ammo, do something!
+				// IT's an OK caliber ammo, do something!
 				// Render Item with specific color
 				gbCompatibleAmmo[ cnt ] = fOn;
 			}
@@ -2987,6 +2980,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 		{
 			if ( CompatibleItemForApplyingOnMerc( gpItemPointer ) )
 			{
+				/*// Shadooow: disabled, probably a remnant of past when this didn't happen automatically when hovering/picking item
 				// OK, Light up portrait as well.....
 				if ( fOn )
 				{
@@ -2996,6 +2990,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 				{
 					gbCompatibleApplyItem = FALSE;
 				}
+				*/
 
 				fFound = TRUE;
 			}
@@ -3010,35 +3005,25 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 		return( fFound );
 	}
 
-//	if ( !(Item[ pTestObject->usItem ].fFlags & ITEM_HIDDEN_ADDON) )
+	UINT32 invsize = pSoldier->inv.size();
+	// First test attachments, which almost any type of item can have....
 	if ( !(Item[ pTestObject->usItem ].hiddenaddon ) )
 	{
-		// First test attachments, which almost any type of item can have....
-		UINT32 invsize = pSoldier->inv.size();
 		for ( cnt = 0; cnt < invsize; ++cnt )
 		{
 			pObject = &(pSoldier->inv[ cnt ]);
 
-//			if ( Item[ pObject->usItem ].fFlags & ITEM_HIDDEN_ADDON )
-			if ( Item[ pObject->usItem ].hiddenaddon  )
+			if (pObject == pTestObject || Item[pObject->usItem].hiddenaddon || (!Item[pObject->usItem].attachment && 
+				!Item[pObject->usItem].attachmentclass && !Item[pObject->usItem].nasAttachmentClass && !Item[pTestObject->usItem].attachment &&
+				!Item[pTestObject->usItem].attachmentclass && !Item[pTestObject->usItem].nasAttachmentClass))
 			{
 				// don't consider for UI purposes
 				continue;
 			}
-#if 0//dnl ch76 091113
-			if ( ValidAttachment( pObject->usItem, pTestObject ) ||
-					 ValidAttachment( pTestObject->usItem, pObject ) ||
-					 ValidLaunchable( pTestObject->usItem, pObject->usItem ) ||
-					 ValidLaunchable( pObject->usItem, pTestObject->usItem ) )
-			//if ( (UsingNewAttachmentSystem()==false && ValidAttachment( pObject->usItem, pTestObject )) ||
-			//		 (UsingNewAttachmentSystem()==false && ValidAttachment( pTestObject->usItem, pObject )) ||
-			//		 (UsingNewAttachmentSystem()==true && ValidItemAttachmentSlot(pTestObject, pObject->usItem, FALSE, FALSE, 0, cnt)) ||
-			//		 (UsingNewAttachmentSystem()==true && ValidItemAttachmentSlot(pObject, pTestObject->usItem, FALSE, FALSE, 0, cnt)) ||
-			//		 ValidLaunchable( pTestObject->usItem, pObject->usItem ) ||
-			//		 ValidLaunchable( pObject->usItem, pTestObject->usItem ) )
-#else
-			if(IsMutuallyValidAttachmentOrLaunchable(pObject->usItem, pTestObject->usItem))
-#endif
+
+			if ((!UsingNewAttachmentSystem() && (ValidAttachment(pObject->usItem, pTestObject) || ValidAttachment(pTestObject->usItem, pObject))) ||
+				(UsingNewAttachmentSystem() && (ValidItemAttachmentSlot(pTestObject, pObject->usItem, FALSE, FALSE) || ValidItemAttachmentSlot(pObject, pTestObject->usItem, FALSE, FALSE))) ||
+				ValidLaunchable(pTestObject->usItem, pObject->usItem) || ValidLaunchable(pObject->usItem, pTestObject->usItem))
 			{
 				fFoundAttachment = TRUE;
 
@@ -3047,7 +3032,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 					fFound = TRUE;
 				}
 
-				// IT's an OK calibere ammo, do something!
+				// IT's an OK caliber ammo, do something!
 				// Render Item with specific color
 				gbCompatibleAmmo[ cnt ] = fOn;
 			}
@@ -3056,7 +3041,6 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 
 	if ( ( Item [ pTestObject->usItem ].usItemClass & IC_GUN ) )
 	{
-		UINT32 invsize = pSoldier->inv.size();
 		for ( cnt = 0; cnt < invsize; ++cnt )
 		{
 			pObject = &(pSoldier->inv[ cnt ]);
@@ -3068,7 +3052,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 					fFound = TRUE;
 				}
 
-				// IT's an OK calibere ammo, do something!
+				// IT's an OK caliber ammo, do something!
 				// Render Item with specific color
 				gbCompatibleAmmo[ cnt ] = fOn;
 			}
@@ -3076,7 +3060,6 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 	}
 	else if( ( Item [ pTestObject->usItem ].usItemClass & IC_AMMO ) )
 	{
-		UINT32 invsize = pSoldier->inv.size();
 		for ( cnt = 0; cnt < invsize; ++cnt )
 		{
 			pObject = &(pSoldier->inv[ cnt ]);
@@ -3088,7 +3071,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 					fFound = TRUE;
 				}
 
-				// IT's an OK calibere ammo, do something!
+				// IT's an OK caliber ammo, do something!
 				// Render Item with specific color
 				gbCompatibleAmmo[ cnt ] = fOn;
 
@@ -3099,18 +3082,23 @@ BOOLEAN HandleCompatibleAmmoUIForMapScreen( SOLDIERTYPE *pSoldier, INT32 bInvPos
 	return( fFound );
 }
 
-BOOLEAN HandleCompatibleAmmoUIForMapInventory( SOLDIERTYPE *pSoldier, INT32 bInvPos, INT32 iStartSlotNumber, BOOLEAN fOn, BOOLEAN fFromMerc   )
+BOOLEAN HandleCompatibleAmmoUIForMapInventory(SOLDIERTYPE *pSoldier, INT32 bInvPos, INT32 iStartSlotNumber, BOOLEAN fOn, BOOLEAN fFromMerc)
 {
-	// CJC: ATE, needs fixing here!
-
-	BOOLEAN			fFound = FALSE;
-	INT32				cnt;
+	BOOLEAN		fFound = FALSE;
+	INT32		cnt;
 	OBJECTTYPE  *pObject, *pTestObject ;
-	BOOLEAN			fFoundAttachment = FALSE;
+	BOOLEAN		fFoundAttachment = FALSE;
 
 	if( fFromMerc == FALSE )
 	{
-		pTestObject = &( pInventoryPoolList[ iStartSlotNumber + bInvPos ].object);
+		if (gpItemPointer != NULL)
+		{
+			pTestObject = gpItemPointer;
+		}
+		else
+		{
+			pTestObject = &(pInventoryPoolList[iStartSlotNumber + bInvPos].object);
+		}
 	}
 	else
 	{
@@ -3125,38 +3113,37 @@ BOOLEAN HandleCompatibleAmmoUIForMapInventory( SOLDIERTYPE *pSoldier, INT32 bInv
 	}
 
 	// First test attachments, which almost any type of item can have....
-	for ( cnt = 0; cnt < MAP_INVENTORY_POOL_SLOT_COUNT; ++cnt )
+	if (!(Item[pTestObject->usItem].hiddenaddon))
 	{
-		pObject = &( pInventoryPoolList[ iStartSlotNumber + cnt ].object );
-
-//		if ( Item[ pObject->usItem ].fFlags & ITEM_HIDDEN_ADDON )
-		if ( Item[ pObject->usItem ].hiddenaddon  )
+		for (cnt = 0; cnt < MAP_INVENTORY_POOL_SLOT_COUNT; ++cnt)
 		{
-			// don't consider for UI purposes
-			continue;
-		}
-#if 0//dnl ch76 091113
-		if ( ValidAttachment( pObject->usItem, pTestObject ) ||
-				 ValidAttachment( pTestObject->usItem, pObject ) ||
-				 ValidLaunchable( pTestObject->usItem, pObject->usItem ) ||
-				 ValidLaunchable( pObject->usItem, pTestObject->usItem ) )
-#else
-		if(IsMutuallyValidAttachmentOrLaunchable(pObject->usItem, pTestObject->usItem))
-#endif
-		{
-			fFoundAttachment = TRUE;
+			pObject = &(pInventoryPoolList[iStartSlotNumber + cnt].object);
 
-			if ( fOn != fMapInventoryItemCompatable[ cnt ] )
+			if (pObject == pTestObject || Item[pObject->usItem].hiddenaddon || (!Item[pObject->usItem].attachment &&
+				!Item[pObject->usItem].attachmentclass && !Item[pObject->usItem].nasAttachmentClass && !Item[pTestObject->usItem].attachment &&
+				!Item[pTestObject->usItem].attachmentclass && !Item[pTestObject->usItem].nasAttachmentClass))
 			{
-				fFound = TRUE;
+				// don't consider for UI purposes
+				continue;
 			}
 
-			// IT's an OK calibere ammo, do something!
-			// Render Item with specific color
-			fMapInventoryItemCompatable[ cnt ] = fOn;
+			if ((!UsingNewAttachmentSystem() && (ValidAttachment(pObject->usItem, pTestObject) || ValidAttachment(pTestObject->usItem, pObject))) ||
+				(UsingNewAttachmentSystem() && (ValidItemAttachmentSlot(pTestObject, pObject->usItem, FALSE, FALSE) ||
+					ValidItemAttachmentSlot(pObject, pTestObject->usItem, FALSE, FALSE))) || ValidLaunchable(pTestObject->usItem, pObject->usItem) || ValidLaunchable(pObject->usItem, pTestObject->usItem))
+			{
+				fFoundAttachment = TRUE;
+
+				if (fOn != fMapInventoryItemCompatable[cnt])
+				{
+					fFound = TRUE;
+				}
+
+				// IT's an OK caliber ammo, do something!
+				// Render Item with specific color
+				fMapInventoryItemCompatable[cnt] = fOn;
+			}
 		}
 	}
-
 
 	if( ( Item [ pTestObject->usItem ].usItemClass & IC_GUN ) )
 	{
@@ -3171,7 +3158,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapInventory( SOLDIERTYPE *pSoldier, INT32 bInv
 					fFound = TRUE;
 				}
 
-				// IT's an OK calibere ammo, do something!
+				// IT's an OK caliber ammo, do something!
 				// Render Item with specific color
 				fMapInventoryItemCompatable[ cnt ] = fOn;
 			}
@@ -3190,7 +3177,7 @@ BOOLEAN HandleCompatibleAmmoUIForMapInventory( SOLDIERTYPE *pSoldier, INT32 bInv
 					fFound = TRUE;
 				}
 
-				// IT's an OK calibere ammo, do something!
+				// IT's an OK caliber ammo, do something!
 				// Render Item with specific color
 				fMapInventoryItemCompatable[ cnt ] = fOn;
 			}
@@ -3253,6 +3240,7 @@ BOOLEAN InternalHandleCompatibleAmmoUI( SOLDIERTYPE *pSoldier, OBJECTTYPE *pTest
 		{
 			if ( CompatibleItemForApplyingOnMerc( gpItemPointer ) )
 			{
+				/*// Shadooow: disabled, probably a remnant of past when this didn't happen automatically when hovering/picking item
 				// OK, Light up portrait as well.....
 				if ( fOn )
 				{
@@ -3262,6 +3250,7 @@ BOOLEAN InternalHandleCompatibleAmmoUI( SOLDIERTYPE *pSoldier, OBJECTTYPE *pTest
 				{
 					gbCompatibleApplyItem = FALSE;
 				}
+				*/
 
 				fFound = TRUE;
 			}
@@ -3276,46 +3265,42 @@ BOOLEAN InternalHandleCompatibleAmmoUI( SOLDIERTYPE *pSoldier, OBJECTTYPE *pTest
 		return( fFound );
 	}
 
-	// First test attachments, which almost any type of item can have....
 	UINT32 invsize = pSoldier->inv.size();
-	for ( cnt = 0; cnt < invsize; ++cnt )
+	// First test attachments, which almost any type of item can have....
+	if (!(Item[pTestObject->usItem].hiddenaddon))
 	{
-		pObject = &(pSoldier->inv[ cnt ]);
-
-//		if ( Item[ pObject->usItem ].fFlags & ITEM_HIDDEN_ADDON )
-//		if ( Item[ pObject->usItem ].hiddenaddon  )
-		if ( Item[ pObject->usItem ].hiddenaddon || (!Item[pObject->usItem].attachment && !Item[pTestObject->usItem].attachment) )
+		for (cnt = 0; cnt < invsize; ++cnt)
 		{
-			// don't consider for UI purposes
-			continue;
-		}
+			pObject = &(pSoldier->inv[cnt]);
 
-		/*if ( (UsingNewAttachmentSystem()==false && ValidAttachment( pObject->usItem, pTestObject )) ||
-				 (UsingNewAttachmentSystem()==false && ValidAttachment( pTestObject->usItem, pObject )) ||
-				 (UsingNewAttachmentSystem()==true && ValidItemAttachmentSlot(pTestObject, pObject->usItem, FALSE, FALSE, 0, cnt)) ||
-				 (UsingNewAttachmentSystem()==true && ValidItemAttachmentSlot(pObject, pTestObject->usItem, FALSE, FALSE, 0, cnt)) ||
-				 ValidLaunchable( pTestObject->usItem, pObject->usItem ) ||
-				 ValidLaunchable( pObject->usItem, pTestObject->usItem ) )*/		
-		if ( (ValidAttachment( pObject->usItem, pTestObject )) ||
-				 (ValidAttachment( pTestObject->usItem, pObject )) ||
-				 ValidLaunchable( pTestObject->usItem, pObject->usItem ) ||
-				 ValidLaunchable( pObject->usItem, pTestObject->usItem ) )
-		{
-			fFoundAttachment = TRUE;
-
-			if ( fOn != gbCompatibleAmmo[ cnt ] )
+			if (pObject == pTestObject || Item[pObject->usItem].hiddenaddon || (!Item[pObject->usItem].attachment &&
+				!Item[pObject->usItem].attachmentclass && !Item[pObject->usItem].nasAttachmentClass && !Item[pTestObject->usItem].attachment &&
+				!Item[pTestObject->usItem].attachmentclass && !Item[pTestObject->usItem].nasAttachmentClass))
 			{
-				fFound = TRUE;
+				// don't consider for UI purposes
+				continue;
 			}
 
-			// IT's an OK calibere ammo, do something!
-			// Render Item with specific color
-			gbCompatibleAmmo[ cnt ] = fOn;
+			if ((!UsingNewAttachmentSystem() && (ValidAttachment(pObject->usItem, pTestObject) || ValidAttachment(pTestObject->usItem, pObject))) ||
+				(UsingNewAttachmentSystem() && (ValidItemAttachmentSlot(pTestObject, pObject->usItem, FALSE, FALSE) || ValidItemAttachmentSlot(pObject, pTestObject->usItem, FALSE, FALSE))) ||
+				ValidLaunchable(pTestObject->usItem, pObject->usItem) || ValidLaunchable(pObject->usItem, pTestObject->usItem))
+			{
+				fFoundAttachment = TRUE;
+
+				if (fOn != gbCompatibleAmmo[cnt])
+				{
+					fFound = TRUE;
+				}
+
+				// IT's an OK caliber ammo, do something!
+				// Render Item with specific color
+				gbCompatibleAmmo[cnt] = fOn;
+			}
 		}
 	}
-
-	//if ( !fFoundAttachment )
-	//{
+	//if the test object is hidden addon or attachment, it won't be ammunition or gun so skip this
+	if (!Item[pTestObject->usItem].hiddenaddon && !Item[pTestObject->usItem].attachment)
+	{
 		if( ( Item [ pTestObject->usItem ].usItemClass & IC_GUN ) )
 		{
 			for ( cnt = 0; cnt < invsize; ++cnt )
@@ -3348,24 +3333,23 @@ BOOLEAN InternalHandleCompatibleAmmoUI( SOLDIERTYPE *pSoldier, OBJECTTYPE *pTest
 						fFound = TRUE;
 					}
 
-					// IT's an OK calibere ammo, do something!
+					// IT's an OK caliber ammo, do something!
 					// Render Item with specific color
 					gbCompatibleAmmo[ cnt ] = fOn;
 
 				}
 			}
 		}
-		//If we are currently NOT in the Shopkeeper interface
-		else if ( !(guiTacticalInterfaceFlags & INTERFACE_SHOPKEEP_INTERFACE) )
+	}
+	//If we are currently NOT in the Shopkeeper interface and item is not gun or ammo
+	if (!(guiTacticalInterfaceFlags & INTERFACE_SHOPKEEP_INTERFACE) && !((Item[pTestObject->usItem].usItemClass & IC_GUN) || (Item[pTestObject->usItem].usItemClass & IC_AMMO)))
+	{
+		if (CompatibleItemForApplyingOnMerc(pTestObject))
 		{
-			if ( CompatibleItemForApplyingOnMerc( pTestObject ) )
-			{
-				fFound = TRUE;
-				gbCompatibleApplyItem = fOn;
-			}
+			fFound = TRUE;
+			gbCompatibleApplyItem = fOn;
 		}
-	//}
-
+	}
 
 	if ( !fFound )
 	{
@@ -3463,9 +3447,11 @@ BOOLEAN HandleCompatibleAmmoUI( SOLDIERTYPE *pSoldier, INT8 bInvPos, BOOLEAN fOn
 	}
 	else
 	{
-//		if( fOn )
-
-		if ( bInvPos == NO_SLOT )
+		if (gpItemPointer != NULL)
+		{
+			pTestObject = gpItemPointer;
+		}
+		else if ( bInvPos == NO_SLOT )
 		{
 			pTestObject = NULL;
 		}
@@ -5715,14 +5701,16 @@ void UpdateAttachmentTooltips(OBJECTTYPE *pObject, UINT8 ubStatusIndex)
 		if( gItemDescAttachmentRegions[cnt].IDNumber != 0 )
 			MSYS_RemoveRegion( &gItemDescAttachmentRegions[cnt]);
 
-		if( gItemDescAttachmentPopupsInitialized && gItemDescAttachmentPopups[cnt] != NULL ){
+		if( gItemDescAttachmentPopupsInitialized && gItemDescAttachmentPopups[cnt] != NULL )
+		{
 			delete(gItemDescAttachmentPopups[cnt]);			
 		}
 		gItemDescAttachmentPopups[cnt] = NULL;		
 	}
 	gItemDescAttachmentPopupsInitialized = TRUE;
 
-	for (auto iter = gPopupAttachmentInfos.begin(); iter != gPopupAttachmentInfos.end(); iter++) {
+	for (auto iter = gPopupAttachmentInfos.begin(); iter != gPopupAttachmentInfos.end(); iter++) 
+	{
 		delete (*iter);
 	}
 	gPopupAttachmentInfos.clear();
@@ -5731,7 +5719,8 @@ void UpdateAttachmentTooltips(OBJECTTYPE *pObject, UINT8 ubStatusIndex)
 	for (slotCount = 0; ; ++slotCount )
 	{
 		//stopping conditions, not inside the for loop because it is different depending on the attachment system.
-		if (UsingNewAttachmentSystem()==true)	{
+		if (UsingNewAttachmentSystem()==true)	
+		{
 			if(slotCount >= usAttachmentSlotIndexVector.size())
 				break;
 		} else {
@@ -5766,88 +5755,108 @@ void UpdateAttachmentTooltips(OBJECTTYPE *pObject, UINT8 ubStatusIndex)
 
 			// CHRISL: Instead of looking at object 0, let's look at the object we actually right clicked on using ubStatusIndex
 			OBJECTTYPE* pAttachment = (*pObject)[ubStatusIndex]->GetAttachmentAtIndex(slotCount);
-			if (pAttachment->exists()) {
+			if (pAttachment->exists()) 
+			{
 				SetRegionFastHelpText( &(gItemDescAttachmentRegions[ slotCount ]), ItemNames[ pAttachment->usItem ] );
-			} else if (UsingNewAttachmentSystem()==true && !usAttachmentSlotIndexVector.empty()) {	
-
+			} 
+			else if (UsingNewAttachmentSystem()==true && !usAttachmentSlotIndexVector.empty()) 
+			{
 				UINT16 usLoopSlotID = usAttachmentSlotIndexVector[slotCount];
 				attachList.clear();
 				//Print all attachments that fit on this item.
-				for(UINT16 usLoop = 0; usLoop < MAXATTACHMENTS; ++usLoop)
-				{	//We no longer find valid attachments from AttachmentSlots.xml so we need to work a bit harder to get our list
+
+				// sevenfm: first check items
+				for (UINT16 usLoop = 0; usLoop < gMAXITEMS_READ; usLoop++)
+				{
+					// check that reached end of valid items
+					if (Item[usLoop].usItemClass == 0)
+						break;
+
+					//We no longer find valid attachments from AttachmentSlots.xml so we need to work a bit harder to get our list
 					usAttachment = 0;
 					//Madd: Common Attachment Framework
 					if (Item[usLoop].nasAttachmentClass & AttachmentSlots[usLoopSlotID].nasAttachmentClass && IsAttachmentPointAvailable(point, usLoop, TRUE))
 					{
 						usAttachment = usLoop;
-						if( !Item[usAttachment].hiddenaddon && !Item[usAttachment].hiddenattachment && ItemIsLegal(usAttachment))
+						if (!Item[usAttachment].hiddenaddon && !Item[usAttachment].hiddenattachment && ItemIsLegal(usAttachment))
 						{
-							bool exists = false;
-							for (UINT32 i = 0; i < attachList.size(); i++)
+							if (std::find(attachList.begin(), attachList.end(), usAttachment) == attachList.end())
 							{
-								if ( attachList[i] == usAttachment )
-								{
-									exists = true;
-									break;
-								}
-							}
-							if (!exists)
 								attachList.push_back(usAttachment);
-						}
-					}
-					usAttachment = 0;
-					if(Attachment[usLoop][1] == pObject->usItem && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Attachment[usLoop][0]].nasAttachmentClass)
-					{	//search primary item attachments.xml
-						usAttachment = Attachment[usLoop][0];
-					}
-					else if(Launchable[usLoop][1] == pObject->usItem && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Launchable[usLoop][0]].nasAttachmentClass)
-					{	//search primary item launchables.xml
-						usAttachment = Launchable[usLoop][0];
-					}
-					else
-					{	//search for attachments/launchables made valid by other attachments
-#if 0//dnl ch76 081113
-						for(UINT8 x=0; x<(*pObject)[ubStatusIndex]->attachments.size(); x++)
-						{
-							OBJECTTYPE* pAttachment2 = (*pObject)[ubStatusIndex]->GetAttachmentAtIndex(x);
-							if(pAttachment2->exists())
-							{
-								if(Attachment[usLoop][1] == pAttachment2->usItem && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Attachment[usLoop][0]].nasAttachmentClass)
-									usAttachment = Attachment[usLoop][0];
-								else if(Launchable[usLoop][1] == pAttachment2->usItem && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Launchable[usLoop][0]].nasAttachmentClass)
-									usAttachment = Launchable[usLoop][0];
 							}
 						}
-#else
-						UINT32 cnt = attachedList.size();
-						UINT16 *p = cnt ? &attachedList.front() : NULL;
-						while(cnt)
-						{
-							if(Attachment[usLoop][1] == *p && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Attachment[usLoop][0]].nasAttachmentClass)
-								usAttachment = Attachment[usLoop][0];
-							else if(Launchable[usLoop][1] == *p && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Launchable[usLoop][0]].nasAttachmentClass)
-								usAttachment = Launchable[usLoop][0];
-							cnt--, p++;
-						}
-#endif
 					}
-					if(Attachment[usLoop][0] == 0 && Launchable[usLoop][0] == 0 && Item[usLoop].usItemClass == 0)
+				}
+
+				// sevenfm: check launchables
+				for (UINT16 usLoop = 0; usLoop < MAXITEMS + 1; usLoop++)
+				{
+					// check that reached end of valid launchables
+					if (Launchable[usLoop][0] == 0)
 						break;
 
-					if( usAttachment > 0  && !Item[usAttachment].hiddenaddon && !Item[usAttachment].hiddenattachment && ItemIsLegal(usAttachment))
+					usAttachment = 0;
+					if (Launchable[usLoop][1] == pObject->usItem && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Launchable[usLoop][0]].nasAttachmentClass)
 					{
-						bool exists = false;
-						for (UINT32 i = 0; i < attachList.size(); i++)
+						//search primary item launchables.xml
+						usAttachment = Launchable[usLoop][0];
+					}
+
+					if (usAttachment > 0 && !Item[usAttachment].hiddenaddon && !Item[usAttachment].hiddenattachment && ItemIsLegal(usAttachment))
+					{
+						if (std::find(attachList.begin(), attachList.end(), usAttachment) == attachList.end())
 						{
-							if ( attachList[i] == usAttachment )
-							{
-								exists = true;
-								break;
-							}
-						}
-	
-						if (!exists)
 							attachList.push_back(usAttachment);
+						}
+					}
+					else
+					{
+						//search for launchables made valid by other attachments
+						UINT32 cnt = attachedList.size();
+						UINT16* p = cnt ? &attachedList.front() : NULL;
+						while (cnt)
+						{
+							if (Launchable[usLoop][1] == *p && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Launchable[usLoop][0]].nasAttachmentClass)
+								usAttachment = Launchable[usLoop][0];
+
+							cnt--, p++;
+						}
+					}
+				}
+
+				// check all attachments
+				for (UINT16 usLoop = 0; usLoop < MAXATTACHMENTS; usLoop++)
+				{
+					// check that reached end of valid attachments
+					if (Attachment[usLoop][0] == 0)
+						break;
+
+					usAttachment = 0;
+					if (Attachment[usLoop][1] == pObject->usItem && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Attachment[usLoop][0]].nasAttachmentClass)
+					{
+						//search primary item attachments.xml
+						usAttachment = Attachment[usLoop][0];
+					}
+					else
+					{
+						//search for attachments made valid by other attachments
+						UINT32 cnt = attachedList.size();
+						UINT16* p = cnt ? &attachedList.front() : NULL;
+						while (cnt)
+						{
+							if (Attachment[usLoop][1] == *p && AttachmentSlots[usLoopSlotID].nasAttachmentClass & Item[Attachment[usLoop][0]].nasAttachmentClass)
+								usAttachment = Attachment[usLoop][0];
+
+							cnt--, p++;
+						}
+					}
+
+					if (usAttachment > 0 && !Item[usAttachment].hiddenaddon && !Item[usAttachment].hiddenattachment && ItemIsLegal(usAttachment))
+					{
+						if (std::find(attachList.begin(), attachList.end(), usAttachment) == attachList.end())
+						{
+							attachList.push_back(usAttachment);
+						}
 					}
 				}
 
@@ -6402,8 +6411,8 @@ void ItemDescAttachmentsCallback( MOUSE_REGION * pRegion, INT32 iReason )
 		}
 		else
 		{
-			// ATE: Make sure we have enough AP's to drop it if we pick it up!
-			if ( pAttachment->exists() && EnoughPoints( gpItemDescSoldier, ( AttachmentAPCost( pAttachment->usItem, gpItemDescObject, gpItemPointerSoldier ) + APBPConstants[AP_PICKUP_ITEM] ), 0, TRUE ) )
+			// shadooow: removed checking extra cost for picking up the item
+			if ( pAttachment->exists() && EnoughPoints( gpItemDescSoldier, ( AttachmentAPCost( pAttachment->usItem, gpItemDescObject, gpItemPointerSoldier )), 0, TRUE ) )
 			{
 				// Flugente: if we are trying to remove the detonators of an armed bomb, auto-fail: it explodes
 				if ( gpItemPointerSoldier && ( (Item[gpItemDescObject->usItem].usItemClass & (IC_BOMB)) && ( ( (*gpItemDescObject)[ubStatusIndex]->data.misc.bDetonatorType == BOMB_TIMED ) || ( (*gpItemDescObject)[ubStatusIndex]->data.misc.bDetonatorType == BOMB_REMOTE ) ) )  )
@@ -6990,7 +6999,7 @@ void RenderItemDescriptionBox( )
 			}
 			else
 			{
-				for ( UINT16 x = 0; x < gMAXITEMS_READ; ++x )
+				for ( UINT16 x = 0; x < MAXITEMS + 1; ++x )
 				{
 					if (Transform[x].usItem == (UINT16)-1)
 						break;
@@ -8262,7 +8271,7 @@ void RenderLBENODEItems( OBJECTTYPE *pObj, int subObject )
 		if(lbePocket == 0){	// Deactivate Pocket
 			DrawHatchOnInventory( guiSAVEBUFFER, sX, sY, (UINT16)(LBEInvPocketXY[cnt].sWidth-1), (UINT16)(LBEInvPocketXY[cnt].sHeight-1), 0 );
 		}
-		else if(pObject == NULL){	// Nothing in sPocket.  Display silouhette.
+		else if(pObject == NULL){	// Nothing in sPocket.  Display silhouette.
 			INVRenderSilhouette( guiSAVEBUFFER, lbePocket, 0, sX, sY, LBEInvPocketXY[cnt].sWidth, LBEInvPocketXY[cnt].sHeight);
 		}
 		else if(pObject != NULL){
@@ -8329,10 +8338,12 @@ void DeleteItemDescriptionBox( )
 			originalIter != gOriginalAttachments.end() && newIter != (*gpItemDescObject)[0]->attachments.end();
 			++originalIter, ++newIter)
 			{
-				if(originalIter->exists()){
+				if(originalIter->exists())
+				{
 					originalSize++;
 				}
-				if(newIter->exists()){
+				if(newIter->exists())
+				{
 					newSize++;
 				}
 				// silversurfer: If we replaced one attachment with another the size will not differ so we need to check content too.
@@ -8343,33 +8354,58 @@ void DeleteItemDescriptionBox( )
 				}
 			}
 
-
-			if (newSize != originalSize || bAttachmentsDiffer) {
+			if (newSize != originalSize || bAttachmentsDiffer) 
+			{
 				//an attachment was changed, find the change
 				for (originalIter = gOriginalAttachments.begin(), newIter = (*gpItemDescObject)[0]->attachments.begin();
 					originalIter != gOriginalAttachments.end() && newIter != (*gpItemDescObject)[0]->attachments.end();
-					++originalIter, ++newIter) {
-					if (*originalIter == *newIter) {
+					++originalIter, ++newIter) 
+				{
+					if (*originalIter == *newIter) 
+					{
 						continue;
 					}
-					else {
+					else 
+					{
 						break;
 					}
 				}
-				if (newSize < originalSize) {
+				if (newSize < originalSize) 
+				{
 					//an attachment was removed, charge APs
 					ubAPCost = AttachmentAPCost(originalIter->usItem,gpItemDescObject, gpAttachSoldier ); // SANDRO - added argument
 				}
-				else {
+				else 
+				{
 					//an attachment was added charge APs
-					//lalien: changed to charge AP's for reloading a GL/RL
-					if ( Item[ gpItemDescObject->usItem ].usItemClass == IC_LAUNCHER || Item[gpItemDescObject->usItem].cannon )
+
+					// sevenfm: check if we are attaching grenade to launcher
+					OBJECTTYPE *pLauncher = NULL;
+					// check if loading GL
+					if (Item[gpItemDescObject->usItem].usItemClass & IC_WEAPON && Item[newIter->usItem].usItemClass & IC_EXPLOSV)
 					{
-						ubAPCost = GetAPsToReload( gpItemDescObject );
+						for (attachmentList::iterator iter = (*gpItemDescObject)[0]->attachments.begin(); iter != (*gpItemDescObject)[0]->attachments.end(); ++iter)
+						{
+							if (iter->exists() && ValidLaunchable(newIter->usItem, iter->usItem))
+							{
+								pLauncher = &(*iter);
+							}
+						}
+					}
+
+					if (Item[gpItemDescObject->usItem].usItemClass == IC_LAUNCHER && ValidLaunchable(newIter->usItem, gpItemDescObject->usItem) ||
+						Item[gpItemDescObject->usItem].cannon)
+					{
+						//lalien: changed to charge AP's for reloading a GL/RL
+						ubAPCost = GetAPsToReload(gpItemDescObject);
+					}
+					else if (pLauncher)
+					{
+						ubAPCost = GetAPsToReload(pLauncher);
 					}
 					else
 					{
-						ubAPCost = AttachmentAPCost(newIter->usItem,gpItemDescObject, gpAttachSoldier); // SANDRO - added argument
+						ubAPCost = AttachmentAPCost(newIter->usItem, gpItemDescObject, gpAttachSoldier); // SANDRO - added argument
 					}
 				}
 			}
@@ -9688,7 +9724,10 @@ BOOLEAN InitSectorStackPopup( SOLDIERTYPE *pSoldier, WORLDITEM *pInventoryPoolLi
 	fInterfacePanelDirty = DIRTYLEVEL2;
 
 	gfInSectorStackPopup = TRUE;
-	fShowInventoryFlag = TRUE;
+	if (!isWidescreenUI())
+	{
+		fShowInventoryFlag = TRUE;
+	}
 
 	//Restrict mouse cursor to panel
 	aRect.iLeft = sInvX + sOffSetX;
@@ -13466,7 +13505,7 @@ void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason )
 					fFoundTransformations = true;
 				}
 
-				for (UINT32 x = 0; x < gMAXITEMS_READ; ++x)
+				for (UINT32 x = 0; x < MAXITEMS + 1; ++x)
 				{
 					if (Transform[x].usItem == (UINT16)-1)
 					{
@@ -13532,7 +13571,7 @@ void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason )
 		// Now that the popup is initialized, lets set the help text for each line. Note that we have to do it here
 		// (rather than before) because only now are the MOUSE_REGIONs ready to receive help text at all!!
 		INT32 iNumOptions = 0;
-		for ( UINT32 x = 0; x < gMAXITEMS_READ; ++x )
+		for ( UINT32 x = 0; x < MAXITEMS + 1; ++x )
 		{
 			if (Transform[x].usItem == (UINT16)-1)
 			{
@@ -13549,10 +13588,21 @@ void ItemDescTransformRegionCallback( MOUSE_REGION *pRegion, INT32 reason )
 	{
 		// Behave like the background region, closing the box.
 		OBJECTTYPE *pTemp = gpItemDescPrevObject;
+		BOOLEAN fShopkeeperItem = FALSE;
+		// remember if this is a shopkeeper's item we're viewing ( pShopKeeperItemDescObject will get nuked on deletion )
+		if (guiTacticalInterfaceFlags & INTERFACE_SHOPKEEP_INTERFACE && pShopKeeperItemDescObject != NULL)
+		{
+			fShopkeeperItem = TRUE;
+		}
 		DeleteItemDescriptionBox( );
 		if (pTemp != NULL)
 		{
 			InternalInitItemDescriptionBox( pTemp, gsInvDescX, gsInvDescY, 0, gpItemDescSoldier );
+			if (fShopkeeperItem)
+			{
+				pShopKeeperItemDescObject = pTemp;
+				StartSKIDescriptionBox();
+			}
 		}	
 	}
 }

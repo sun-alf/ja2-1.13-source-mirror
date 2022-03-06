@@ -118,6 +118,7 @@
 	#include "PMC.h"				// added by Flugente
 	#include "ASD.h"				// added by Flugente
 	#include "MilitiaIndividual.h"	// added by Flugente
+	#include "Rebel Command.h"
 #endif
 
 #include		"BobbyR.h"
@@ -181,12 +182,14 @@ extern void BeginLoadScreen( void );
 extern void EndLoadScreen();
 
 extern		CPostalService		gPostalService;
+extern void initMapViewAndBorderCoordinates(void);
 
 //Global variable used
 #ifdef JA2BETAVERSION
 UINT32		guiNumberOfMapTempFiles;		//Test purposes
 UINT32		guiSizeOfTempFiles;
 CHAR			gzNameOfMapTempFile[128];
+//#define LOADSAVEGAME_LOGTIME 1
 #endif
 
 extern		SOLDIERTYPE		*gpSMCurrentMerc;
@@ -729,7 +732,6 @@ BOOLEAN LBENODE::Save( HWFILE hFile, bool fSavingMap )
 	}
 	return TRUE;
 }
-
 
 BOOLEAN LoadArmsDealerInventoryFromSavedGameFile( HWFILE hFile )
 {
@@ -2038,12 +2040,14 @@ BOOLEAN SOLDIERTYPE::Load(HWFILE hFile)
 		numBytesRead = ReadFieldByField(hFile, &this->usLastRandomAnim, sizeof(usLastRandomAnim), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->usAnimSurface, sizeof(usAnimSurface), sizeof(UINT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sZLevel, sizeof(sZLevel), sizeof(UINT16), numBytesRead);
+		numBytesRead = ReadFieldByField(hFile, &this->sWalkToAttackMovementMode, sizeof(sWalkToAttackMovementMode), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sWalkToAttackGridNo, sizeof(sWalkToAttackGridNo), sizeof(INT32), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sWalkToAttackWalkToCost, sizeof(sWalkToAttackWalkToCost), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sLocatorOffX, sizeof(sLocatorOffX), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sLocatorOffY, sizeof(sLocatorOffY), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->pForcedShade, sizeof(pForcedShade), 4, numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->bDisplayDamageCount, sizeof(bDisplayDamageCount), sizeof(INT8), numBytesRead);
+		numBytesRead = ReadFieldByField(hFile, &this->sWalkToAttackEndDirection, sizeof(sWalkToAttackEndDirection), sizeof(UINT8), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sDamage, sizeof(sDamage), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sDamageX, sizeof(sDamageX), sizeof(INT16), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sDamageY, sizeof(sDamageY), sizeof(INT16), numBytesRead);
@@ -2070,6 +2074,7 @@ BOOLEAN SOLDIERTYPE::Load(HWFILE hFile)
 		numBytesRead = ReadFieldByField(hFile, &this->uiAnimSubFlags, sizeof(uiAnimSubFlags), sizeof(UINT32), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->bAimShotLocation, sizeof(bAimShotLocation), sizeof(UINT8), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->ubHitLocation, sizeof(ubHitLocation), sizeof(UINT8), numBytesRead);
+		numBytesRead = ReadFieldByField(hFile, &this->bAimMeleeLocation, sizeof(bAimMeleeLocation), sizeof(UINT8), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->pEffectShades, sizeof(pEffectShades), 4, numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->ubPlannedUIAPCost, sizeof(ubPlannedUIAPCost), sizeof(UINT8), numBytesRead);
 		numBytesRead = ReadFieldByField(hFile, &this->sPlannedTargetX, sizeof(sPlannedTargetX), sizeof(INT16), numBytesRead);
@@ -2349,7 +2354,7 @@ BOOLEAN SOLDIERTYPE::Load(HWFILE hFile)
 				numBytesRead = ReadFieldByField( hFile, &this->sDiseasePoints, sizeof(sDiseasePoints), sizeof(INT32), numBytesRead );
 				numBytesRead = ReadFieldByField( hFile, &this->sDiseaseFlag, sizeof(sDiseaseFlag), sizeof(UINT8), numBytesRead );
 				numBytesRead = ReadFieldByField( hFile, &this->ubFiller, sizeof( ubFiller ), sizeof( UINT8 ), numBytesRead );
-				numBytesRead = ReadFieldByField( hFile, &this->ubFiller1, sizeof( ubFiller1 ), sizeof( UINT8 ), numBytesRead );
+				numBytesRead = ReadFieldByField( hFile, &this->ubHoursRemainingOnMiniEvent, sizeof( ubHoursRemainingOnMiniEvent), sizeof( UINT8 ), numBytesRead );
 				numBytesRead = ReadFieldByField( hFile, &this->usGLDelayMode, sizeof( usGLDelayMode ), sizeof( UINT8 ), numBytesRead );
 				numBytesRead = ReadFieldByField( hFile, &this->usBarrelMode, sizeof( usBarrelMode ), sizeof( UINT8 ), numBytesRead );
 				numBytesRead = ReadFieldByField( hFile, &this->usBarrelCounter, sizeof( usBarrelCounter ), sizeof( UINT8 ), numBytesRead );
@@ -2370,7 +2375,7 @@ BOOLEAN SOLDIERTYPE::Load(HWFILE hFile)
 				
 				numBytesRead = ReadFieldByField( hFile, &this->ubFiller, sizeof(ubFiller), sizeof(UINT8), numBytesRead );
 
-				buffer += sizeof( ubFiller1 );
+				buffer += sizeof( ubHoursRemainingOnMiniEvent );
 				buffer += sizeof( usGLDelayMode );
 				buffer += sizeof( usBarrelMode );
 				buffer += sizeof( usBarrelCounter );
@@ -2418,7 +2423,7 @@ BOOLEAN SOLDIERTYPE::Load(HWFILE hFile)
 			while((buffer%4) > 0)
 				buffer++;
 
-			buffer += sizeof( ubFiller1 );
+			buffer += sizeof( ubHoursRemainingOnMiniEvent );
 			buffer += sizeof( usGLDelayMode );
 			buffer += sizeof( usBarrelMode );
 			buffer += sizeof( usBarrelCounter );
@@ -2913,20 +2918,7 @@ BOOLEAN SOLDIERTYPE::Load(HWFILE hFile)
 	}
 
 	// sevenfm: initialize other SOLDIERTYPE data
-	this->ubLastShock=0;
-	this->ubLastSuppression=0;
-	this->ubLastAP=0;
-	this->ubLastMorale=0;
-	this->ubLastShockFromHit=0;
-	this->ubLastAPFromHit=0;
-	this->ubLastMoraleFromHit=0;
-	this->iLastBulletImpact = 0;
-	this->iLastArmourProtection = 0;
-
-	this->usQuickItemId = 0;
-	this->ubQuickItemSlot = 0;
-
-	this->usGrenadeItem = 0;
+	this->InitializeExtraData();
 
 	return TRUE;
 }
@@ -3516,6 +3508,15 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 		return( FALSE );
 	alreadySaving = true;
 
+#ifdef LOADSAVEGAME_LOGTIME
+	// Flugente: log how long this takes
+	clock_t starttime = clock();
+	clock_t t0;
+	clock_t t1 = starttime;
+
+	FILE* fp_timelog = fopen("LoadSavedGame_TimeLog.txt", "a");
+#endif
+
 	//clear out the save game header
 	memset( &SaveGameHeader, 0, sizeof( SAVED_GAME_HEADER ) );
 
@@ -3694,6 +3695,16 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 
 	//Create the name of the file
 	CreateSavedGameFileNameFromNumber( ubSaveGameID, zSaveGameName );
+#if LOADSAVEGAME_LOGTIME
+	if (fp_timelog)
+	{
+		fprintf(fp_timelog, "Save savegame: %s\n", zSaveGameName);
+
+		t0 = t1;
+		t1 = clock();
+		fprintf(fp_timelog, "Shutdown stuff\t\t\t\t\t\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+	}
+#endif
 
 	//if the file already exists, delete it
 	if( FileExists( zSaveGameName ) )
@@ -3828,6 +3839,14 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "Tactical Status" );
 	#endif
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveTacticalStatusFromSavedGame done\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
 
 
 
@@ -3867,6 +3886,14 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "Laptop Info" );
 	#endif
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveLaptopInfoFromSavedGame done\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
 
 	//
 	// Save the merc profiles
@@ -3896,6 +3923,14 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "Soldier Structure" );
 	#endif
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveSoldierStructure done\t\t\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
 
 
 	//Save the Finaces Data file 
@@ -3956,6 +3991,14 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "Strategic Information" );
 	#endif
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveStrategicInfoFromSavedFile done\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
 
 	/*// Flugente: Save the strategic supply
 	if( !SaveStrategicSupplyToSavedFile( hFile ) )
@@ -4003,6 +4046,14 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "Strategic Movement Groups" );
 	#endif
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveStrategicMovementGroupsFromSavedGameFile done\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
 
 
 
@@ -4017,7 +4068,15 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "All the Map Temp files" );
 	#endif
-	
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveMapTempFilesFromSavedGameFile done\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
+
 	if( !SaveQuestInfoToSavedGameFile( hFile ) )
 	{
 		ScreenMsg( FONT_MCOLOR_WHITE, MSG_ERROR, L"ERROR writing quest info");
@@ -4179,6 +4238,14 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 
 #ifdef JA2BETAVERSION
 	SaveGameFilePosition( FileGetPos( hFile ), "Militia Movement" );
+#endif
+#if LOADSAVEGAME_LOGTIME
+	if (fp_timelog)
+	{
+		t0 = t1;
+		t1 = clock();
+		fprintf(fp_timelog, "SaveMilitiaMovementInformationFromSavedGameFile done\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+	}
 #endif
 
 	if( !SaveBulletStructureToSaveGameFile( hFile ) )
@@ -4417,7 +4484,15 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 	#ifdef JA2BETAVERSION
 		SaveGameFilePosition( FileGetPos( hFile ), "Lua global" );
 	#endif
-		
+#if LOADSAVEGAME_LOGTIME
+		if (fp_timelog)
+		{
+			t0 = t1;
+			t1 = clock();
+			fprintf(fp_timelog, "SaveLuaGlobalFromLoadGameFile done\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+		}
+#endif
+
 	if( !SaveDataSaveToSaveGameFile( hFile ) )
 	{
 		ScreenMsg( FONT_MCOLOR_WHITE, MSG_ERROR, L"ERROR writing save data");
@@ -4509,6 +4584,20 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 		goto FAILED_TO_SAVE;
 	}
 
+	if (!RebelCommand::Save(hFile))
+	{
+		ScreenMsg( FONT_MCOLOR_WHITE, MSG_ERROR, L"ERROR writing rebel command data" );
+		goto FAILED_TO_SAVE;
+	}
+#if LOADSAVEGAME_LOGTIME
+	if (fp_timelog)
+	{
+		t0 = t1;
+		t1 = clock();
+		fprintf(fp_timelog, "File read done\t\t\t\t\t\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+	}
+#endif
+
 	//Close the saved game file
 	FileClose( hFile );
 
@@ -4532,6 +4621,7 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 
 	//Save the save game settings
 	SaveGameSettings();
+	SaveFeatureFlags();
 
 	//
 	// Display a screen message that the save was succesful
@@ -4585,6 +4675,24 @@ BOOLEAN SaveGame( int ubSaveGameID, STR16 pGameDesc )
 
 	alreadySaving = false;
 
+#if LOADSAVEGAME_LOGTIME
+	if (fp_timelog)
+	{
+		t0 = t1;
+		t1 = clock();
+		fprintf(fp_timelog, "Update functions\t\t\t\t\t\t\t\t\t\t\t\t: %fs\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+	}
+
+	if (fp_timelog)
+	{
+		t0 = starttime;
+		t1 = clock();
+		fprintf(fp_timelog, "SaveSavedGame total\t\t\t\t\t\t\t\t\t\t\t\t: %fs\n\n", ((float)(t1 - t0) / CLOCKS_PER_SEC));
+	}
+
+	if (fp_timelog)
+		fclose(fp_timelog);
+#endif
 	return( TRUE );
 
 	//if there is an error saving the game
@@ -4805,6 +4913,8 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 		gGameOptions.ubAttachmentSystem = SaveGameHeader.sInitialGameOptions.ubAttachmentSystem;
 	}
 
+	// Have to initialize map UI Coordinates, because inventory panel layout location depends on them.
+	initMapViewAndBorderCoordinates();
 	if((UsingNewInventorySystem() == true))
 	{
 		if(IsNIVModeValid(true) == FALSE){
@@ -6372,6 +6482,18 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 		InitIndividualMilitiaData();
 	}
 
+	uiRelEndPerc += 1;
+	SetRelativeStartAndEndPercentage( 0, uiRelStartPerc, uiRelEndPerc, L"Load rebel command data..." );
+	RenderProgressBar( 0, 100 );
+	uiRelStartPerc = uiRelEndPerc;
+
+	if ( !RebelCommand::Load( hFile ) )
+	{
+		DebugMsg( TOPIC_JA2, DBG_LEVEL_3, String( "Rebel Command data Load failed" ) );
+		FileClose( hFile );
+		return(FALSE);
+	}
+
 #if LOADSAVEGAME_LOGTIME
 	if ( fp_timelog )
 	{
@@ -6574,7 +6696,7 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 
 	//Save the save game settings
 	SaveGameSettings();
-
+	SaveFeatureFlags();
 
 	uiRelEndPerc += 1;
 	SetRelativeStartAndEndPercentage( 0, uiRelStartPerc, uiRelEndPerc, L"Final Checks..." );
@@ -6700,6 +6822,8 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 		UpdateRefuelSiteAvailability();
 	}
 
+	HandleHelicopterOnGroundGraphic();
+
 	if( guiCurrentSaveGameVersion < 91 )
 	{
 		//update the amount of money that has been paid to speck
@@ -6741,7 +6865,10 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 	//}
 
 #ifndef JA2TESTVERSION
-	RESET_CHEAT_LEVEL( );
+	if (gGameExternalOptions.gfCheatMode)
+		ACTIVATE_CHEAT_LEVEL();
+	else
+		RESET_CHEAT_LEVEL();
 #endif
 
 #ifdef JA2BETAVERSION
@@ -6832,6 +6959,8 @@ BOOLEAN LoadSavedGame( int ubSavedGameID )
 	if ( fp_timelog )
 		fclose( fp_timelog );
 #endif
+
+	DebugQuestInfo("\n--------- Game loaded ---------");
 
 	return( TRUE );
 }
@@ -7266,11 +7395,11 @@ BOOLEAN LoadPtrInfo( PTR *pData, UINT32 uiSizeOfObject, HWFILE hFile )
 
 BOOLEAN SaveFilesToSavedGame( STR pSrcFileName, HWFILE hFile )
 {
-	UINT32	uiFileSize;
+	UINT32	uiFileSize=0;
 	UINT32	uiNumBytesWritten=0;
 	HWFILE	hSrcFile=NULL;
-	UINT8	*pData;
-	UINT32	uiNumBytesRead;
+	UINT8	*pData=NULL;
+	UINT32	uiNumBytesRead=0;
 	
 	if(FileExists(pSrcFileName))
 	{
@@ -7346,14 +7475,13 @@ BOOLEAN SaveFilesToSavedGame( STR pSrcFileName, HWFILE hFile )
 	return( TRUE );
 }
 
-
 BOOLEAN LoadFilesFromSavedGame( STR pSrcFileName, HWFILE hFile )
 {
-	UINT32	uiFileSize;
+	UINT32	uiFileSize=0;
 	UINT32	uiNumBytesWritten=0;
-	HWFILE	hSrcFile;
-	UINT8		*pData;
-	UINT32	uiNumBytesRead;
+	HWFILE	hSrcFile=0;
+	UINT8		*pData=NULL;
+	UINT32	uiNumBytesRead=0;
 		
 	//If the source file exists, delete it
 	if( FileExists( pSrcFileName ) )

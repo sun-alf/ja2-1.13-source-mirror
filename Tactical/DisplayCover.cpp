@@ -381,9 +381,6 @@ BOOLEAN HasAdjTile( const INT32& ubX, const INT32& ubY, const INT32& ubZ )
 
 void AddCoverObjectsToViewArea()
 {
-	if ( gsMaxCellY < 0 )
-		return;
-
 	register INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
@@ -415,21 +412,6 @@ void RemoveCoverObjectsFromViewArea()
 {
 	if ( gubDrawMode == DRAW_MODE_OFF && gNoRedraw )
 		return;
-
-	// Not needed for removing cover objects anymore, but this is the only place where we update the global gsMin & gsMaxCell variables and they're needed for adding cover objects.
-	INT16 usTmp;
-	GetScreenXYWorldCell( gsVIEWPORT_START_X, gsVIEWPORT_START_Y, &gsMinCellX, &usTmp );
-	GetScreenXYWorldCell( gsVIEWPORT_END_X, gsVIEWPORT_END_Y, &gsMaxCellX, &usTmp );
-
-	GetScreenXYWorldCell( gsVIEWPORT_END_X, gsVIEWPORT_START_Y, &usTmp, &gsMinCellY );
-	GetScreenXYWorldCell( gsVIEWPORT_START_X, gsVIEWPORT_END_Y, &usTmp, &gsMaxCellY );
-
-	// Flugente: hey, wouldn't it be cool if we DIDN'T access an array with implausible values?
-	gsMinCellX = max( 0, gsMinCellX );
-	gsMaxCellX = min( COVER_X_CELLS, gsMaxCellX );
-	gsMinCellY = max( 0, gsMinCellY );
-	gsMaxCellY = min( COVER_Y_CELLS, gsMaxCellY );
-
 
 	// Go through the whole gCoverViewArea when removing cover objects. Otherwise we don't clean up tiles that are not in the viewport which results in an annoying visual bug.
 	register INT32 ubX, ubY, ubZ;
@@ -467,6 +449,22 @@ void RemoveCoverObjectsFromViewArea()
 	gNoRedraw = (gubDrawMode == DRAW_MODE_OFF);
 }
 
+void updateCoverViewArea()
+{
+	INT16 usTmp;
+	GetScreenXYWorldCell(gsVIEWPORT_START_X, gsVIEWPORT_START_Y, &gsMinCellX, &usTmp);
+	GetScreenXYWorldCell(gsVIEWPORT_END_X, gsVIEWPORT_END_Y, &gsMaxCellX, &usTmp);
+
+	GetScreenXYWorldCell(gsVIEWPORT_END_X, gsVIEWPORT_START_Y, &usTmp, &gsMinCellY);
+	GetScreenXYWorldCell(gsVIEWPORT_START_X, gsVIEWPORT_END_Y, &usTmp, &gsMaxCellY);
+
+	// Sanity check because of array access
+	gsMinCellX = max(0, gsMinCellX);
+	gsMaxCellX = min(COVER_X_CELLS, gsMaxCellX);
+	gsMinCellY = max(0, gsMinCellY);
+	gsMaxCellY = min(COVER_Y_CELLS, gsMaxCellY);
+}
+
 // ubRadius in times of y or x cell sizes
 BOOLEAN GridNoOnScreenAndAround( const INT32& sGridNo, const UINT8& ubRadius )
 {
@@ -501,6 +499,7 @@ void DisplayCover( BOOLEAN forceUpdate )
 	{
 		// remove old cover objects
 		RemoveCoverObjectsFromViewArea();
+		updateCoverViewArea();
 
 		switch ( gubDrawMode )
 		{
@@ -604,7 +603,7 @@ static void CalculateCoverFromEnemies()
 		}
 
 		pOpponents.push_back(pOpponent);
-		bCowering.push_back(CoweringShockLevel(pOpponent));
+		bCowering.push_back(pOpponent->IsCowering());
 		tunnelVision.push_back(GetPercentTunnelVision(pOpponent));
 	}
 
@@ -967,6 +966,7 @@ void DisplayRangeToTarget(SOLDIERTYPE *pSoldier, INT32 sTargetGridNo)
 		{
 			uiHitChance = CalcThrownChanceToHit(pSoldier, sTargetGridNo, pSoldier->aiData.bShownAimTime, pSoldier->bAimShotLocation);
 			usGunRange = CalcMaxTossRange(pSoldier, pObjhand->usItem, TRUE) * CELL_X_SIZE;
+			swprintf(zOutputString, gzDisplayCoverText[DC_MSG__GUN_RANGE_INFORMATION], usRange / 10, usGunRange / 10, uiHitChance);
 		}
 		else if (usItemClass == IC_BLADE)
 		{
@@ -975,13 +975,13 @@ void DisplayRangeToTarget(SOLDIERTYPE *pSoldier, INT32 sTargetGridNo)
 			else
 				uiHitChance = 0;
 			usGunRange = 15;
-			swprintf(zOutputString, gzDisplayCoverText[title], usRange / 10, usGunRange / 10, uiHitChance);
+			swprintf(zOutputString, gzDisplayCoverText[DC_MSG__GUN_RANGE_INFORMATION], usRange / 10, usGunRange / 10, uiHitChance);
 		}
 		else if (ubItemCursor == TOSSCURS)
 		{
 			uiHitChance = CalcThrownChanceToHit(pSoldier, sTargetGridNo, pSoldier->aiData.bShownAimTime, pSoldier->bAimShotLocation);
 			usGunRange = CalcMaxTossRange(pSoldier, pSoldier->inv[HANDPOS].usItem, TRUE) * CELL_X_SIZE;
-			swprintf(zOutputString, gzDisplayCoverText[title], usRange / 10, usGunRange / 10, uiHitChance);
+			swprintf(zOutputString, gzDisplayCoverText[DC_MSG__GUN_RANGE_INFORMATION], usRange / 10, usGunRange / 10, uiHitChance);
 		}
 		else
 		{
@@ -993,15 +993,15 @@ void DisplayRangeToTarget(SOLDIERTYPE *pSoldier, INT32 sTargetGridNo)
 			}
 			// HEADROCK HAM 3.6: Calculate Gun Range using formula.		
 			usGunRange = GunRange(pObjhand, pSoldier); // SANDRO - added argument		
-		}
-		swprintf(zOutputString, gzDisplayCoverText[title], usRange / 10, usGunRange / 10, uiHitChance);
+			swprintf(zOutputString, gzDisplayCoverText[title], usRange / 10, usGunRange / 10, uiHitChance);
+		}		
 	}
 	else if (pSoldier->inv[HANDPOS].exists() && ubItemCursor == TOSSCURS)
 	{
 		pSoldier->usAttackingWeapon = pSoldier->inv[HANDPOS].usItem;
 		uiHitChance = CalcThrownChanceToHit(pSoldier, sTargetGridNo, pSoldier->aiData.bShownAimTime, pSoldier->bAimShotLocation);
 		usGunRange = CalcMaxTossRange(pSoldier, pSoldier->inv[HANDPOS].usItem, TRUE) * CELL_X_SIZE;
-		swprintf(zOutputString, gzDisplayCoverText[title], usRange / 10, usGunRange / 10, uiHitChance);
+		swprintf(zOutputString, gzDisplayCoverText[DC_MSG__GUN_RANGE_INFORMATION], usRange / 10, usGunRange / 10, uiHitChance);
 	}
 	else if ((!pSoldier->inv[HANDPOS].exists() || Item[pSoldier->inv[HANDPOS].usItem].usItemClass == IC_PUNCH) && gfUIFullTargetFound && MercPtrs[gusUIFullTargetID])
 	{
@@ -1011,7 +1011,7 @@ void DisplayRangeToTarget(SOLDIERTYPE *pSoldier, INT32 sTargetGridNo)
 			pSoldier->usAttackingWeapon = 0;
 		uiHitChance = CalcChanceToPunch(pSoldier, MercPtrs[gusUIFullTargetID], pSoldier->aiData.bShownAimTime);
 		usGunRange = 15;
-		swprintf(zOutputString, gzDisplayCoverText[title], usRange / 10, usGunRange / 10, uiHitChance);
+		swprintf(zOutputString, gzDisplayCoverText[DC_MSG__GUN_RANGE_INFORMATION], usRange / 10, usGunRange / 10, uiHitChance);
 	}
 	else
 	{

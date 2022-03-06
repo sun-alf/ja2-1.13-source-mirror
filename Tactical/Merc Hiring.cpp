@@ -11,7 +11,7 @@
 	#include "worlddef.h"
 	#include "renderworld.h"
 	#include "Assignments.h"
-
+	#include "merc entering.h"
 	#include "Animation Control.h"
 	#include "Animation Data.h"
 	#include "Isometric Utils.h"
@@ -410,7 +410,10 @@ INT8 HireMerc( MERC_HIRE_STRUCT *pHireMerc)
 	RemoveNewlyHiredMercFromPersonnelDepartedList( pSoldier->ubProfile );
 
 	// Flugente: dynamic opinions
-	CheckForFriendsofHated( pSoldier );
+	if (gGameExternalOptions.fDynamicOpinions)
+	{
+		CheckForFriendsofHated(pSoldier);
+	}
 
 	gfAtLeastOneMercWasHired = TRUE;
 
@@ -485,6 +488,28 @@ void MercArrivesCallback(	UINT8	ubSoldierID )
 		}
 	}
 #endif
+	//shadooow: if all mercs were killed or captured and default arrival sector is Omerta, force helidrop arrival animation
+	if (guiCurrentScreen == MAP_SCREEN && pSoldier->flags.fUseLandingZoneForArrival && !gWorldSectorX && !gWorldSectorY && gbWorldSectorZ == -1 &&
+		gsMercArriveSectorX == gGameExternalOptions.ubDefaultArrivalSectorX && gsMercArriveSectorY == gGameExternalOptions.ubDefaultArrivalSectorY)
+	{
+		bool force_helidrop = true;
+		SOLDIERTYPE	*pTeamSoldier;
+		for (UINT8 cnt = 0; cnt < giMAXIMUM_NUMBER_OF_PLAYER_SLOTS; cnt++)
+		{
+			if (gCharactersList[cnt].fValid)
+			{
+				pTeamSoldier = &Menptr[gCharactersList[cnt].usSolID];
+				if (pTeamSoldier != pSoldier && pTeamSoldier->bAssignment != ASSIGNMENT_DEAD && pTeamSoldier->bAssignment != ASSIGNMENT_POW && pTeamSoldier->bAssignment != IN_TRANSIT && pSoldier->ubStrategicInsertionCode != INSERTION_CODE_CHOPPER)
+				{
+					force_helidrop = false;
+				}
+			}
+		}
+		if (force_helidrop)
+		{
+			SetCurrentWorldSector(gGameExternalOptions.ubDefaultArrivalSectorX, gGameExternalOptions.ubDefaultArrivalSectorY, 0);
+		}
+	}
 
 	// add the guy to a squad
 	AddCharacterToAnySquad( pSoldier );
@@ -510,6 +535,7 @@ void MercArrivesCallback(	UINT8	ubSoldierID )
 		#endif
 		{
 			gfTacticalDoHeliRun = TRUE;
+			SetHelicopterDroppoint(gGameExternalOptions.iInitialMercArrivalLocation);
 
 			// OK, If we are in mapscreen, get out...
 			if ( guiCurrentScreen == MAP_SCREEN )

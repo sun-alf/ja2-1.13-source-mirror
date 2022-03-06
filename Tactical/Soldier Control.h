@@ -337,6 +337,7 @@ enum
 	SOLDIER_CLASS_TANK,
 	SOLDIER_CLASS_JEEP,
 	SOLDIER_CLASS_BANDIT,
+	SOLDIER_CLASS_ROBOT,
 	SOLDIER_CLASS_MAX,
 };
 
@@ -1287,6 +1288,7 @@ public:
 	UINT16											usAnimSurface;
 	UINT16											sZLevel;
 
+	INT16												sWalkToAttackMovementMode;//shadooow: stores movement mode used in last pathing
 	INT32												sWalkToAttackGridNo;
 	INT16												sWalkToAttackWalkToCost;
 
@@ -1296,6 +1298,7 @@ public:
 	UINT16											*pForcedShade;
 
 	INT8												bDisplayDamageCount;
+	UINT8												sWalkToAttackEndDirection;//shadooow: stores direction of merc at the destination grid
 	INT16												sDamage;
 	INT16												sDamageX;
 	INT16												sDamageY;
@@ -1331,6 +1334,7 @@ public:
 
 	UINT8												bAimShotLocation;
 	UINT8												ubHitLocation;
+	UINT8												bAimMeleeLocation;
 
 	UINT16											*pEffectShades[ NUM_SOLDIER_EFFECTSHADES ]; // Shading tables for effects
 
@@ -1571,8 +1575,8 @@ public:
 		
 	// Flugente: Decrease this filler by 1 for each new UINT8 / BOOLEAN variable, so we can maintain savegame compatibility!!
 	// Note that we also have to account for padding, so you might need to substract more than just the size of the new variables
-	UINT8	ubFiller[12];
-	UINT8	ubFiller1;
+	UINT8	ubFiller[10];
+	UINT16	ubHoursRemainingOnMiniEvent;
 	
 	// Flugente: modifiers to fire modes
 	UINT8	usGLDelayMode;			// if > 0, delay GL grenade explosions
@@ -1867,10 +1871,19 @@ public:
 	UINT8		ShockLevelPercent(void);
 	BOOLEAN		TakenLargeHit(void);
 	BOOLEAN		IsCowering(void);
+	BOOLEAN		IsUnconscious(void);
+	BOOLEAN		IsGivingAid(void);
+
+	// sevenfm: for player mercs
+	void StopCoweringAnimation(void);
 
 	void	RetreatCounterStart(UINT16 usValue);
 	void	RetreatCounterStop(void);
 	UINT16  RetreatCounterValue(void);
+
+	void StartRadioAnimation(void);
+
+	void InitializeExtraData(void);
 
 	// Flugente: prisoner system
 	BOOLEAN		CanProcessPrisoners();
@@ -2041,7 +2054,9 @@ public:
 	void		DrugAutoUse();
 
 	OBJECTTYPE*	GetObjectWithItemFlag( UINT64 aFlag );
-	void		DestroyOneObjectWithItemFlag( UINT64 aFlag );
+	bool		DestroyOneObjectWithItemFlag( UINT64 aFlag );
+	bool		DestroyOneItemInInventory( UINT16 ausItem );
+	bool		HasItemInInventory( UINT16 ausItem );
 
 	// Flugente: can we fill a blood bag from this guy ?
 	BOOLEAN		IsValidBloodDonor();
@@ -2199,7 +2214,7 @@ BOOLEAN GetRadioOperatorSignal(UINT8 usOwner, INT32* psTargetGridNo);	// retriev
 BOOLEAN IsValidArtilleryOrderSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ, UINT8 bTeam );		// can an artillery strike be ordered FROM this sector
 BOOLEAN SectorJammed();
 BOOLEAN PlayerTeamIsScanning();
-UINT16	GridNoSpotterCTHBonus( SOLDIERTYPE* pSniper, INT32 sGridNo, UINT bTeam);				// bonus for snipers firing at this location (we get this if there are spotters)
+UINT16	GridNoSpotterCTHBonus( SOLDIERTYPE* pSniper, INT32 sGridNo, INT8 bTeam);				// bonus for snipers firing at this location (we get this if there are spotters)
 UINT16	GetSuspiciousAnimationAPDuration( UINT16 usAnimation );			// get overt penalty duration in AP for using an animation
 
 //typedef struct

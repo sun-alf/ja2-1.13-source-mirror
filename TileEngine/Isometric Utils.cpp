@@ -1,24 +1,17 @@
 #ifdef PRECOMPILEDHEADERS
 	#include "TileEngine All.h"
 #else
-	#include <stdio.h>
 	#include "debug.h"
-	#include "mousesystem.h"
-	#include "jascreens.h"
-	#include "worlddef.h"
 	#include "renderworld.h"
-	#include "Isometric Utils.h"
 	#include "interface.h"
-	#include "math.h"
 	#include "worldman.h"
 	#include "Structure Wrap.h"
 	#include "sys globals.h"
 	#include "overhead.h"
 	#include "Random.h"
 	#include "Pathai.h"
-	#include "GameSettings.h"	// added by Flugente
 #endif
-
+#include "Map Information.h"
 
 UINT32 guiForceRefreshMousePositionCalculation = 0;
 
@@ -1284,7 +1277,13 @@ INT16 MapY( INT32 sGridNo )
 	return( sYPos );
 }
 
-
+bool GridNoOnWalkableWorldTile(INT32 sGridNo)
+{
+	//Shadooow: this will compare sGridNo height with height of the center grid of the map, as long as the center of the map is on a walkable height it will work properly
+	MAP_ELEMENT *pMapElement = &(gpWorldLevelData[sGridNo]);
+	MAP_ELEMENT *pMapElementCenter = &(gpWorldLevelData[gMapInformation.sCenterGridNo]);
+	return pMapElement->sHeight == pMapElementCenter->sHeight;
+}
 
 BOOLEAN GridNoOnVisibleWorldTile( INT32 sGridNo )
 {
@@ -1303,7 +1302,7 @@ BOOLEAN GridNoOnVisibleWorldTile( INT32 sGridNo )
 	if ( sWorldX >= 30 && sWorldX <= (gsTRX - gsTLX - 30) && sWorldY >= 20 && sWorldY <= (gsBLY - gsTLY - 10) )
 #endif
 	{
-		return( TRUE );
+		return GridNoOnWalkableWorldTile(sGridNo);
 	}
 
 	return( FALSE );

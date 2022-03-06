@@ -72,6 +72,7 @@
 	#include "CampaignStats.h"				// added by Flugente
 	#include "DynamicDialogue.h"			// added by Flugente
 	#include "MilitiaIndividual.h"			// added by Flugente
+	#include "Rebel Command.h"
 #endif
 
 #include "Reinforcement.h"
@@ -92,7 +93,7 @@ extern UINT8 gubReinforcementMinEnemyStaticGroupSize;
 extern BOOLEAN gfStrategicMilitiaChangesMade;
 
 extern void ResetMilitia();
-extern BOOLEAN AutoReload( SOLDIERTYPE *pSoldier );
+extern BOOLEAN AutoReload( SOLDIERTYPE *pSoldier, bool aReloadEvenIfNotEmpty );
 extern HVSURFACE ghFrameBuffer;
 BOOLEAN gfTransferTacticalOppositionToAutoResolve = FALSE;
 
@@ -141,7 +142,7 @@ typedef struct AUTORESOLVE_STRUCT
 	INT32 iButtonImage[ NUM_AR_BUTTONS ];
 	INT32 iFaces; //for generic civs and enemies
     // WDS - make number of mercenaries, etc. be configurable
-	INT32 iMercFaces[CODE_MAXIMUM_NUMBER_OF_PLAYER_SLOTS]; //for each merc face
+	//INT32 iMercFaces[CODE_MAXIMUM_NUMBER_OF_PLAYER_SLOTS]; //for each merc face
 	INT32 iIndent;
 	INT32 iInterfaceBuffer;
 	INT32 iNumMercFaces;
@@ -168,7 +169,7 @@ typedef struct AUTORESOLVE_STRUCT
 	UINT8 ubEnemyLeadership;
 	UINT8 ubPlayerLeadership;
 	UINT8 ubMercs, ubCivs, ubEnemies;
-	UINT8 ubAdmins, ubTroops, ubElites, ubTanks, ubJeeps;
+	UINT8 ubAdmins, ubTroops, ubElites, ubTanks, ubJeeps, ubRobots;
 	UINT8 ubYMCreatures, ubYFCreatures, ubAMCreatures, ubAFCreatures;
 	UINT8 ubBloodcats;
 	UINT8 ubZombies;
@@ -236,10 +237,11 @@ typedef struct AUTORESOLVE_STRUCT
 #define CELL_BLOODCAT					0x01000000
 #define CELL_ZOMBIE						0x02000000
 #define CELL_BANDIT						0x04000000
+#define CELL_ENEMYROBOT					0x08000000
 
 //Combined flags
 #define CELL_PLAYER						( CELL_MERC | CELL_MILITIA )
-#define CELL_ENEMY						( CELL_ELITE | CELL_TROOP | CELL_ADMIN | CELL_TANK | CELL_JEEP | CELL_BANDIT )
+#define CELL_ENEMY						( CELL_ELITE | CELL_TROOP | CELL_ADMIN | CELL_TANK | CELL_JEEP | CELL_BANDIT | CELL_ENEMYROBOT )
 #define CELL_FEMALECREATURE				( CELL_AF_CREATURE | CELL_YF_CREATURE )
 #define CELL_MALECREATURE				( CELL_AM_CREATURE | CELL_YM_CREATURE )
 #define CELL_BUG						( CELL_FEMALECREATURE | CELL_MALECREATURE )
@@ -277,6 +279,7 @@ enum
 };
 
 extern void CreateDestroyMapInvButton();
+extern void DestroyMapCharInvIOregions();
 
 //Autoresolve sets this variable which defaults to -1 when not needed.
 INT16 gsEnemyGainedControlOfSectorID = -1;
@@ -415,6 +418,7 @@ void EliminateAllEnemies( UINT8 ubSectorX, UINT8 ubSectorY )
 	UINT8 ubNumEnemies[ NUM_ENEMY_RANKS ];
 	UINT8 ubNumTanks = 0;
 	UINT8 ubNumJeeps = 0;
+	UINT8 ubNumRobots = 0;
 	UINT8 ubRankIndex;
 
 	//Clear any possible battle locator
@@ -427,7 +431,7 @@ void EliminateAllEnemies( UINT8 ubSectorX, UINT8 ubSectorY )
 	// we must process the enemies killed right here & give out loyalty bonuses as if the battle had been fought & won
 	if( !gpAR )
 	{
-		GetNumberOfEnemiesInSector( ubSectorX, ubSectorY, &ubNumEnemies[0], &ubNumEnemies[1], &ubNumEnemies[2], &ubNumTanks, &ubNumJeeps );
+		GetNumberOfEnemiesInSector( ubSectorX, ubSectorY, &ubNumEnemies[0], &ubNumEnemies[1], &ubNumEnemies[2], &ubNumRobots, &ubNumTanks, &ubNumJeeps );
 
 		for ( ubRankIndex = 0; ubRankIndex < NUM_ENEMY_RANKS; ++ubRankIndex )
 		{
@@ -459,6 +463,7 @@ void EliminateAllEnemies( UINT8 ubSectorX, UINT8 ubSectorY )
 		pSector->ubNumAdmins = 0;
 		pSector->ubNumTanks = 0;
 		pSector->ubNumJeeps = 0;
+		pSector->ubNumRobots = 0;
 		pSector->ubNumCreatures = 0;
 		pSector->bLastKnownEnemies = 0;
 		//Remove the mobile forces here, but only if battle is over.
@@ -589,7 +594,14 @@ void EnterAutoResolveMode( UINT8 ubSectorX, UINT8 ubSectorY )
 
 	//Set up mapscreen for removal
 	SetPendingNewScreen( AUTORESOLVE_SCREEN );
-	CreateDestroyMapInvButton();
+	if (isWidescreenUI())
+	{
+		DestroyMapCharInvIOregions();
+	}
+	else
+	{
+		CreateDestroyMapInvButton();
+	}
 	RenderButtons();
 
 DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"Autoresolve1");
@@ -747,9 +759,9 @@ void AssociateEnemiesWithStrategicGroups()
 {
 	SECTORINFO *pSector;
 	GROUP *pGroup;
-	UINT8 ubNumAdmins, ubNumTroops, ubNumElites, ubNumTanks, ubNumJeeps;	//how many soldiers of the type do we still have to assign to a group? 
-	UINT8 ubISNumAdmins, ubISNumTroops, ubISNumElites, ubISNumTanks, ubISNumJeeps;
-	UINT8 ubNumElitesInGroup, ubNumTroopsInGroup, ubNumAdminsInGroup, ubNumTanksInGroup, ubNumJeepsInGroup;
+	UINT8 ubNumAdmins, ubNumTroops, ubNumElites, ubNumTanks, ubNumJeeps, ubNumRobots;	//how many soldiers of the type do we still have to assign to a group? 
+	UINT8 ubISNumAdmins, ubISNumTroops, ubISNumElites, ubISNumTanks, ubISNumJeeps, ubISNumRobots;
+	UINT8 ubNumElitesInGroup, ubNumTroopsInGroup, ubNumAdminsInGroup, ubNumTanksInGroup, ubNumJeepsInGroup, ubNumRobotsInGroup;
 	INT32 i;
 	UINT8 pSectors[4];
 	UINT8 ubDirAmount;
@@ -769,6 +781,7 @@ void AssociateEnemiesWithStrategicGroups()
 	ubNumElites = pSector->ubNumElites;
 	ubNumTanks = pSector->ubNumTanks;
 	ubNumJeeps = pSector->ubNumJeeps;
+	ubNumRobots = pSector->ubNumRobots;
 
 	//Now go through our enemies in the autoresolve array, and assign the ubGroupID to the soldier
 	//Stationary groups have a group ID of 0 - first assign enemies from those stationary groups
@@ -785,6 +798,12 @@ void AssociateEnemiesWithStrategicGroups()
 			gpEnemies[i].pSoldier->ubGroupID = 0;
 			gpEnemies[i].uiFlags |= CELL_ASSIGNED;
 			ubNumJeeps--;
+		}
+		else if ( gpEnemies[i].uiFlags & CELL_ENEMYROBOT && ubNumRobots )
+		{
+			gpEnemies[i].pSoldier->ubGroupID = 0;
+			gpEnemies[i].uiFlags |= CELL_ASSIGNED;
+			ubNumRobots--;
 		}
 		else if ( gpEnemies[i].uiFlags & CELL_ELITE && ubNumElites )
 		{
@@ -804,15 +823,16 @@ void AssociateEnemiesWithStrategicGroups()
 			gpEnemies[ i ].uiFlags |= CELL_ASSIGNED;
 			ubNumAdmins--;
 		}
-		}
+	}
 
 	ubNumAdmins = gpAR->ubAdmins - pSector->ubNumAdmins;
 	ubNumTroops = gpAR->ubTroops - pSector->ubNumTroops;
 	ubNumElites = gpAR->ubElites - pSector->ubNumElites;
 	ubNumTanks = gpAR->ubTanks - pSector->ubNumTanks;
 	ubNumJeeps = gpAR->ubJeeps - pSector->ubNumJeeps;
+	ubNumRobots = gpAR->ubRobots - pSector->ubNumRobots;
 
-	if ( !ubNumElites && !ubNumTroops && !ubNumAdmins && !ubNumTanks && !ubNumJeeps )
+	if ( !ubNumElites && !ubNumTroops && !ubNumAdmins && !ubNumTanks && !ubNumJeeps && !ubNumRobots )
 	{ //All troops accounted for.
 		return;
 	}
@@ -828,6 +848,7 @@ void AssociateEnemiesWithStrategicGroups()
 			ubNumAdminsInGroup = pGroup->pEnemyGroup->ubNumAdmins;
 			ubNumTanksInGroup = pGroup->pEnemyGroup->ubNumTanks;
 			ubNumJeepsInGroup = pGroup->pEnemyGroup->ubNumJeeps;
+			ubNumRobotsInGroup = pGroup->pEnemyGroup->ubNumRobots;
 			for( i = 0; i < gpAR->ubEnemies; i++ )
 			{
 				if( !(gpEnemies[ i ].uiFlags & CELL_ASSIGNED) )	//has this soldier already been assigned to a cell and therefore a group (while processing the static enemies above) ?
@@ -845,6 +866,13 @@ void AssociateEnemiesWithStrategicGroups()
 						gpEnemies[i].uiFlags |= CELL_ASSIGNED;
 						ubNumJeeps--;
 						ubNumJeepsInGroup--;
+					}
+					else if ( ubNumRobots && ubNumRobotsInGroup && gpEnemies[i].uiFlags & CELL_ENEMYROBOT )
+					{
+						gpEnemies[i].pSoldier->ubGroupID = pGroup->ubGroupID;
+						gpEnemies[i].uiFlags |= CELL_ASSIGNED;
+						ubNumRobots--;
+						ubNumRobotsInGroup--;
 					}
 					else if (ubNumElites && ubNumElitesInGroup && gpEnemies[i].uiFlags & CELL_ELITE)
 					{
@@ -886,6 +914,7 @@ void AssociateEnemiesWithStrategicGroups()
 			ubNumAdminsInGroup = pGroup->pEnemyGroup->ubNumAdmins;
 			ubNumTanksInGroup = pGroup->pEnemyGroup->ubNumTanks;
 			ubNumJeepsInGroup = pGroup->pEnemyGroup->ubNumJeeps;
+			ubNumRobotsInGroup = pGroup->pEnemyGroup->ubNumRobots;
 			for( i = 0; i < gpAR->ubEnemies; i++ )
 			{
 				if( !(gpEnemies[ i ].uiFlags & CELL_ASSIGNED) )
@@ -903,6 +932,13 @@ void AssociateEnemiesWithStrategicGroups()
 						gpEnemies[i].uiFlags |= CELL_ASSIGNED;
 						ubNumJeeps--;
 						ubNumJeepsInGroup--;
+					}
+					else if ( ubNumRobots && ubNumRobotsInGroup &&  gpEnemies[i].uiFlags & CELL_ENEMYROBOT )
+					{
+						gpEnemies[i].pSoldier->ubGroupID = pGroup->ubGroupID;
+						gpEnemies[i].uiFlags |= CELL_ASSIGNED;
+						ubNumRobots--;
+						ubNumRobotsInGroup--;
 					}
 					else if (ubNumElites && ubNumElitesInGroup &&  gpEnemies[i].uiFlags & CELL_ELITE)
 					{
@@ -943,10 +979,11 @@ void AssociateEnemiesWithStrategicGroups()
 		ubISNumElites = pSector->ubNumElites;
 		ubISNumTanks = pSector->ubNumTanks;
 		ubISNumJeeps = pSector->ubNumJeeps;
+		ubISNumRobots = pSector->ubNumRobots;
 
 		for( i = 0; i < gpAR->ubEnemies; ++i )
 		{
-			if ( ubISNumAdmins + ubISNumTroops + ubISNumElites + ubISNumTanks + ubISNumJeeps <= gubReinforcementMinEnemyStaticGroupSize ) break;	//if group would be left understaffed, it wont reinforce - go chceck another sector (what if are there more groups here?)
+			if ( ubISNumAdmins + ubISNumTroops + ubISNumElites + ubISNumTanks + ubISNumJeeps + ubISNumRobots <= gubReinforcementMinEnemyStaticGroupSize ) break;	//if group would be left understaffed, it wont reinforce - go chceck another sector (what if are there more groups here?)
 
 			if( !(gpEnemies[ i ].uiFlags & CELL_ASSIGNED) )
 			{
@@ -967,6 +1004,15 @@ void AssociateEnemiesWithStrategicGroups()
 					gpEnemies[i].pSoldier->sSectorY = SECTORY( pSectors[ubCurrSI] );
 					ubISNumJeeps--;
 					ubNumJeeps--;
+				}
+				else if ( gpEnemies[i].uiFlags & CELL_ENEMYROBOT && ubISNumRobots && ubNumRobots )
+				{
+					gpEnemies[i].pSoldier->ubGroupID = 0;
+					gpEnemies[i].uiFlags |= CELL_ASSIGNED;
+					gpEnemies[i].pSoldier->sSectorX = SECTORX( pSectors[ubCurrSI] );
+					gpEnemies[i].pSoldier->sSectorY = SECTORY( pSectors[ubCurrSI] );
+					ubISNumRobots--;
+					ubNumRobots--;
 				}
 				else if ( gpEnemies[i].uiFlags & CELL_ELITE && ubISNumElites && ubNumElites )
 				{
@@ -1000,7 +1046,7 @@ void AssociateEnemiesWithStrategicGroups()
 		}
 	/*at this point, all enemies should have been assigned to their cell and group. If not, there is a bug around
 	Because number and type of cells should be computed for the same composition of enemies as the one we see in this function, it should not happen though*/
-	AssertMsg( !(ubISNumAdmins & ubISNumTroops & ubISNumElites & ubISNumTanks & ubISNumJeeps), "Mapping between actual enemies and autoresolve cells is wrong." );
+	AssertMsg( !(ubISNumAdmins & ubISNumTroops & ubISNumElites & ubISNumTanks & ubISNumJeeps & ubISNumRobots), "Mapping between actual enemies and autoresolve cells is wrong." );
 
 	}
 
@@ -1142,8 +1188,10 @@ void CalculateSoldierCells( BOOLEAN fReset )
 					gpEnemies[index].uiFlags = CELL_ADMIN;
 				else if ( index < gpAR->ubElites + gpAR->ubTroops + gpAR->ubAdmins + gpAR->ubTanks )
 					gpEnemies[index].uiFlags = CELL_TANK;
-				else
+				else if ( index < gpAR->ubElites + gpAR->ubTroops + gpAR->ubAdmins + gpAR->ubTanks + gpAR->ubJeeps )
 					gpEnemies[index].uiFlags = CELL_JEEP;
+				else
+					gpEnemies[index].uiFlags = CELL_ENEMYROBOT;
 			}
 		}
 	}
@@ -1594,7 +1642,9 @@ UINT32 AutoBandageMercs()
 
 			// SANDRO - added safety check
 			cnt++;
-			if( cnt > 500 )
+			// sevenfm: INT8 cannot be larger than 127, should be 50 probably as in other check here
+			//if( cnt > 500 )
+			if (cnt > 50)
 				break;
 		}
 	}
@@ -2152,6 +2202,13 @@ void CreateAutoResolveInterface()
 	ubRegMilitia = MilitiaInSectorOfRank( gpAR->ubSectorX, gpAR->ubSectorY, REGULAR_MILITIA );
 	ubGreenMilitia = MilitiaInSectorOfRank( gpAR->ubSectorX, gpAR->ubSectorY, GREEN_MILITIA );
 
+	// see if we get any bonus militia from nearby towns
+	UINT8 bonusGreenMilitia = 0, bonusRegularMilitia = 0, bonusEliteMilitia = 0;
+	RebelCommand::GetBonusMilitia(gpAR->ubSectorX, gpAR->ubSectorY, bonusGreenMilitia, bonusRegularMilitia, bonusEliteMilitia, FALSE); // no need to create a group for autoresolve as we're just increasing local militia pop
+	ubEliteMilitia += bonusEliteMilitia;
+	ubRegMilitia += bonusRegularMilitia;
+	ubGreenMilitia += bonusGreenMilitia;
+
 	// This block should be unnecessary.	If the counts do not line up, there is a bug.
 #if 0
 	while( ubEliteMilitia + ubRegMilitia + ubGreenMilitia < gpAR->ubCivs )
@@ -2270,6 +2327,19 @@ void CreateAutoResolveInterface()
 	}
 	else
 	{
+		for (i = 0; i < gpAR->ubRobots; ++i, ++index)
+		{
+			gpEnemies[index].pSoldier = TacticalCreateEnemyRobot();
+			gpEnemies[index].pSoldier->sSectorX = gpAR->ubSectorX;
+			gpEnemies[index].pSoldier->sSectorY = gpAR->ubSectorY;
+			swprintf( gpEnemies[index].pSoldier->name, gpStrategicString[STR_AR_ROBOT_NAME] );
+
+			// reuse madlab's robot's face
+			VOBJECT_DESC VObjectDesc;
+			VObjectDesc.fCreateFlags = VOBJECT_CREATE_FROMFILE;
+			sprintf( VObjectDesc.ImageFile, "Faces\\65Face\\%02d.sti", gMercProfiles[ ROBOT ].ubFaceIndex );
+			AddVideoObject(&VObjectDesc, &gpEnemies[index].uiVObjectID);
+		}
 		for ( i = 0; i < gpAR->ubElites; ++i, ++index )
 		{
 			gpEnemies[index].pSoldier = TacticalCreateEliteEnemy();
@@ -2618,21 +2688,7 @@ DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"Autoresolve2");
 	// Flugente: after we fought, move any militia in groups into the sector garrison - the player will likely want to rethink orders for the survivors
 	// Flugente: in case militia died we have to lower the group sizes
 	// loop over all militia groups that are in this sector and alter their size. If a group has size 0 delete it. If any militia are left place them into this sector
-	{
-		GROUP* pGroup = gpGroupList;
-		while ( pGroup )
-		{
-			if ( pGroup->usGroupTeam == MILITIA_TEAM && pGroup->ubSectorX == gpAR->ubSectorX && pGroup->ubSectorY == gpAR->ubSectorY )
-			{
-				GROUP* pDeleteGroup = pGroup;
-				pGroup = pGroup->next;
-
-				DissolveMilitiaGroup( pDeleteGroup->ubGroupID );
-			}
-			else
-				pGroup = pGroup->next;
-		}
-	}
+	DissolveAllMilitiaGroupsInSector(gpAR->ubSectorX, gpAR->ubSectorY);
 
 	//Record and process all enemy deaths
 	for( i = 0; i < MAX_AR_TEAM_SIZE; ++i )
@@ -3052,9 +3108,9 @@ void CalculateAutoResolveInfo()
 	else
 	{
 		GetNumberOfEnemiesInFiveSectors( gpAR->ubSectorX, gpAR->ubSectorY,
-			&gpAR->ubAdmins, &gpAR->ubTroops, &gpAR->ubElites, &gpAR->ubTanks, &gpAR->ubJeeps );
+			&gpAR->ubAdmins, &gpAR->ubTroops, &gpAR->ubElites, &gpAR->ubRobots, &gpAR->ubTanks, &gpAR->ubJeeps );
 
-		gpAR->ubEnemies = (UINT8)min( gpAR->ubAdmins + gpAR->ubTroops + gpAR->ubElites + gpAR->ubTanks + gpAR->ubJeeps, MAX_AR_TEAM_SIZE );
+		gpAR->ubEnemies = (UINT8)min( gpAR->ubAdmins + gpAR->ubTroops + gpAR->ubElites + gpAR->ubTanks + gpAR->ubJeeps + gpAR->ubRobots, MAX_AR_TEAM_SIZE );
 	}
 
 	gfTransferTacticalOppositionToAutoResolve = FALSE;
@@ -3114,22 +3170,23 @@ void ResetAutoResolveInterface()
 
 	//Make sure the number of enemy portraits is the same as needed.
 	//The debug keypresses may add or remove more than one at a time.
-	while ( gpAR->ubElites + gpAR->ubAdmins + gpAR->ubTroops + gpAR->ubTanks + gpAR->ubJeeps > gpAR->ubEnemies )
+	while ( gpAR->ubElites + gpAR->ubAdmins + gpAR->ubTroops + gpAR->ubTanks + gpAR->ubJeeps + gpAR->ubRobots > gpAR->ubEnemies )
 	{
-		switch( PreRandom( 5 ) )
+		switch( PreRandom( 6 ) )
 		{
-			case 0:					if( gpAR->ubElites ) { gpAR->ubElites--; break; }
+			case 0: if ( gpAR->ubElites ) { gpAR->ubElites--; break; }
 			case 1: if ( gpAR->ubAdmins ) { gpAR->ubAdmins--; break; }
 			case 2: if ( gpAR->ubTroops ) { gpAR->ubTroops--; break; }
 			case 3: if ( gpAR->ubTanks ) { gpAR->ubTanks--; break; }
 			case 4: if ( gpAR->ubJeeps ) { gpAR->ubJeeps--; break; }
+			case 5: if ( gpAR->ubRobots ) { gpAR->ubRobots--; break; }
 		}
 	}
-	while ( gpAR->ubElites + gpAR->ubAdmins + gpAR->ubTroops + gpAR->ubTanks + gpAR->ubJeeps< gpAR->ubEnemies )
+	while ( gpAR->ubElites + gpAR->ubAdmins + gpAR->ubTroops + gpAR->ubTanks + gpAR->ubJeeps + gpAR->ubRobots < gpAR->ubEnemies )
 	{
 		switch( PreRandom( 5 ) )
 		{
-			case 0:				gpAR->ubElites++; break;
+			case 0: gpAR->ubElites++; break;
 			case 1: case 2: gpAR->ubAdmins++; break;
 			case 3: case 4: gpAR->ubTroops++; break;
 		}
@@ -4329,11 +4386,11 @@ BOOLEAN TargetHasLoadedGun( SOLDIERTYPE *pSoldier )
 
 void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 {
-	UINT16 usAttack;
-	UINT16 usDefence;
+	INT16 sAttack;
+	INT16 sDefence;
 	UINT8 ubImpact;
 	UINT8 ubLocation;
-	UINT8 ubAccuracy;
+	INT16 sAccuracy;
 	INT32 iRandom;
 	INT32 iImpact;
 	INT32 iNewLife;
@@ -4346,74 +4403,84 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 
 	pAttacker->uiFlags |= CELL_FIREDATTARGET | CELL_DIRTY;
 	if( pAttacker->usAttack < 950 )
-		usAttack = (UINT16)(pAttacker->usAttack + PreRandom((INT16)(gGameExternalOptions.iAutoResolveLuckFactor*1000.0) - pAttacker->usAttack ));
+		sAttack = (INT16)(pAttacker->usAttack + PreRandom(max(0, (INT16)(gGameExternalOptions.iAutoResolveLuckFactor*1000.0) - (INT16)pAttacker->usAttack)));
 	else
-		usAttack = (UINT16)(950 + PreRandom( 50 ));
+		sAttack = 950 + PreRandom(50);
 
 	if( pTarget->uiFlags & CELL_RETREATING && !(pAttacker->uiFlags & CELL_FEMALECREATURE) )
 	{
 		//Attacking a retreating merc is harder.	Modify the attack value to 70% of it's value.
 		//This allows retreaters to have a better chance of escaping.
-		usAttack = usAttack * 7 / 10;
+		sAttack = sAttack * 7 / 10;
 	}
 
 	if( pTarget->usDefence < 950 )
-		usDefence = (UINT16)(pTarget->usDefence + PreRandom((INT16)(gGameExternalOptions.iAutoResolveLuckFactor*1000.0) - pTarget->usDefence ));
+		sDefence = (INT16)(pTarget->usDefence + PreRandom(max(0, (INT16)(gGameExternalOptions.iAutoResolveLuckFactor*1000.0) - (INT16)pTarget->usDefence)));
 	else
-		usDefence = (UINT16)(950 + PreRandom( 50 ));
+		sDefence = 950 + PreRandom(50);
 
 	///////////////////////////////////////////////////////////////////////////////////////////
-	// SANDRO - Iincrease Militia Strength in autoresolve battles 
-	// because the attack and defense is limited to max 1000, rather than only increasing the attack of milita,
+	// SANDRO - Increase Militia Strength in autoresolve battles 
+	// because the attack and defense is limited to max 1000, rather than only increasing the attack of militia,
 	// decrease the defense of target - so +100% bonus means +50% attack of attacker and -50% defense of target
 
-	//if militita is attacking increase attack by half and decrease the defense of enemy
+	//if militia is attacking increase attack by half and decrease the defense of enemy
 	if (pAttacker->pSoldier->ubSoldierClass == SOLDIER_CLASS_GREEN_MILITIA && gGameExternalOptions.sGreenMilitiaAutoresolveStrength != 0)
 	{
-		usAttack += (usAttack * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
-		usDefence -= (usDefence * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
+		sAttack += (sAttack * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
+		sDefence -= (sDefence * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
 	}
 	else if (pAttacker->pSoldier->ubSoldierClass == SOLDIER_CLASS_REG_MILITIA && gGameExternalOptions.sRegularMilitiaAutoresolveStrength != 0)
 	{
-		usAttack += (usAttack * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
-		usDefence -= (usDefence * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
+		sAttack += (sAttack * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
+		sDefence -= (sDefence * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
 	}
 	else if (pAttacker->pSoldier->ubSoldierClass == SOLDIER_CLASS_ELITE_MILITIA && gGameExternalOptions.sVeteranMilitiaAutoresolveStrength != 0)
 	{
-		usAttack += (usAttack * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
-		usDefence -= (usDefence * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
+		sAttack += (sAttack * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
+		sDefence -= (sDefence * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
 	}
 	else if (pAttacker->uiFlags & CELL_MERC && gGameExternalOptions.sMercsAutoresolveOffenseBonus != 0)
 	{
-		usAttack += (usAttack * gGameExternalOptions.sMercsAutoresolveOffenseBonus /200);
-		usDefence -= (usDefence * gGameExternalOptions.sMercsAutoresolveOffenseBonus /200);
+		sAttack += (sAttack * gGameExternalOptions.sMercsAutoresolveOffenseBonus /200);
+		sDefence -= (sDefence * gGameExternalOptions.sMercsAutoresolveOffenseBonus /200);
 	}
 
 	//if enemy is attacking decrease his attack by half and increase the defense of militia by half
 	if (pTarget->pSoldier->ubSoldierClass == SOLDIER_CLASS_GREEN_MILITIA && gGameExternalOptions.sGreenMilitiaAutoresolveStrength != 0)
 	{
-		usDefence += (usDefence * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
-		usAttack -= (usAttack * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
+		sDefence += (sDefence * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
+		sAttack -= (sAttack * gGameExternalOptions.sGreenMilitiaAutoresolveStrength /200);
 	}
 	else if (pTarget->pSoldier->ubSoldierClass == SOLDIER_CLASS_REG_MILITIA && gGameExternalOptions.sRegularMilitiaAutoresolveStrength != 0)
 	{
-		usDefence += (usDefence * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
-		usAttack -= (usAttack * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
+		sDefence += (sDefence * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
+		sAttack -= (sAttack * gGameExternalOptions.sRegularMilitiaAutoresolveStrength /200);
 	}
 	else if (pTarget->pSoldier->ubSoldierClass == SOLDIER_CLASS_ELITE_MILITIA && gGameExternalOptions.sVeteranMilitiaAutoresolveStrength != 0)
 	{
-		usDefence += (usDefence * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
-		usAttack -= (usAttack * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
+		sDefence += (sDefence * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
+		sAttack -= (sAttack * gGameExternalOptions.sVeteranMilitiaAutoresolveStrength /200);
 	}
 	else if (pTarget->uiFlags & CELL_MERC && gGameExternalOptions.sMercsAutoresolveDeffenseBonus != 0)
 	{
-		usDefence += (usDefence * gGameExternalOptions.sMercsAutoresolveDeffenseBonus /200);
-		usAttack -= (usAttack * gGameExternalOptions.sMercsAutoresolveDeffenseBonus /200);
+		sDefence += (sDefence * gGameExternalOptions.sMercsAutoresolveDeffenseBonus /200);
+		sAttack -= (sAttack * gGameExternalOptions.sMercsAutoresolveDeffenseBonus /200);
 	}
 
-	// reapair values
-	usAttack = max(0, min(1000, usAttack ));
-	usDefence = max(0, min(1000, usDefence ));
+	// check fortifications bonus
+	if (pTarget->pSoldier->ubSoldierClass == SOLDIER_CLASS_GREEN_MILITIA
+		|| pTarget->pSoldier->ubSoldierClass == SOLDIER_CLASS_REG_MILITIA
+		|| pTarget->pSoldier->ubSoldierClass == SOLDIER_CLASS_ELITE_MILITIA
+		|| (pTarget->uiFlags & CELL_MERC))
+	{
+		sDefence += (sDefence * RebelCommand::GetFortificationsBonus(GetAutoResolveSectorID()) / 200);
+		sAttack -= (sAttack * RebelCommand::GetFortificationsBonus(GetAutoResolveSectorID()) / 200);
+	}
+
+	// repair values
+	sAttack = max(0, min(1000, sAttack ));
+	sDefence = max(0, min(1000, sDefence ));
 	///////////////////////////////////////////////////////////////////////////////////////////
 
 	if( pAttacker->uiFlags & (CELL_FEMALECREATURE | CELL_BLOODCAT | CELL_ZOMBIE) )
@@ -4430,15 +4497,15 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 		fCannon = TRUE;
 
 		// cannons have a huge splash zone, so they are much more likely to hit
-		usAttack *= 1.5;
+		sAttack = (INT16)(sAttack * 1.5);
 	}
 	// if our target is a tank, we use heavy weapons if we have any
-	else if ( ARMED_VEHICLE( pTarget->pSoldier ) && FireAntiTankWeapon( pAttacker ) )
+	else if ( (ARMED_VEHICLE( pTarget->pSoldier ) || ENEMYROBOT( pTarget->pSoldier )) && FireAntiTankWeapon( pAttacker ) )
 	{
 		fAntiTank = TRUE;
 
 		// hitting a tank with an rpg isn't easy
-		usAttack *= 0.8;
+		sAttack = (INT16)(sAttack * 0.8);
 	}
 	else if( !FireAShot( pAttacker ) )
 	{
@@ -4452,9 +4519,9 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 			{
 				//except for creatures
 				if( fKnife )
-					usAttack = usAttack * 6 / 10;
+					sAttack = sAttack * 6 / 10;
 				else
-					usAttack = usAttack * 4 / 10;
+					sAttack = sAttack * 4 / 10;
 			}
 		}
 	}
@@ -4486,11 +4553,11 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 		}
 	}
 
-	if( usAttack < usDefence )
+	if( sAttack < sDefence )
 	{
 		if( pTarget->pSoldier->stats.bLife >= OKLIFE || !PreRandom( 5 ) )
 		{
-			//Attacker misses -- use up a round of ammo.	If target is unconcious, then 80% chance of hitting.
+			//Attacker misses -- use up a round of ammo.	If target is unconscious, then 80% chance of hitting.
 			pTarget->uiFlags |= CELL_DODGEDATTACK | CELL_DIRTY;
 
 			if( fMelee )
@@ -4541,10 +4608,10 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 		
 		ubLocation = AIM_SHOT_TORSO;
 
-		ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence )) / 10);
+		//ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence )) / 10);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// SANDRO - increased mercs' offense/deffense rating
+		// SANDRO - increased mercs' offense/defense rating
 		if ( pAttacker->uiFlags & CELL_MERC && gGameExternalOptions.sMercsAutoresolveOffenseBonus != 0 )
 		{
 			ubImpact += (ubImpact * gGameExternalOptions.sMercsAutoresolveOffenseBonus / 150);
@@ -4605,7 +4672,7 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 
 		UINT8 ubAmmoType = Magazine[Item[(&pAttacker->pSoldier->inv[pAttacker->bWeaponSlot])->usItem].ubClassIndex].ubAmmoType;
 				
-		ubImpact *= AmmoTypes[ubAmmoType].dDamageModifierTank;
+		ubImpact = (UINT8)(ubImpact * AmmoTypes[ubAmmoType].dDamageModifierTank);
 
 		iRandom = Random( 100 );
 		if ( iRandom < 15 )
@@ -4615,10 +4682,10 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 		else
 			ubLocation = AIM_SHOT_TORSO;
 
-		ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence )) / 10);
+		//ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence )) / 10);
 
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// SANDRO - increased mercs' offense/deffense rating
+		// SANDRO - increased mercs' offense/defense rating
 		if ( pAttacker->uiFlags & CELL_MERC && gGameExternalOptions.sMercsAutoresolveOffenseBonus != 0 )
 		{
 			ubImpact += (ubImpact * gGameExternalOptions.sMercsAutoresolveOffenseBonus / 150);
@@ -4652,12 +4719,18 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 			ubLocation = AIM_SHOT_LEGS;
 		else
 			ubLocation = AIM_SHOT_TORSO;
+		
+		if (sDefence >= pTarget->usDefence)
+			iRandom = PreRandom(sDefence - pTarget->usDefence);
+		else
+			iRandom = -(INT16)PreRandom(pTarget->usDefence - sDefence);
 
-		ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence ) )/10);
+		sAccuracy = (sAttack - sDefence + iRandom) / 10;
+
 		// HEADROCK HAM 5: Added argument
-		iImpact = BulletImpact( pAttacker->pSoldier, NULL, pTarget->pSoldier, ubLocation, ubImpact, ubAccuracy, NULL );
+		iImpact = BulletImpact( pAttacker->pSoldier, NULL, pTarget->pSoldier, ubLocation, ubImpact, sAccuracy, NULL );
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		// SANDRO - increased mercs' offense/deffense rating
+		// SANDRO - increased mercs' offense/defense rating
 		if (pAttacker->uiFlags & CELL_MERC && gGameExternalOptions.sMercsAutoresolveOffenseBonus != 0)
 		{
 			iImpact += (iImpact * gGameExternalOptions.sMercsAutoresolveOffenseBonus /150);
@@ -4689,7 +4762,12 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 			return;
 		}
 
-		ubAccuracy = (UINT8)((usAttack - usDefence + PreRandom( usDefence - pTarget->usDefence ) )/10);
+		if (sDefence >= pTarget->usDefence)
+			iRandom = PreRandom(sDefence - pTarget->usDefence);
+		else
+			iRandom = -(INT16)PreRandom(pTarget->usDefence - sDefence);
+
+		sAccuracy = (sAttack - sDefence + iRandom) / 10;
 
 		//Determine attacking weapon.
 		pAttacker->pSoldier->usAttackingWeapon = 0;
@@ -4707,13 +4785,13 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 			//switch items
 			tempItem = pAttacker->pSoldier->inv[ HANDPOS ];
 			pAttacker->pSoldier->inv[ HANDPOS ] = pAttacker->pSoldier->inv[ pAttacker->bWeaponSlot ]; //CTD
-			iImpact = HTHImpact( pAttacker->pSoldier, pTarget->pSoldier, ubAccuracy, (BOOLEAN)(fKnife || fClaw) );
+			iImpact = HTHImpact( pAttacker->pSoldier, pTarget->pSoldier, sAccuracy, (BOOLEAN)(fKnife || fClaw) );
 			pAttacker->pSoldier->inv[ pAttacker->bWeaponSlot ] = pAttacker->pSoldier->inv[ HANDPOS ];
 			pAttacker->pSoldier->inv[ HANDPOS ] = tempItem;
 		}
 		else
 		{
-			iImpact = HTHImpact( pAttacker->pSoldier, pTarget->pSoldier, ubAccuracy, (BOOLEAN)(fKnife || fClaw) );
+			iImpact = HTHImpact( pAttacker->pSoldier, pTarget->pSoldier, sAccuracy, (BOOLEAN)(fKnife || fClaw) );
 		}
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// SANDRO - increased mercs' offense/deffense rating
@@ -4729,21 +4807,27 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 
 		// WANNE: Why is impact here always set to 0? The impact was calculated a few lines before!
 		//iImpact = 0;
+		if (gTacticalStatus.uiFlags & GODMODE && pTarget->pSoldier->bTeam == OUR_TEAM)
+		{
+			iImpact = 0;
+		}
 
-		// WANNE: Just for safty.
+		// WANNE: Just for safety.
 		if (iImpact < 0)
 			iImpact = 0;
 		
 		iNewLife = pTarget->pSoldier->stats.bLife - iImpact;
 
 		if( pAttacker->uiFlags & CELL_MERC )
-		{ //Attacker is a player, so increment the number of shots that hit.
+		{ 
+			//Attacker is a player, so increment the number of shots that hit.
 			gMercProfiles[ pAttacker->pSoldier->ubProfile ].records.usShotsHit++;
 			// MARKSMANSHIP GAIN: Attacker's shot hits
 			StatChange( pAttacker->pSoldier, MARKAMT, 6, FALSE );		// in addition to 3 for taking a shot
 		}
 		if( pTarget->uiFlags & CELL_MERC )
-		{ //Target is a player, so increment the times he has been wounded.
+		{ 
+			//Target is a player, so increment the times he has been wounded.
 			if( iImpact > 1 )
 				gMercProfiles[ pTarget->pSoldier->ubProfile ].records.usTimesWoundedStabbed++;
 			// EXPERIENCE GAIN: Took some damage
@@ -4796,11 +4880,15 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 			}
 			
 			if( pAttacker->uiFlags & CELL_MERC )
-			{ //Player killed the enemy soldier -- update his stats as well as any assisters.
+			{ 
+				//Player killed the enemy soldier -- update his stats as well as any assisters.
 				/////////////////////////////////////////////////////////////////////////////////////
 				// SANDRO - experimental - more specific statistics of mercs
 				switch(pTarget->pSoldier->ubSoldierClass)
 				{
+					case SOLDIER_CLASS_ROBOT :
+						gMercProfiles[ pAttacker->pSoldier->ubProfile ].records.usKillsOthers++;
+						break;
 					case SOLDIER_CLASS_ELITE :
 						gMercProfiles[ pAttacker->pSoldier->ubProfile ].records.usKillsElites++;
 						break;
@@ -4831,7 +4919,7 @@ void AttackTarget( SOLDIERCELL *pAttacker, SOLDIERCELL *pTarget )
 							gMercProfiles[ pAttacker->pSoldier->ubProfile ].records.usKillsOthers++;
 
 							// Flugente: dynamic opinions: if this guy is not hostile towards us, then some mercs will complain about killing civilians
-							if ( (pTarget->pSoldier->bTeam != OUR_TEAM) && (pTarget->pSoldier->aiData.bNeutral || pTarget->pSoldier->bSide == pAttacker->pSoldier->bSide) )
+							if ((gGameExternalOptions.fDynamicOpinions) && (pTarget->pSoldier->bTeam != OUR_TEAM) && (pTarget->pSoldier->aiData.bNeutral || pTarget->pSoldier->bSide == pAttacker->pSoldier->bSide) )
 							{
 								// not for killing animals though...
 								if ( pTarget->pSoldier->ubBodyType != CROW && pTarget->pSoldier->ubBodyType != COW )
@@ -4945,7 +5033,14 @@ void TargetHitCallback( SOLDIERCELL *pTarget, INT32 index )
 			break;
 	}
 
-	iNewLife = pTarget->pSoldier->stats.bLife - pTarget->usHitDamage[index];
+	if (gTacticalStatus.uiFlags & GODMODE && pTarget->pSoldier->bTeam == OUR_TEAM)
+	{
+		iNewLife = pTarget->pSoldier->stats.bLife;
+	}
+	else
+	{
+		iNewLife = pTarget->pSoldier->stats.bLife - pTarget->usHitDamage[index];
+	}	
 	if( !pTarget->usHitDamage[index] )
 	{ //bullet missed -- play a ricochet sound.
 		if( pTarget->uiFlags & CELL_MERC )
@@ -4970,10 +5065,10 @@ void TargetHitCallback( SOLDIERCELL *pTarget, INT32 index )
 	}
 
 	//bullet hit -- play an impact sound and a merc hit sound
-	if ( ARMED_VEHICLE( pTarget->pSoldier ) )
+	if ( ARMED_VEHICLE( pTarget->pSoldier ) || ENEMYROBOT( pTarget->pSoldier ) )
 		PlayAutoResolveSample( (UINT8)(S_METAL_IMPACT1 + PreRandom( 3 )), RATE_11025, 50, 1, MIDDLEPAN );
 	else	
-	PlayAutoResolveSample( (UINT8)(BULLET_IMPACT_1+PreRandom(3)), RATE_11025, 50, 1, MIDDLEPAN );
+		PlayAutoResolveSample( (UINT8)(BULLET_IMPACT_1+PreRandom(3)), RATE_11025, 50, 1, MIDDLEPAN );
 
 	if( pTarget->pSoldier->stats.bLife >= CONSCIOUSNESS )
 	{
@@ -5043,6 +5138,9 @@ void TargetHitCallback( SOLDIERCELL *pTarget, INT32 index )
 					// SANDRO - new mercs' records
 					switch(pTarget->pSoldier->ubSoldierClass)
 					{
+						case SOLDIER_CLASS_ROBOT :
+							gMercProfiles[ pKiller->pSoldier->ubProfile ].records.usKillsOthers++;
+							break;
 						case SOLDIER_CLASS_ELITE :
 							gMercProfiles[ pKiller->pSoldier->ubProfile ].records.usKillsElites++;
 							break;
@@ -5154,10 +5252,10 @@ void TargetHitCallback( SOLDIERCELL *pTarget, INT32 index )
 		{ //Normal death
 			if( gpAR->fSound )
 			{
-				if ( ARMED_VEHICLE( pTarget->pSoldier ) )
+				if ( ARMED_VEHICLE( pTarget->pSoldier ) || ENEMYROBOT( pTarget->pSoldier ) )
 					PlayAutoResolveSample( (UINT8)(S_RAID_TB_BOMB), RATE_11025, 50, 1, MIDDLEPAN );
 				else
-				pTarget->pSoldier->DoMercBattleSound( BATTLE_SOUND_DIE1 );
+					pTarget->pSoldier->DoMercBattleSound( BATTLE_SOUND_DIE1 );
 			}
 		}
 		#ifdef INVULNERABILITY

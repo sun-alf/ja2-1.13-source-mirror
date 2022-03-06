@@ -52,6 +52,7 @@
 	#include "Militia Control.h"	// added by Flugente for ResetMilitia()
 	#include "Creature Spreading.h"	// added by Flugente
 	#include "MilitiaIndividual.h"	// added by Flugente
+	#include "Rebel Command.h"
 #endif
 
 #include "MilitiaSquads.h"
@@ -706,7 +707,7 @@ BOOLEAN AddWaypointStrategicIDToPGroup( GROUP *pGroup, UINT32 uiSectorID )
 
 //Enemy grouping functions -- private use by the strategic AI.
 //............................................................
-GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmins, UINT8 ubNumTroops, UINT8 ubNumElites, UINT8 ubNumTanks, UINT8 ubNumJeeps )
+GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmins, UINT8 ubNumTroops, UINT8 ubNumElites, UINT8 ubNumRobots, UINT8 ubNumTanks, UINT8 ubNumJeeps )
 {
 	GROUP *pNew;
 	AssertMsg( uiSector >= 0 && uiSector <= 255, String( "CreateNewEnemyGroup with out of range value of %d", uiSector ) );
@@ -717,7 +718,7 @@ GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmin
 	AssertMsg( pNew->pEnemyGroup, "MemAlloc failure during enemy group creation." );
 	memset( pNew->pEnemyGroup, 0, sizeof( ENEMYGROUP ) );
 	// Make sure group is not bigger than allowed!
-	while ( ubNumAdmins + ubNumTroops + ubNumElites + ubNumTanks + ubNumJeeps > gGameExternalOptions.iMaxEnemyGroupSize )
+	while ( ubNumAdmins + ubNumTroops + ubNumElites + ubNumRobots + ubNumTanks + ubNumJeeps > gGameExternalOptions.iMaxEnemyGroupSize )
 	{
 		if (ubNumTroops)
 		{
@@ -730,6 +731,10 @@ GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmin
 		else if (ubNumElites)
 		{
 			ubNumElites--;
+		}
+		else if (ubNumRobots)
+		{
+			ubNumRobots--;
 		}
 		else if (ubNumTanks)
 		{
@@ -752,9 +757,10 @@ GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmin
 	pNew->pEnemyGroup->ubNumAdmins = ubNumAdmins;
 	pNew->pEnemyGroup->ubNumTroops = ubNumTroops;
 	pNew->pEnemyGroup->ubNumElites = ubNumElites;
+	pNew->pEnemyGroup->ubNumRobots = ubNumRobots;
 	pNew->pEnemyGroup->ubNumTanks = ubNumTanks;
 	pNew->pEnemyGroup->ubNumJeeps = ubNumJeeps;
-	pNew->ubGroupSize = (UINT8)(ubNumAdmins + ubNumTroops + ubNumElites + ubNumTanks + ubNumJeeps);
+	pNew->ubGroupSize = (UINT8)(ubNumAdmins + ubNumTroops + ubNumElites + ubNumRobots + ubNumTanks + ubNumJeeps);
 	pNew->ubTransportationMask = FOOT;
 	pNew->fVehicle = FALSE;
 	pNew->ubCreatedSectorID = pNew->ubOriginalSector;
@@ -1885,21 +1891,16 @@ void GroupArrivedAtSector( UINT8 ubGroupID, BOOLEAN fCheckForBattle, BOOLEAN fNe
 			fExceptionQueue = TRUE;
 		}
 	}
-
-	//First check if the group arriving is going to queue another battle.
-	//NOTE:	We can't have more than one battle ongoing at a time.
-	if( fExceptionQueue || fCheckForBattle && gTacticalStatus.fEnemyInSector &&
+	//First check if the group arriving is going to queue another battle. //KM : Aug 11, 1999 -- Patch fix:	Added additional checks to prevent a 2nd battle in the case			
+	//NOTE:	We can't have more than one battle ongoing at a time.         //where the player is involved in a potential battle with bloodcats/civilians
+	if( fExceptionQueue || (fCheckForBattle && (gTacticalStatus.fEnemyInSector || HostileCiviliansPresent() || HostileBloodcatsPresent()) &&
 			FindMovementGroupInSector( (UINT8)gWorldSectorX, (UINT8)gWorldSectorY, OUR_TEAM ) &&
-		(pGroup->ubNextX != gWorldSectorX || pGroup->ubNextY != gWorldSectorY || gbWorldSectorZ > 0 ) ||
+		(pGroup->ubNextX != gWorldSectorX || pGroup->ubNextY != gWorldSectorY || gbWorldSectorZ > 0 ) && NumHostilesInSector(pGroup->ubNextX, pGroup->ubNextY, pGroup->ubSectorZ) > 0)
 		#ifdef JA2UB
 			//Ja25: NO meanwhiles		
 		#else
-			AreInMeanwhile() ||
+		|| AreInMeanwhile()
 		#endif
-			//KM : Aug 11, 1999 -- Patch fix:	Added additional checks to prevent a 2nd battle in the case
-			//	 where the player is involved in a potential battle with bloodcats/civilians
-			fCheckForBattle && HostileCiviliansPresent() ||
-			fCheckForBattle && HostileBloodcatsPresent()
 		)
 	{
 		//QUEUE BATTLE!
@@ -3611,6 +3612,8 @@ INT32 GetSectorMvtTimeForGroup( UINT8 ubSector, UINT8 ubDirection, GROUP *pGroup
 				iBestTraverseTime = max( 10, (iBestTraverseTime * (100 - (fSurvivalistHere * gSkillTraitValues.ubSVGroupTimeSpentForTravellingFoot)) / 100) );
 
 				iBestTraverseTime = max( 10, (iBestTraverseTime * (100 - stravelbackground_foot) / 100));
+
+				iBestTraverseTime = max( 10, (iBestTraverseTime * (100 - RebelCommand::GetPathfindersSpeedBonus(ubSector)) / 100));
 			}
 			// all other types (except air)
 			else if ( fAir )
@@ -3641,6 +3644,8 @@ INT32 GetSectorMvtTimeForGroup( UINT8 ubSector, UINT8 ubDirection, GROUP *pGroup
 		}
 
 		iBestTraverseTime = dEnemyGeneralsSpeedupFactor * iBestTraverseTime;
+
+		iBestTraverseTime = iBestTraverseTime * (100 + RebelCommand::GetHarriersSpeedPenalty(ubSector)) / 100;
 	}
 	///////////////////////////////////////////////////////////////////////////////
 
@@ -5469,7 +5474,7 @@ BOOLEAN TestForBloodcatAmbush( GROUP *pGroup )
 			{
 				if( MercPtrs[ i ]->bActive && MercPtrs[ i ]->stats.bLife && !(MercPtrs[ i ]->flags.uiStatusFlags & SOLDIER_VEHICLE) )
 				{
-					if ( MercPtrs[ i ]->sSectorX == pGroup->ubSectorX && MercPtrs[ i ]->sSectorY == pGroup->ubSectorY && MercPtrs[ i ]->bAssignment != ASSIGNMENT_POW && MercPtrs[ i ]->stats.bLife >= OKLIFE )
+					if ( MercPtrs[ i ]->sSectorX == pGroup->ubSectorX && MercPtrs[ i ]->sSectorY == pGroup->ubSectorY && MercPtrs[ i ]->bAssignment != ASSIGNMENT_POW && MercPtrs[ i ]->bAssignment != ASSIGNMENT_MINIEVENT && MercPtrs[ i ]->stats.bLife >= OKLIFE )
 					{
 						if( HAS_SKILL_TRAIT( MercPtrs[ i ], SCOUTING_NT ) && MercPtrs[ i ]->ubProfile != NO_PROFILE )
 						{
@@ -5873,6 +5878,7 @@ BOOLEAN GroupHasInTransitDeadOrPOWMercs( GROUP *pGroup )
 		{
 			if( ( pPlayer->pSoldier->bAssignment == IN_TRANSIT ) ||
 				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_POW ) ||
+				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_MINIEVENT ) ||
 				SPY_LOCATION( pPlayer->pSoldier->bAssignment ) ||
 				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_DEAD ) )
 			{

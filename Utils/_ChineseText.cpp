@@ -20,52 +20,52 @@ void this_is_the_ChineseText_public_symbol(void){;}
 #if defined( CHINESE )
 
 /*
- 
+
 ******************************************************************************************************
 **                                  IMPORTANT TRANSLATION NOTES                                     **
 ******************************************************************************************************
 
 GENERAL INSTRUCTIONS
-- Always be aware that foreign strings should be of equal or shorter length than the English equivalent.  
-	I know that this is difficult to do on many occasions due to the nature of foreign languages when 
-	compared to English.  By doing so, this will greatly reduce the amount of work on both sides.  In 
-	most cases (but not all), JA2 interfaces were designed with just enough space to fit the English word.  
-	The general rule is if the string is very short (less than 10 characters), then it's short because of 
-	interface limitations.  On the other hand, full sentences commonly have little limitations for length.  
+- Always be aware that foreign strings should be of equal or shorter length than the English equivalent.
+	I know that this is difficult to do on many occasions due to the nature of foreign languages when
+	compared to English.  By doing so, this will greatly reduce the amount of work on both sides.  In
+	most cases (but not all), JA2 interfaces were designed with just enough space to fit the English word.
+	The general rule is if the string is very short (less than 10 characters), then it's short because of
+	interface limitations.  On the other hand, full sentences commonly have little limitations for length.
 	Strings in between are a little dicey.
-- Never translate a string to appear on multiple lines.  All strings L"This is a really long string...", 
+- Never translate a string to appear on multiple lines.  All strings L"This is a really long string...",
 	must fit on a single line no matter how long the string is.  All strings start with L" and end with ",
-- Never remove any extra spaces in strings.  In addition, all strings containing multiple sentences only 
-	have one space after a period, which is different than standard typing convention.  Never modify sections 
-	of strings contain combinations of % characters.  These are special format characters and are always 
+- Never remove any extra spaces in strings.  In addition, all strings containing multiple sentences only
+	have one space after a period, which is different than standard typing convention.  Never modify sections
+	of strings contain combinations of % characters.  These are special format characters and are always
 	used in conjunction with other characters.  For example, %s means string, and is commonly used for names,
-	locations, items, etc.  %d is used for numbers.  %c%d is a character and a number (such as A9).  
-	%% is how a single % character is built.  There are countless types, but strings containing these 
-	special characters are usually commented to explain what they mean.  If it isn't commented, then 
+	locations, items, etc.  %d is used for numbers.  %c%d is a character and a number (such as A9).
+	%% is how a single % character is built.  There are countless types, but strings containing these
+	special characters are usually commented to explain what they mean.  If it isn't commented, then
 	if you can't figure out the context, then feel free to ask SirTech.
-- Comments are always started with // Anything following these two characters on the same line are 
-	considered to be comments.  Do not translate comments.  Comments are always applied to the following 
-	string(s) on the next line(s), unless the comment is on the same line as a string.  
-- All new comments made by SirTech will use "//@@@ comment" (without the quotes) notation.  By searching 
+- Comments are always started with // Anything following these two characters on the same line are
+	considered to be comments.  Do not translate comments.  Comments are always applied to the following
+	string(s) on the next line(s), unless the comment is on the same line as a string.
+- All new comments made by SirTech will use "//@@@ comment" (without the quotes) notation.  By searching
 	for @@@ everytime you recieve a new version, it will simplify your task and identify special instructions.
-  Commonly, these types of comments will be used to ask you to abbreviate a string.  Please leave the 
+  Commonly, these types of comments will be used to ask you to abbreviate a string.  Please leave the
 	comments intact, and SirTech will remove them once the translation for that particular area is resolved.
-- If you have a problem or question with translating certain strings, please use "//!!! comment" 
-	(without the quotes).  The syntax is important, and should be identical to the comments used with @@@ 
-	symbols.  SirTech will search for !!! to look for your problems and questions.  This is a more 
+- If you have a problem or question with translating certain strings, please use "//!!! comment"
+	(without the quotes).  The syntax is important, and should be identical to the comments used with @@@
+	symbols.  SirTech will search for !!! to look for your problems and questions.  This is a more
 	efficient method than detailing questions in email, so try to do this whenever possible.
 
 
-	
+
 FAST HELP TEXT -- Explains how the syntax of fast help text works.
 **************
 
 1) BOLDED LETTERS
-	The popup help text system supports special characters to specify the hot key(s) for a button.  
+	The popup help text system supports special characters to specify the hot key(s) for a button.
 	Anytime you see a '|' symbol within the help text string, that means the following key is assigned
-	to activate the action which is usually a button.  
+	to activate the action which is usually a button.
 
-	EX:  L"|Map Screen" 
+	EX:  L"|Map Screen"
 
 	This means the 'M' is the hotkey.  In the game, when somebody hits the 'M' key, it activates that
 	button.  When translating the text to another language, it is best to attempt to choose a word that
@@ -78,10 +78,10 @@ FAST HELP TEXT -- Explains how the syntax of fast help text works.
 
 2) NEWLINE
   Any place you see a \n within the string, you are looking at another string that is part of the fast help
-	text system.  \n notation doesn't need to be precisely placed within that string, but whereever you wish 
-	to start a new line. 
+	text system.  \n notation doesn't need to be precisely placed within that string, but whereever you wish
+	to start a new line.
 
-	EX:  L"Clears all the mercs' positions,\nand allows you to re-enter them manually." 
+	EX:  L"Clears all the mercs' positions,\nand allows you to re-enter them manually."
 
 	Would appear as:
 
@@ -92,10 +92,10 @@ FAST HELP TEXT -- Explains how the syntax of fast help text works.
 	       in the above example, we would see
 
 	WRONG WAY -- spaces before and after the \n
-	EX:  L"Clears all the mercs' positions, \n and allows you to re-enter them manually." 
+	EX:  L"Clears all the mercs' positions, \n and allows you to re-enter them manually."
 
 	Would appear as: (the second line is moved in a character)
-		
+
 				Clears all the mercs' positions,
  				 and allows you to re-enter them manually.
 
@@ -105,7 +105,7 @@ FAST HELP TEXT -- Explains how the syntax of fast help text works.
 
 	Throughout the text files, you'll find an assortment of comments.  Comments are used to describe the
 	text to make translation easier, but comments don't need to be translated.  A good thing is to search for
-	"@@@" after receiving new version of the text file, and address the special notes in this manner.  
+	"@@@" after receiving new version of the text file, and address the special notes in this manner.
 
 !!! NOTATION
 ************
@@ -115,7 +115,7 @@ FAST HELP TEXT -- Explains how the syntax of fast help text works.
 
 */
 
-CHAR16	XMLTacticalMessages[1000][MAX_MESSAGE_NAMES_CHARS] = 
+CHAR16	XMLTacticalMessages[1000][MAX_MESSAGE_NAMES_CHARS] =
 {
 	L"",
 };
@@ -177,7 +177,7 @@ STR16	pSectorPageText[] =
 	L"简报室。请点击 '进入' 按钮", //L"Briefing Room. Please click the 'Enter' button.",
 };
 
-STR16	pEncyclopediaTypeText[] = 
+STR16	pEncyclopediaTypeText[] =
 {
 	L"未知", //0 //L"Unknown",
 	L"城市", //1 //L"City",
@@ -192,7 +192,7 @@ STR16	pEncyclopediaTypeText[] =
     L"机场", //10 //L"Airport", 
 };
 
-STR16	pEncyclopediaHelpCharacterText[] = 
+STR16	pEncyclopediaHelpCharacterText[] =
 {
 	L"全部显示", //L"Show All",
 	L"显示AIM成员", //L"Show AIM",
@@ -205,7 +205,7 @@ STR16	pEncyclopediaHelpCharacterText[] =
 	L"过滤", //L"Filter",
 };
 
-STR16	pEncyclopediaShortCharacterText[] = 
+STR16	pEncyclopediaShortCharacterText[] =
 {
 	L"全部", //L"All",
 	L"AIM", //L"AIM",
@@ -218,7 +218,7 @@ STR16	pEncyclopediaShortCharacterText[] =
 	L"过滤", //L"Filter",
 };
 
-STR16	pEncyclopediaHelpText[] = 
+STR16	pEncyclopediaHelpText[] =
 {
 	L"全部显示", //L"Show All",
 	L"显示城市", //L"Show City",
@@ -233,7 +233,7 @@ STR16	pEncyclopediaHelpText[] =
 	L"显示机场", //L"Show Airport",
 };
 
-STR16	pEncyclopediaSkrotyText[] = 
+STR16	pEncyclopediaSkrotyText[] =
 {
 	L"全部", //L"All",
 	L"城市", //L"City",
@@ -290,7 +290,7 @@ STR16	pEncyclopediaFilterCharText[] =
 {//major char filter button text
 //..L"------v"
 	L"全部",//All
-	L"A.I.M",
+	L"A.I.M.",
 	L"MERC",
 	L"RPC",
 	L"NPC",
@@ -321,7 +321,7 @@ STR16	pEncyclopediaSubFilterCharText[] =
 	L"",//reserved. Insert new Other filters above!
 };
 
-STR16	pEncyclopediaFilterItemText[] = 
+STR16	pEncyclopediaFilterItemText[] =
 {//major item filter button text max 7 chars
 //..L"------v"
 	L"全部",//All
@@ -423,7 +423,7 @@ STR16 pEncyclopediaSubFilterQuestText[] =
 	L"",//reserved. insert new completed quest subfilters above!
 };
 
-STR16	pEncyclopediaShortInventoryText[] = 
+STR16	pEncyclopediaShortInventoryText[] =
 {
 	L"全部", //0 //L"All",
 	L"枪械", //L"Gun",
@@ -486,7 +486,7 @@ STR16			BoxFilter[] =
 	L"其它", //34 //L"Misc",
 };
 
-STR16		QuestDescText[] = 
+STR16		QuestDescText[] =
 {
 	L"送信",//L"Deliver Letter",
 	L"食物补给线",//L"Food Route",
@@ -523,7 +523,7 @@ STR16		QuestDescText[] =
 	L"没有29",//L"No 29 Yet",
 };
 
-STR16		FactDescText[] = 
+STR16		FactDescText[] =
 {
 	L"Omerta被解放了",//L"Omerta Liberated",
 	L"Drassen被解放了",//L"Drassen Liberated",
@@ -720,7 +720,7 @@ STR16		FactDescText[] =
 	L"异形入侵了矿坑",//L"Creatures invaded current mine",
 	L"佣兵失去了矿坑",//L"Player LOST current mine",
 	L"矿坑在全速生产中",//L"Current mine is at FULL production",
-	L"参与对话的人是Dynamo，或者在参与对话的人的10格内",//L"Dynamo(66) is Speaker or within 10 tiles of speaker",		
+	L"参与对话的人是Dynamo，或者在参与对话的人的10格内",//L"Dynamo(66) is Speaker or within 10 tiles of speaker",
 	L"Fred告诉了我们异形的事情",//L"Fred told us about creatures",
 
 	L"Matt告诉了我们异形的事情",//L"Matt told us about creatures",				//180
@@ -729,21 +729,21 @@ STR16		FactDescText[] =
 	L"Carl告诉了我们异形的事情",//L"Carl told us about creatures",
 	L"博物馆里的圣杯被偷走了",//L"Chalice stolen from museam",
 	L"John是EPC",//L"John(118) is EPC",
-	L"Mary和John是EPC",//L"Mary(119) and John (118) are EPC's",	
+	L"Mary和John是EPC",//L"Mary(119) and John (118) are EPC's",
 	L"Mary还活着",//L"Mary(119) is alive",
-	L"Mary是EPC",//L"Mary(119)is EPC",					
-	L"Mary在流血",//L"Mary(119) is bleeding",		
+	L"Mary是EPC",//L"Mary(119)is EPC",
+	L"Mary在流血",//L"Mary(119) is bleeding",
 
 	L"John还活着",//L"John(118) is alive",							//190
-	L"John在流血",//L"John(118) is bleeding",				
+	L"John在流血",//L"John(118) is bleeding",
 	L"John或者Mary靠近了Drassen(B13)的机场",//L"John or Mary close to airport in Drassen(B13)",
 	L"Mary死了",//L"Mary is Dead",
 	L"矿工被部署了",//L"Miners placed",
 	L"Krott在计划对佣兵开枪",//L"Krott planning to shoot player",
 	L"Madlab解释了他的情况",//L"Madlab explained his situation",
 	L"Madlab期望有一把枪",//L"Madlab expecting a firearm",
-	L"Madlab期望有个摄像机",//L"Madlab expecting a video camera.",		
-	L"物品状况<70",//L"Item condition is < 70 ",										
+	L"Madlab期望有个摄像机",//L"Madlab expecting a video camera.",
+	L"物品状况<70",//L"Item condition is < 70 ",
 
 	L"Madlab抱怨枪坏了",//L"Madlab complained about bad firearm.",					//200
 	L"Madlab抱怨摄像机坏了",//L"Madlab complained about bad video camera.",
@@ -753,7 +753,7 @@ STR16		FactDescText[] =
 	L"机器人准备第二次出发",//L"Robot is ready to go a second time!",
 	L"第二个机器人被摧毁了",//L"Second robot destroyed.",
 	L"给佣兵介绍了矿洞",//L"Mines explained to player.",
-	L"Dynamo在J9区域",//L"Dynamo (#66) is in sector J9.",			
+	L"Dynamo在J9区域",//L"Dynamo (#66) is in sector J9.",
 	L"Dynamo还活着",//L"Dynamo (#66) is alive.",
 
 	L"在总共进行过不到3场战斗的情况下，有一个有能力参加战斗的NPC没有参加过一次战斗，",//L"One PC hasn't fought, but is able, and less than 3 fights have occured",							//210
@@ -777,7 +777,7 @@ STR16		FactDescText[] =
 	L"Dave有汽油（每日随机）",//L"Dave has gas. (randomized daily)",
 	L"汽车准备好了",//L"Vehicle is present",
 	L"第一场战斗被佣兵赢得了",//L"First battle won by player",
-	L"机器人被招募和移动",//L"Robot recruited and moved",			
+	L"机器人被招募和移动",//L"Robot recruited and moved",
 
 	L"俱乐部内不允许斗殴",//L"No club fighting allowed",							//230
 	L"佣兵今天已经打了三场拳击了",//L"Player already fought 3 fights today",
@@ -788,7 +788,7 @@ STR16		FactDescText[] =
 	L"Micky喝醉了",//L"Micky (#96) is drunk",
 	L"佣兵尝试用暴力方式进入妓院",//L"Player has attempted to force their way into brothel",
 	L"有效地威胁了Rat三次",//L"Rat effectively threatened 3 times",
-	L"佣兵为两个人付了去妓院的钱",//L"Player paid for two people to enter brothel",		
+	L"佣兵为两个人付了去妓院的钱",//L"Player paid for two people to enter brothel",
 
 	L"",						//240
 	L"",
@@ -827,7 +827,7 @@ STR16		FactDescText[] =
 	L"Willis听说了Joey的营救",//L"Fact willis heard about joey rescue",//										271
 	L"Willis给了折扣",//L"Fact willis gives discount",//															272
 	L"乡巴佬被杀了",//L"Fact hillbillies killed",//																273
-	L"Keith不营业了",//L"Fact keith out of business",	//														274												
+	L"Keith不营业了",//L"Fact keith out of business",	//														274
 	L"Mike可以被招募",//L"Fact mike available to army",//														275
 	L"Kingpin会派刺客",//L"Fact kingpin can send assassins",//												276
 	L"Estoni可以加油",//L"Fact estoni refuelling possible",//						277
@@ -1100,7 +1100,7 @@ STR16 FaceDirs[8] =
 	L"西北", //L"northwest",
 };
 
-STR16 iEditorMercsToolbarText[] = 
+STR16 iEditorMercsToolbarText[] =
 {
  L"切换佣兵显示", //0 //L"Toggle viewing of players",
  L"切换敌兵显示", //L"Toggle viewing of enemies",
@@ -1375,7 +1375,7 @@ STR16 iRenderDoorEditingWindowText[] =
 
 //EditorItems.cpp
 
-STR16 pInitEditorItemsInfoText[] = 
+STR16 pInitEditorItemsInfoText[] =
 {
 	L"压力下行为", //0 //L"Pressure Action",
 	L"惊慌动作1", //L"Panic Action1",
@@ -1453,7 +1453,7 @@ STR16 zDiffNames[5] =	// NUM_DIFF_LVLS = 5
 	L"使用兴奋剂", //L"Steroid Users Only",
 };
 
-STR16 EditMercStat[12] = 
+STR16 EditMercStat[12] =
 { 
 	L"最大生命值", //L"Max Health",
 	L"治疗后生命值", //L"Cur Health",
@@ -1478,11 +1478,11 @@ STR16 EditMercOrders[8] =
 	L"长距巡逻", //L"Far Patrol",
 	L"固定巡逻", //L"Point Patrol",
 	L"呼叫", //L"On Call",
-	L"寻找敌人", //L"Seek Enemy", 
+	L"寻找敌人", //L"Seek Enemy",
 	L"随机巡逻", //L"Random Point Patrol",
 };
 
-STR16 EditMercAttitudes[6] = 
+STR16 EditMercAttitudes[6] =
 { 
 	L"防守", //L"Defensive",
 	L"大胆独行", //L"Brave Loner",
@@ -1499,7 +1499,7 @@ STR16 pDisplayEditMercWindowText[] =
 	L"战斗倾向:", //L"Combat Attitude:",
 };
 
-STR16 pCreateEditMercWindowText[] = 
+STR16 pCreateEditMercWindowText[] =
 {
 	L"佣兵颜色", //0 //L"Merc Colors",
 	L"完成", //L"Done",
@@ -1547,7 +1547,7 @@ STR16 pDisplayBodyTypeInfoText[] =
 	L"悍马",//L"Humvee",
 };
 
-STR16 pUpdateMercsInfoText[] = 
+STR16 pUpdateMercsInfoText[] =
 {
 	L" --=指令=-- ", //0 //L" --=ORDERS=-- ",
 	L"--=倾向=--", //L"--=ATTITUDE=--",
@@ -1647,7 +1647,7 @@ STR16 pCopyMercPlacementText[] =
 	L"放置品已复制。", //L"Placement copied.",
 };
 
-STR16 pPasteMercPlacementText[] = 
+STR16 pPasteMercPlacementText[] =
 {
 	L"因为缓存中无资料，放置品粘贴失败。", //L"Placement not pasted as no placement is saved in buffer.",
 	L"放置品成功粘贴。", //L"Placement pasted.",
@@ -1655,12 +1655,12 @@ STR16 pPasteMercPlacementText[] =
 };
 
 //editscreen.cpp
-STR16 pEditModeShutdownText[] = 
+STR16 pEditModeShutdownText[] =
 {
 	L"退出编辑器？", //L"Exit editor?",
 };
 
-STR16 pHandleKeyboardShortcutsText[] = 
+STR16 pHandleKeyboardShortcutsText[] =
 {
 	L"确定要移除所有光源吗？", //0 //L"Are you sure you wish to remove all lights?",
 	L"确定要撤销所有修改吗？", //L"Are you sure you wish to reverse the schedules?",
@@ -1686,7 +1686,7 @@ STR16 pHandleKeyboardShortcutsText[] =
 	L"地图水平设定", //L"World Raise Set",
 };
 
-STR16 pPerformSelectedActionText[] = 
+STR16 pPerformSelectedActionText[] =
 {
 	L"创建%S的雷达图", //0 //L"Creating radar map for %S",
 	
@@ -1697,7 +1697,7 @@ STR16 pPerformSelectedActionText[] =
 	L"清除地面区块？", //L" Wipe out ground textures? ",
 };
 
-STR16 pWaitForHelpScreenResponseText[] = 
+STR16 pWaitForHelpScreenResponseText[] =
 {
 	L"HOME", //0 //L"HOME",
 	L"非环境光照开/关", //L"Toggle fake editor lighting ON/OFF",
@@ -2104,7 +2104,7 @@ STR16 wszSelType[6] = {
  L"中", //L"Medium",
  L"大", //L"Large",
  L"超大", //L"XLarge", 
- L"宽xx", //L"Width: xx", 
+ L"宽xx", //L"Width: xx",
  L"区域", //L"Area",
  };
 
@@ -2179,7 +2179,7 @@ CHAR16 AmmoCaliber[MAXITEMS][20];// =
 //};
 
 // This BobbyRayAmmoCaliber is virtually the same as AmmoCaliber however the bobby version doesnt have as much room for the words.
-// 
+//
 // Different weapon calibres
 // CAWS is Close Assault Weapon System and should probably be left as it is
 // NATO is the North Atlantic Treaty Organization
@@ -2309,7 +2309,7 @@ CHAR16 Message[][STRING_LENGTH] =
 	L"无",
 	L"退出子弹",
 	L"附件",
-	
+
 	//You cannot use "item(s)" and your "other item" at the same time.
 	//Ex:  You cannot use sun goggles and you gas mask at the same time.
 	L"你不能同时使用%s和%s。",
@@ -2365,7 +2365,7 @@ CHAR16 Message[][STRING_LENGTH] =
 	L"此时无法分配任务",	//L"Assignment not possible at the moment",
 	L"没有能够训练的民兵。",	//L"No militia that can be drilled present.",
 
-	L"%s 已经完全的探索了 %s。",	//L"%s has fully explored %s." TODO.Translate
+	L"%s 已经完全的探索了 %s。",	//L"%s has fully explored %s."
 };
 
 // the country and its noun in the game
@@ -2412,7 +2412,7 @@ STR16 sTimeStrings[] =
 };
 
 
-// Assignment Strings: what assignment does the merc  have right now? For example, are they on a squad, training, 
+// Assignment Strings: what assignment does the merc  have right now? For example, are they on a squad, training,
 // administering medical aid (doctor) or training a town. All are abbreviated. 8 letters is the longest it can be.
 
 STR16 pAssignmentStrings[] =
@@ -2479,7 +2479,8 @@ STR16 pAssignmentStrings[] =
 	L"训练民兵",	//L"DMilitia",
 	L"掩埋尸体", //L"Burial",
 	L"管理", //L"Admin",
-	L"探索",	//L"Explore" TODO.Translate
+	L"探索",	//L"Explore"
+	L"事件"  //L"Event"  rftr: merc is on a mini event
 };
 
 
@@ -2589,7 +2590,7 @@ STR16 pPersonnelAssignmentStrings[] =
 	L"训练现有的民兵",	//L"Drill existing militia",
 	L"掩埋尸体", //L"Bury corpses",
 	L"管理人员",	//L"Administration",
-	L"探索事项",	//L"Exploration", TODO.Translate
+	L"探索事项",	//L"Exploration",
 };
 
 
@@ -2658,7 +2659,7 @@ STR16 pLongAssignmentStrings[] =
 	L"训练现有的民兵",	//L"Drill existing militia",
 	L"掩埋尸体", //L"Bury corpses",
 	L"管理人员",	//L"Administration",
-	L"探索事项",	//L"Exploration", TODO.Translate
+	L"探索事项",	//L"Exploration",
 };
 
 
@@ -2732,7 +2733,7 @@ STR16 pUpperLeftMapScreenStrings[] =
 STR16 pTrainingStrings[] =
 {
 	L"锻炼", // tell merc to train self
-  L"民兵",// tell merc to train town
+    L"民兵",// tell merc to train town
 	L"教练", // tell merc to act as trainer
 	L"学员", // tell merc to be train by other
 };
@@ -2783,7 +2784,7 @@ STR16 pAssignMenuStrings[] =
 	L"筑防",		//L"Fortify", fortify sector
 	L"情报", //L"Intel", covert assignments
 	L"管理",	//L"Administer",
-	L"探索",	//L"Explore", TODO.Translate
+	L"探索",	//L"Explore",
 	L"设施", // the merc is using/staffing a facility //ham3.6
 	L"取消",
 };
@@ -2798,6 +2799,7 @@ STR16 pMilitiaControlMenuStrings[] =
 	L"卧倒", 
 	L"蹲下",	// L"Crouch",
 	L"隐蔽",
+	L"移动到这里",	//L"Move to",
 	L"全体: 自动进攻",
 	L"全体: 原地坚守",
 	L"全体: 撤退",
@@ -2820,10 +2822,14 @@ STR16 pTraitSkillsMenuStrings[] =
 	L"监听", //L"Eavesdrop",
 	L"呼叫支援", //L"Call reinforcements",
 	L"关闭接收器", //L"Switch off radio set",
+	L"无线电：激活所有被策反的敌军", //L"Radio: Activate all turncoats",
 
 	// spy
 	L"潜伏",		//L"Hide assignment",
 	L"侦查", //L"Get Intel assignment",
+	L"招募被策反的敌军", //L"Recruit turncoat",
+	L"激活被策反的敌军", // L"Activate turncoat", 
+	L"激活所有被策反的敌军", // L"Activate all turncoats", 
 
 	// various
 	L"侦查员",
@@ -2841,15 +2847,19 @@ STR16 pTraitSkillsMenuDescStrings[] =
 	L"使用无线电设备持续监听敌军动向。", //L"Use your radio equipment to continously listen for enemy movement.",
 	L"从邻区呼叫支援。", //L"Call in reinforcements from neighbouring sectors.",
 	L"关闭无线电设备。", //L"Turn off radio set.",
+	L"命令战区内所有已被策反的敌军叛变并加入你的部队。", //L"Order all previously turned soldiers in the sector to betray their comrades and join you.",
 
 	// spy
 	L"任务：潜伏至民众中。",		//L"Assignment: hide among the population.",
 	L"任务：潜伏并侦查。",	//L"Assignment: hide among the population and gather intel.",
+	L"尝试策反敌军。", //L"Try to turn an enemy into a turncoat.",
+	L"命令所有已被策反的敌军叛变并加入你的部队。", // L"Order previously turned soldier to betray their comrades and join you.", 
+	L"命令战区内所有已被策反的敌军叛变并加入你的部队。", // L"Order all previously turned soldiers in the sector to betray their comrades and join you.", 
 
 	// various
 	L"侦查一个区域，友军狙击手在瞄准你所观察到的目标时会增加命中率。",
-	L"增加中断几率(标记区域以外)。", //L"Increase interrupt modifier (malus outside of area)",
-	L"移动时拖人或尸体。",	//L"Drag a person, corpse or structure while you move.", TODO.Translate
+	L"增加标记区域内中断几率（标记区域外减少中断几率）", //L"Increase interrupt modifier (malus outside of area)",
+	L"移动时拖人或尸体。",	//L"Drag a person, corpse or structure while you move.",
 };
 
 STR16 pTraitSkillsDenialStrings[] =
@@ -2865,7 +2875,7 @@ STR16 pTraitSkillsDenialStrings[] =
 	L" - 恶魔的财产\n", //L" - posession by a demon"
 	L" - 与枪有关的技能（如自动武器）\n", //L" - a gun-related trait\n",
 	L" - 举起枪（瞄准状态）\n", //L" - aimed gun\n",
-	L" - 在佣兵旁边放下人或尸体\n",	//L" - prone person, corpse or structure next to merc\n", TODO.Translate
+	L" - 在佣兵旁边放下人或尸体\n",	//L" - prone person, corpse or structure next to merc\n",
 	L" - 下蹲姿势\n", //L" - crouched position\n",
 	L" - 清空主手装备\n",	//L" - free main hand\n",
 	L" - 潜伏技能\n",	//L" - covert trait\n",
@@ -2873,6 +2883,11 @@ STR16 pTraitSkillsDenialStrings[] =
 	L" - 单独佣兵\n",	//L" - single merc\n",
 	L" - 没有警报\n",	//L" - no alarm raised\n",
 	L" - 伪装成平民或敌军\n",	//L" - civilian or soldier disguise\n",
+	L" - 正被策反的敌军\n", //L" - being our turn\n",
+	L" - 已被策反的敌军\n", //L" - turned enemy soldier\n",
+	L" - 敌军士兵\n", //L" - enemy soldier\n", 
+	L" - 显露伪装\n", //L" - surface sector\n", 
+	L" - 没有被怀疑\n", //L" - not being under suspicion\n", 
 };
 
 STR16 pSkillMenuStrings[] =
@@ -3144,7 +3159,7 @@ STR16 pPersonnelRecordsHelpTexts[] =
 
 
 //These string correspond to enums used in by the SkillTrait enums in SoldierProfileType.h
-STR16 gzMercSkillText[] = 
+STR16 gzMercSkillText[] =
 {
 	// SANDRO - tweaked this
 	L"没有技能",
@@ -3167,7 +3182,7 @@ STR16 gzMercSkillText[] =
 };
 //////////////////////////////////////////////////////////
 // SANDRO - added this
-STR16 gzMercSkillTextNew[] = 
+STR16 gzMercSkillTextNew[] =
 {
 	// Major traits
 	L"没有技能",		// 0
@@ -3289,7 +3304,7 @@ STR16 pMapScreenMouseRegionHelpText[] =
 	L"睡觉",
 };
 
-// volumes of noises 
+// volumes of noises
 
 STR16 pNoiseVolStr[] =
 {
@@ -3299,7 +3314,7 @@ STR16 pNoiseVolStr[] =
 	L"非常大声的",
 };
 
-// types of noises 
+// types of noises
 
 STR16 pNoiseTypeStr[] = // OBSOLETE
 {
@@ -3319,7 +3334,7 @@ STR16 pNoiseTypeStr[] = // OBSOLETE
 
 // Directions that are used to report noises
 
-STR16 pDirectionStr[] = 
+STR16 pDirectionStr[] =
 {
 	L"东北方",
 	L"东方",
@@ -3331,7 +3346,7 @@ STR16 pDirectionStr[] =
 	L"北方"
 };
 
-// These are the different terrain types. 
+// These are the different terrain types.
 
 STR16 pLandTypeStrings[] =
 {
@@ -3467,7 +3482,7 @@ STR16 gpStrategicString[] =
 	L"小时",			//One letter abbreviation of hour
 
 	//TACTICAL PLACEMENT USER INTERFACE STRINGS
-	//The four buttons 
+	//The four buttons
 
 	L"清除",
 	L"分散",
@@ -3523,6 +3538,7 @@ STR16 gpStrategicString[] =
 	L"民兵无法移动到这。（RESTRICT_ROAMING = TRUE）", //L"Militia cannot move here (RESTRICT_ROAMING = TRUE).",
 	L"战术中心无人兼职，民兵移动失败！", //L"War room isn't staffed - militia move aborted!",
 
+	L"机器人",								//L"Robot", STR_AR_ROBOT_NAME,
 	L"坦克",							//STR_AR_TANK_NAME,
 	L"吉普",						//	L"Jeep",  STR_AR_JEEP_NAME
 
@@ -3544,7 +3560,7 @@ STR16 gpGameClockString[] =
 	L"日",
 };
 
-//When the merc finds a key, they can get a description of it which 
+//When the merc finds a key, they can get a description of it which
 //tells them where and when they found it.
 STR16 sKeyDescriptionStrings[2] =
 {
@@ -3695,7 +3711,7 @@ CHAR16 gMoneyStatsDesc[][ 14 ] =
 };
 
 //The health of various creatures, enemies, characters in the game. The numbers following each are for comment
-//only, but represent the precentage of points remaining. 
+//only, but represent the precentage of points remaining.
 
 CHAR16 zHealthStr[][13] =
 {
@@ -3711,11 +3727,11 @@ CHAR16 zHealthStr[][13] =
 
 STR16 gzHiddenHitCountStr[1] =
 {
-	L"?",	
+	L"?",
 };
 
-STR16	gzMoneyAmounts[6] = 
-{ 
+STR16	gzMoneyAmounts[6] =
+{
 	L"$1000",
 	L"$100",
 	L"$10",
@@ -3724,13 +3740,13 @@ STR16	gzMoneyAmounts[6] =
 	L"提取",
 };
 
-// short words meaning "Advantages" for "Pros" and "Disadvantages" for "Cons." 
-CHAR16		gzProsLabel[10] = 
+// short words meaning "Advantages" for "Pros" and "Disadvantages" for "Cons."
+CHAR16		gzProsLabel[10] =
 {
 	L"优点: ",
 };
 
-CHAR16		gzConsLabel[10] = 
+CHAR16		gzConsLabel[10] =
 {
 	L"缺点: ",
 };
@@ -3755,7 +3771,7 @@ CHAR16 zDealerStrings[4][ SMALL_STRING_LENGTH ]=
 	L"修理",
 };
 
-CHAR16 zDialogActions[1][ SMALL_STRING_LENGTH ] = 
+CHAR16 zDialogActions[1][ SMALL_STRING_LENGTH ] =
 {
 	L"完成",
 };
@@ -3947,7 +3963,7 @@ CHAR16 TacticalStr[][ MED_STRING_LENGTH ] =
 	L"视野中没有敌军。",
 	L"没有足够的行动点数(AP)。",
 	L"没人使用遥控器。",
-	L"扫射光了子弹!",
+	L"射光了子弹!",
 	L"敌兵",
 	L"异形",
 	L"民兵",
@@ -4045,6 +4061,7 @@ CHAR16 TacticalStr[][ MED_STRING_LENGTH ] =
 	L"我方缴械投降", //L"Offer surrender",
 	L"转移",	//L"Distract",
 	L"交谈",
+	L"招募被策反的敌军", //L"Recruit turncoat", // TODO: confirm translation. copied from pTraitSkillsMenuStrings
 
     // added by sevenfm: disarm messagebox options, messages when arming wrong bomb
     L"拆除陷阱",
@@ -4081,6 +4098,7 @@ CHAR16 TacticalStr[][ MED_STRING_LENGTH ] =
 	L"%s 捡起 %s。",	//L"%s picked up %s",
 
 	L"%s停止了与%s的交谈", //L"%s has stopped chatting with %s",
+	L"尝试策反", //L"Attempt to turn",
 };
 
 //Varying helptext explains (for the "Go to Sector/Map" checkbox) what will happen given different circumstances in the "exiting sector" interface.
@@ -4093,7 +4111,7 @@ STR16 pExitingSectorHelpText[] =
 	//If you attempt to leave a sector when you have multiple squads in a hostile sector.
 	L"该分区被敌军占据。你不能将佣兵留在这里。\n在进入其他分区前，你必须把这里的问题解决。",
 
-	//Because you only have one squad in the sector, and the "move all" option is checked, the "go to sector" option is locked to on. 
+	//Because you only have one squad in the sector, and the "move all" option is checked, the "go to sector" option is locked to on.
 	//The helptext explains why it is locked.
 	L"让留下的佣兵离开本分区，\n将立即进入邻近的分区。",
 	L"让留下的佣兵离开本分区，\n你将被立即自动放置在地图屏幕，\n因为你的佣兵要花些时间来行军。",
@@ -4130,7 +4148,7 @@ STR16 pExitingSectorHelpText[] =
 
 
 
-STR16 pRepairStrings[] = 
+STR16 pRepairStrings[] =
 {
 	L"物品",	// tell merc to repair items in inventor
 	L"SAM导弹基地",		// tell merc to repair SAM site - SAM is an acronym for Surface to Air Missile
@@ -4140,7 +4158,7 @@ STR16 pRepairStrings[] =
 
 
 // NOTE: combine prestatbuildstring with statgain to get a line like the example below.
-// "John has gained 3 points of marksmanship skill." 
+// "John has gained 3 points of marksmanship skill."
 
 STR16 sPreStatBuildString[] =
 {
@@ -4243,7 +4261,7 @@ STR16 pMapPopUpInventoryText[] =
 	L"存货",
 	L"离开",
 	L"修理",	//L"Repair",
-	L"工厂",	//L"Factories", TODO.Translate
+	L"工厂",	//L"Factories",
 };
 
 // town strings
@@ -4255,7 +4273,7 @@ STR16 pwTownInfoStrings[] =
 	L"占领度",				// how much of town is controlled
 	L"无",				// none of this town
 	L"矿区",			// mine associated with this town
-	L"忠诚度",				// 5 // the loyalty level of this town
+	L"忠诚度     ",//(后空5格，工厂生产会档住其它字) // 5 // the loyalty level of this town
 	L"民兵",				// the forces in the town trained by the player
 	L"",
 	L"主要设施",			// main facilities in this town
@@ -4310,7 +4328,7 @@ STR16 pwMiscSectorStrings[] =
 	L"否",
 	L"状态/软件状态:", //L"Status/Software status:",
 
-	L"其它情报", //L"Additional Intel", TODO:Translate
+	L"其它情报", //L"Additional Intel",
 };
 
 // error strings for inventory
@@ -4357,6 +4375,7 @@ STR16 pMovementMenuStrings[] =
 	L"安排行军路线",	// done with movement menu, start plotting movement
 	L"取消",		// cancel this menu
 	L"其它",		// title for group of mercs not on squads nor in vehicles
+	L"全选",		//L"Select all", Select all squads TODO: Translate
 };
 
 
@@ -4495,7 +4514,7 @@ CHAR16 pSenderNameList[500][128] =
 	L"MD",
 	L"Meltdown",
 	//----------
-	L"M.I.S. Insurance",	
+	L"M.I.S. Insurance",
 	L"Bobby Rays",
 	L"Kingpin",
 	L"John Kulba",
@@ -4511,7 +4530,7 @@ STR16 pTraverseStrings[] =
   L"下一个",
 };
 
-// new mail notify string 
+// new mail notify string
 
 STR16 pNewMailStrings[] =
 {
@@ -4621,6 +4640,8 @@ STR16 pTransactionText[] =
 	L"修理SAM基地",//L"SAM site repair", // Flugente: SAM repair
 	L"培训工人",//L"Trained workers", // Flugente: train workers
 	L"在%s区域训练民兵",	//L"Drill militia in %s", Flugente: drill militia
+	L"微型事件", //L"Mini event", rftr: mini events
+	L"从反抗军司令部转移资金", //L"Funds transferred from rebel command", rftr: rebel command
 };
 
 STR16 pTransactionAlternateText[] =
@@ -4631,7 +4652,7 @@ STR16 pTransactionAlternateText[] =
 	L"延长%s的合同两周。",
 };
 
-// helicopter pilot payment 
+// helicopter pilot payment
 
 STR16 pSkyriderText[] =
 {
@@ -4660,7 +4681,7 @@ STR16 pMoralStrings[] =
 // Mercs equipment has now arrived and is now available in Omerta or Drassen.
 
 STR16 pLeftEquipmentString[] =
-{ 
+{
 	L"%s的装备现在可以在Omerta (A9)获得。",
 	L"%s的装备现在可以在Drassen (B13)获得。",
 };
@@ -4699,7 +4720,7 @@ STR16 pTrashItemText[] =
 };
 
 
-STR16 pMapErrorString[] = 
+STR16 pMapErrorString[] =
 {
 	L"小队不能行军，因为有人在睡觉。",
 
@@ -5056,7 +5077,7 @@ STR16 pLaptopIcons[] =
 
 STR16 pBookMarkStrings[] =
 {
-	L"A.I.M",
+	L"A.I.M.",
 	L"Bobby Ray's",
 	L"I.M.P",
 	L"M.E.R.C",
@@ -5072,7 +5093,8 @@ STR16 pBookMarkStrings[] =
 	L"安保公司", //L"Kerberus",
 	L"民兵总览",//L"Militia Overview",
 	L"R.I.S",
-	L"工厂",	//L"Factories", TODO.Translate
+	L"工厂",	//L"Factories",
+	L"A.R.C",   //L"A.R.C",
 };
 
 STR16 pBookmarkTitle[] =
@@ -5118,7 +5140,7 @@ STR16 sATMText[ ]=
 	L"必须是$10的倍数", // transfer amount must be a multiple of $10
 };
 
-// Web error messages. Please use foreign language equivilant for these messages. 
+// Web error messages. Please use foreign language equivilant for these messages.
 // DNS is the acronym for Domain Name Server
 // URL is the acronym for Uniform Resource Locator
 
@@ -5185,26 +5207,29 @@ STR16 pWebPagesTitles[] =
 	L"%s新闻发布会 - 战役报告",
 	L"%s新闻发布会 - 最新消息",
 	L"%s新闻发布会 - 关于我们",
-	L"佣兵喜欢或不喜欢你 - 关于我们", //L"Mercs Love or Dislike You - About us",
-	L"佣兵喜欢或不喜欢你 - 队伍分析", //L"Mercs Love or Dislike You - Analyze a team",
-	L"佣兵喜欢或不喜欢你 - 成对分析", //L"Mercs Love or Dislike You - Pairwise comparison",
-	L"佣兵喜欢或不喜欢你 - 个人分析", //L"Mercs Love or Dislike You - Personality",
+	L"佣兵之家 - 关于我们", //L"Mercs Love or Dislike You - About us",
+	L"佣兵之家 - 队伍分析", //L"Mercs Love or Dislike You - Analyze a team",
+	L"佣兵之家 - 成对分析", //L"Mercs Love or Dislike You - Pairwise comparison",
+	L"佣兵之家 - 个人分析", //L"Mercs Love or Dislike You - Personality",
 	L"世界卫生组织 - 关于世界卫生组织", //L"WHO - About WHO",
-	L"世界卫生组织 - 阿鲁克的疾病", //L"WHO - Disease in Arulco",
+	L"世界卫生组织 - Arulco的疾病", //L"WHO - Disease in Arulco",
 	L"世界卫生组织 - 有用的贴士", //L"WHO - Helpful Tips",
 	L"Kerberus安保公司 - 关于我们", //L"Kerberus - About Us",
 	L"Kerberus安保公司 - 雇佣队伍", //L"Kerberus - Hire a Team",
 	L"Kerberus安保公司 - 独立协议", //L"Kerberus - Individual Contracts",
 	L"民兵总览", //L"Militia Overview",
-	L"Recon情报服务 - 情报需求",		//L"Recon Intelligence Services - Information Requests",
-	L"Recon情报服务 - 情报验证",	//L"Recon Intelligence Services - Information Verification",
-	L"Recon情报服务 - 关于我们",	//L"Recon Intelligence Services - About us",
-	L"工厂概况",	//L"Factory Overview", TODO.Translate
+	L"侦察情报局 - 情报需求",		//L"Recon Intelligence Services - Information Requests",
+	L"侦察情报局 - 情报验证",	//L"Recon Intelligence Services - Information Verification",
+	L"侦察情报局 - 关于我们",	//L"Recon Intelligence Services - About us",
+	L"工厂概况",	//L"Factory Overview",
 	L"Bobby Ray - 最近的运货",
 	L"百科全书",
 	L"百科全书 - 数据",
 	L"简报室",
 	L"简报室 - 数据",
+	L"", //LAPTOP_MODE_BRIEFING_ROOM_ENTER
+	L"", //LAPTOP_MODE_AIM_MEMBERS_ARCHIVES_NEW
+	L"A.R.C",   //L"A.R.C",
 };
 
 STR16 pShowBookmarkString[] =
@@ -5365,8 +5390,8 @@ STR16			InsContractText[] =
 //Insurance Info
 // Text on the buttons on the bottom of the screen
 
-STR16		InsInfoText[] = 
-{ 
+STR16		InsInfoText[] =
+{
 	L"上一页",
 	L"下一页",
 };
@@ -5375,7 +5400,7 @@ STR16		InsInfoText[] =
 
 //For use at the M.E.R.C. web site. Text relating to the player's account with MERC
 
-STR16			MercAccountText[] = 
+STR16			MercAccountText[] =
 {
 	// Text on the buttons on the bottom of the screen
 	L"支付",
@@ -5391,7 +5416,7 @@ STR16			MercAccountText[] =
 };
 
 // Merc Account Page buttons
-STR16			MercAccountPageText[] = 
+STR16			MercAccountPageText[] =
 {
 	// Text on the buttons on the bottom of the screen
 	L"上一页",
@@ -5488,7 +5513,7 @@ STR16			sFuneralString[] =
 
 // Text for the florist Home page
 
-STR16			sFloristText[] = 
+STR16			sFloristText[] =
 {
 	//Text on the button on the bottom of the page
 
@@ -5518,7 +5543,7 @@ STR16			sFloristText[] =
 
 //Florist OrderForm
 
-STR16			sOrderFormText[] = 
+STR16			sOrderFormText[] =
 {
 	//Text on the buttons
 
@@ -5583,7 +5608,7 @@ STR16			sFloristCards[] =
 
 // Text for Bobby Ray's Mail Order Site
 
-STR16			BobbyROrderFormText[] = 
+STR16			BobbyROrderFormText[] =
 {
 	L"订单",		//"Order Form",		//Title of the page
 	L"数量",			//"Qty",			// The number of items ordered
@@ -5670,7 +5695,7 @@ STR16			BobbyRFilter[] =
 
 // This text is used when on the various Bobby Ray Web site pages that sell items
 
-STR16			BobbyRText[] = 
+STR16			BobbyRText[] =
 {
 	L"订购",				//"To Order",	// Title
 	// instructions on how to order
@@ -5688,7 +5713,7 @@ STR16			BobbyRText[] =
 	L"订货单",	//"ORDER FORM",
 	L"主页",	//"Home",			//10
 
-	//The following 2 lines are used on the Ammunition page.  
+	//The following 2 lines are used on the Ammunition page.
 	//They are used for help text to display how many items the player's merc has
 	//that can use this type of ammo
 
@@ -5707,6 +5732,9 @@ STR16			BobbyRText[] =
 	L"晕眩: ", //L"Stun:",			// Weapon's Stun Damage
 	L"防护: ", //L"Protect:",		// Armour's Protection
 	L"伪装: ", //L"Camo:",			// Armour's Camouflage
+	L"侵彻力：",		//L"Armor Pen:", Ammo's Armour Piercing modifier (see AmmoTypes.xml - armourImpactReduction)
+	L"翻搅力：",		//L"Dmg Mod:", Ammo's Bullet Tumble modifier (see AmmoTypes.xml - afterArmourDamage)
+	L"弹丸量：",	//L"Projectiles:", Ammo's bullet count (for buckshot) (see AmmoTypes.xml - numberOfBullets)
 	L"单价: ",	//"Cost:",			// Cost of the item
 	L"库存: ",	//"In stock:",			// The number of items still in the store's inventory
 	L"购买量: ",	//"Qty on Order:",		// The number of items on order
@@ -5851,7 +5879,7 @@ STR16			CharacterInfo[] =
 	L"一周",	//"one week",
 	L"两周",	//"two weeks",
 
-	// text for the buttons that either go to the previous merc, 
+	// text for the buttons that either go to the previous merc,
 	// start talking to the merc, or go to the next merc
 
 	L"上一位",	//"Previous",
@@ -5886,7 +5914,7 @@ STR16			VideoConfercingText[] =
 	L"一周",	//"One Week",
 	L"两周",	//"Two Weeks",
 
-	//Text on the buttons to determine if you want the merc to come with the equipment 
+	//Text on the buttons to determine if you want the merc to come with the equipment
 
 	L"不买装备",	//"No Equipment",
 	L"购买装备",	//"Buy Equipment",
@@ -6063,10 +6091,10 @@ STR16			AimBottomMenuText[] =
 
 
 //ShopKeeper Interface
-// The shopkeeper interface is displayed when the merc wants to interact with 
+// The shopkeeper interface is displayed when the merc wants to interact with
 // the various store clerks scattered through out the game.
 
-STR16 SKI_Text[ ] = 
+STR16 SKI_Text[ ] =
 {
 	L"库存商品",	//"MERCHANDISE IN STOCK",	//Header for the merchandise available
 	L"页面",			//"PAGE",	//The current store inventory page being displayed
@@ -6110,8 +6138,8 @@ STR16	SkiAtmText[] =
 
 
 //Shopkeeper Interface
-STR16	gzSkiAtmText[] = 
-{	
+STR16	gzSkiAtmText[] =
+{
 
 	// Text on the bank machine panel that....
 	L"选择类型",			//"Select Type",	// tells the user to select either to give or take from the merc
@@ -6140,7 +6168,7 @@ STR16	SkiMessageBoxText[] =
 
 //OptionScreen.c
 
-STR16	zOptionsText[] = 
+STR16	zOptionsText[] =
 {
 	//button Text
 	L"保存游戏",	//"Save Game",
@@ -6149,6 +6177,9 @@ STR16	zOptionsText[] =
 	L"下一页", //L"Next",
 	L"上一页", //L"Prev",
 	L"完成",	//"Done",
+	L"1.13 特征功能",	//L"1.13 Features",
+	L"特征选项",	//L"New in 1.13",
+	L"选项",	//L"Options",
 
 	//Text above the slider bars
 	L"特效",	//"Effects",
@@ -6161,9 +6192,157 @@ STR16	zOptionsText[] =
 	L"你必须选择“语音”和“对话显示”中的至少一项。",
 };
 
+STR16	z113FeaturesScreenText[] =
+{
+	L"1.13 特征功能",	//L"1.13 FEATURE TOGGLES",
+	L"在游戏中更改这些选项将影响您的游戏体验。",	//L"Changing these settings during a campaign will affect your experience.",
+	L"将鼠标悬停在功能按钮上以获得更多信息。某些功能需要在JA2_Options.ini（或其他文件）中设置。",	//L"Hover over a feature to display more information. Some features may be configurable in JA2_Options.ini (or other specified file).",
+};
 
-//SaveLoadScreen 
-STR16			zSaveLoadText[] = 
+STR16	z113FeaturesToggleText[] =
+{
+	L"开启特征功能",	//L"Use These Overrides",
+	L"新NCTH瞄准系统",	//L"New Chance to Hit",
+	L"物品全掉功能",	//L"Enemies Drop All",
+	L"物品全掉功能(物品几率损坏)",	//L"Enemies Drop All (Damaged)",
+	L"火力压制功能",	//L"Suppression Fire",
+	L"女王反击Drassen功能",	//L"Drassen Counterattack",
+	L"女王反击所有城镇功能",	//L"City Counterattacks",
+	L"女王多次反击功能",	//L"Multiple Counterattacks",
+	L"情报功能",	//L"Intel",
+	L"俘虏功能",	//L"Prisoners",
+	L"矿井管理功能",	//L"Mines Require Workers",
+	L"敌军伏击功能",	//L"Enemy Ambushes",
+	L"女王刺客功能",	//L"Enemy Assassins",
+	L"敌军角色功能",	//L"Enemy Roles",
+	L"敌军角色功能：医生",	//L"Enemy Role: Medic",
+	L"敌军角色功能：军官",	//L"Enemy Role: Officer",
+	L"敌军角色功能：将军",	//L"Enemy Role: General",
+	L"Kerberus安保公司功能",	//L"Kerberus",
+	L"食物系统",	//L"Mercs Need Food",
+	L"疾病系统",	//L"Disease",
+	L"动态观点功能",	//L"Dynamic Opinions",
+	L"动态对话功能",	//L"Dynamic Dialogue",
+	L"敌军战略司令部功能",	//L"Arulco Strategic Division",
+	L"敌军直升机功能",	//L"ASD: Helicopters",
+	L"敌军战斗车功能",	//L"Enemy Vehicles Can Move",
+	L"僵尸系统",	//L"Zombies",
+	L"血猫袭击功能",	//L"Bloodcat Raids",
+	L"土匪袭击功能",	//L"Bandit Raids",
+	L"僵尸袭击功能",	//L"Zombie Raids",
+	L"民兵储备功能",	//L"Militia Volunteer Pool",
+	L"民兵战术命令功能",	//L"Tactical Militia Command",
+	L"民兵战略命令功能",	//L"Strategic Militia Command",
+	L"民兵武装装备功能",	//L"Militia Uses Sector Equipment",
+	L"民兵需要资源功能",	//L"Militia Requires Resources",
+	L"强化近战功能",	//L"Enhanced Close Combat",
+	L"新中断功能",	//L"Improved Interrupt System",
+	L"武器过热功能",	//L"Weapon Overheating",	
+	L"天气功能：下雨",	//L"Weather: Rain",
+	L"天气功能：闪电",	//L"Weather: Lightning",
+	L"天气功能：沙尘暴",	//L"Weather: Sandstorms",
+	L"天气功能：暴风雪",	//L"Weather: Snow",
+	L"随机事件功能",	//L"Mini Events",
+	L"反抗军司令部功能",	//L"Arulco Rebel Command",
+};
+
+STR16	z113FeaturesHelpText[] =
+{
+	L"|开|启|特|征|功|能\n \n允许以下功能覆盖JA2_Options.ini中的设置。\n \n将鼠标悬停在按钮上查看具体替换的项目内容。\n \n如果禁用此选项功能将以JA2_Options.ini中设置为准。\n \n",	//L"|U|s|e |T|h|e|s|e |O|v|e|r|r|i|d|e|s\n \nAllow this screen to override some feature toggles present in JA2_Options.ini.\nHover over a feature to see which flag is overridden.\nThese toggles have no effect if this option is disabled.",
+	L"|新|N|C|T|H|瞄|准|系|统\n \n覆盖 [Tactical Gameplay Settings] NCTH\n \n启用新命中系统。\n \n详细的内容设定请查看CTHConstants.ini。\n \n",	   //L"|N|C|T|H\nOverrides [Tactical Gameplay Settings] NCTH\n \nUse the new chance to hit system.\n \nFor tweakable values, see CTHConstants.ini.",	
+	L"|敌|人|物|品|全|掉|功|能\n \n覆盖 [Tactical Difficulty Settings] DROP_ALL\n \n敌人死亡时会掉落所有物品。\n \n不能同\"物品全掉功能（物品几率损坏）\"一起使用。\n \n",	//L"|E|n|e|m|i|e|s |D|r|o|p |E|v|e|r|y|t|h|i|n|g\nOverrides [Tactical Difficulty Settings] DROP_ALL\n \nEnemies drop all of their gear when killed.\n \nNot compatible with Enemies Drop All (Damaged).",
+	L"|敌|人|物|品|全|掉|功|能|（|物|品|几|率|损|坏|）\n \n覆盖 [Tactical Difficulty Settings] DROP_ALL\n \n敌人死亡时会掉落所有的物品，并且所掉落的物品有几率会严重损坏。\n \n不能同\"物品全掉功能\"一起使用。\n \n",	//L"|E|n|e|m|i|e|s |D|r|o|p |E|v|e|r|y|t|h|i|n|g |(|D|a|m|a|g|e|d|)\nOverrides [Tactical Difficulty Settings] DROP_ALL\n \nEnemies drop all of their gear when killed, but things that would normally not be dropped are severely damaged.\n \nNot compatible with Enemies Drop All.",	
+	L"|火|力|压|制|功|能\n \n覆盖 [Tactical Suppression Fire Settings] SUPPRESSION_EFFECTIVENESS\n \n角色会逐渐受到压制损失一定比例的AP。\n \n有关配置选项，请参阅[Tactical Suppression Fire Settings]。\n \n",	//L"|S|u|p|p|r|e|s|s|i|o|n |F|i|r|e\nOverrides [Tactical Suppression Fire Settings] SUPPRESSION_EFFECTIVENESS\n \nCombatants can be affected by suppression and shock.\n \nFor configurable options, see [Tactical Suppression Fire Settings].",	
+	L"|女|王|反|击|D|r|a|s|s|e|n|功|能\n \n覆盖 [Strategic Event Settings] TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN\n \n女王向Drassen城发起了大规模反击。\n \n",	//L"|D|r|a|s|s|e|n |C|o|u|n|t|e|r|a|t|t|a|c|k\nOverrides [Strategic Event Settings] TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN\n \nThe Queen sends a massive counterattack to Drassen.",	
+	L"|女|王|反|击|所|有|城|镇|功|能\n \n覆盖 [Strategic Event Settings] AGGRESSIVE_STRATEGIC_AI\n \n女王可以向所有城镇发动大规模反击。\n \n不能同\"女王多次反击功能\"一起使用。\n \n",	//	L"|C|i|t|y |C|o|u|n|t|e|r|a|t|t|a|c|k|s\nOverrides [Strategic Event Settings] AGGRESSIVE_STRATEGIC_AI\n \nThe Queen can send a massive counterattack to cities other than Drassen.\n \nNot compatible with Multiple Counterattacks.",
+	L"|女|王|多|次|反|击|功|能\n \n覆盖 [Strategic Event Settings] AGGRESSIVE_STRATEGIC_AI\n \n女王可以向所有城镇发动大规模反击。\n \n这可能会发生多次反击。\n \n这会使游戏变得更难。\n \n",	//L"|M|u|l|t|i|p|l|e |C|o|u|n|t|e|r|a|t|t|a|c|k|s\nOverrides [Strategic Event Settings] AGGRESSIVE_STRATEGIC_AI\n \nThe Queen can send massive counterattacks to cities other than Drassen.\nThis can occur multiple times.\n \nThis is a harder variant of City Counterattacks.",
+	L"|情|报|功|能\n \n覆盖 [Intel Settings] RESOURCE_INTEL\n \n通过一些秘密行动获得的新资源。\n \n",	//L"|I|n|t|e|l\nOverrides [Intel Settings] RESOURCE_INTEL\n \nA new resource gained through covert means.",
+	L"|俘|虏|功|能\n \n覆盖 [Strategic Gameplay Settings] ALLOW_TAKE_PRISONERS\n \n允许俘虏敌军并审问他们。\n \n配置选项：\nENEMY_CAN_SURRENDER\nDISPLAY_SURRENDER_VALUES\nSURRENDER_MULTIPLIER\nPRISONER_RETURN_TO_ARMY_CHANCE\nPRISONER_DEFECT_CHANCE\nPRISONER_INTEL_CHANCE\nPRISONER_RANSOM_CHANCE\nPRISONER_INTERROGATION_POINTS_ADMIN\nPRISONER_INTERROGATION_POINTS_REGULAR\nPRISONER_INTERROGATION_POINTS_ELITE\nPRISONER_INTERROGATION_POINTS_OFFICER\nPRISONER_INTERROGATION_POINTS_GENERAL\nPRISONER_INTERROGATION_POINTS_CIVILIAN\n \n",   //L"|P|r|i|s|o|n|e|r|s\nOverrides [Strategic Gameplay Settings] ALLOW_TAKE_PRISONERS\n \nCapture enemy soldiers and interrogate them.\n \nConfigurable Options:\nENEMY_CAN_SURRENDER\nDISPLAY_SURRENDER_VALUES\nSURRENDER_MULTIPLIER\nPRISONER_RETURN_TO_ARMY_CHANCE\nPRISONER_DEFECT_CHANCE\nPRISONER_INTEL_CHANCE\nPRISONER_RANSOM_CHANCE\nPRISONER_INTERROGATION_POINTS_ADMIN\nPRISONER_INTERROGATION_POINTS_REGULAR\nPRISONER_INTERROGATION_POINTS_ELITE\nPRISONER_INTERROGATION_POINTS_OFFICER\nPRISONER_INTERROGATION_POINTS_GENERAL\nPRISONER_INTERROGATION_POINTS_CIVILIAN",
+	L"|矿|井|管|理|功|能\n \n覆盖 [Financial Settings] MINE_REQUIRES_WORKERS\n \n矿井需要培训工人。\n \n配置选项：\nWORKERRATE_PRESENT_INITIALLY\nWORKER_TRAINING_COST\nWORKER_TRAINING_POINTS\n \n",	//L"|M|i|n|e|s |R|e|q|u|i|r|e |W|o|r|k|e|r|s\nOverrides [Financial Settings] MINE_REQUIRES_WORKERS\n \nMines require workers to operate.\n \nConfigurable Options:\nWORKERRATE_PRESENT_INITIALLY\nWORKER_TRAINING_COST\nWORKER_TRAINING_POINTS",
+	L"|敌|军|伏|击|功|能\n \n覆盖 [Tactical Difficulty Settings] ENABLE_CHANCE_OF_ENEMY_AMBUSHES\n \n允许敌人伏击玩家的小队。\n \n配置选项：\nENEMY_AMBUSHES_CHANCE_MODIFIER\nAMBUSH_MERCS_SPREAD\nAMBUSH_MERCS_SPREAD_RADIUS\nAMBUSH_ENEMY_ENCIRCLEMENT\nAMBUSH_ENEMY_ENCIRCLEMENT_RADIUS1\nAMBUSH_ENEMY_ENCIRCLEMENT_RADIUS2\n \n",	//L"|E|n|e|m|y |A|m|b|u|s|h|e|s\nOverrides [Tactical Difficulty Settings] ENABLE_CHANCE_OF_ENEMY_AMBUSHES\n \nEnemy forces can ambush your mercs as they move in the strategic view.\n \nConfigurable Options:\nENEMY_AMBUSHES_CHANCE_MODIFIER\nAMBUSH_MERCS_SPREAD\nAMBUSH_MERCS_SPREAD_RADIUS\nAMBUSH_ENEMY_ENCIRCLEMENT\nAMBUSH_ENEMY_ENCIRCLEMENT_RADIUS1\nAMBUSH_ENEMY_ENCIRCLEMENT_RADIUS2",
+	L"|女|王|刺|客|功|能\n \n覆盖 [Tactical Difficulty Settings] ENEMY_ASSASSINS\n \n女王将派刺客潜入你的民兵中。\n \n需要使用\"新技能系统\"。\n \n配置选项：\nASSASSIN_MINIMUM_PROGRESS\nASSASSIN_MINIMUM_MILITIA\nASSASSIN_PROPABILITY_MODIFIER\n \n",	//L"|E|n|e|m|y |A|s|s|a|s|s|i|n|s\nOverrides [Tactical Difficulty Settings] ENEMY_ASSASSINS\n \nAssassins can infiltrate your militia.\nRequires the new trait system.\n \nConfigurable Options:\nASSASSIN_MINIMUM_PROGRESS\nASSASSIN_MINIMUM_MILITIA\nASSASSIN_PROPABILITY_MODIFIER",
+	L"|敌|军|角|色|功|能\n \n覆盖 [Tactical Enemy Role Settings] ENEMYROLES\n \n允许敌军扮演多种角色并获得一些能力。\n \n配置选项：\nENEMYROLES_TURNSTOUNCOVER\n \n",	//L"|E|n|e|m|y |R|o|l|e|s\nOverrides [Tactical Enemy Role Settings] ENEMYROLES\n \nSpecialists can appear in enemy groups.\n \nConfigurable Options:\nENEMYROLES_TURNSTOUNCOVER",
+	L"|敌|军|角|色|功|能|：|医|生\n \n覆盖 [Tactical Enemy Role Settings] ENEMY_MEDICS\n \n医疗兵将出现在敌军角色中。\n \n需要开启\"敌军角色功能\"。\n \n配置选项：\nENEMY_MEDICS_MEDKITDRAINFACTOR\nENEMY_MEDICS_SEARCHRADIUS\nENEMY_MEDICS_WOUND_MINAMOUNT\nENEMY_MEDICS_HEAL_SELF\n \n",	//L"|E|n|e|m|y |R|o|l|e|: |M|e|d|i|c\nOverrides [Tactical Enemy Role Settings] ENEMY_MEDICS\n \nMedics can appear in enemy groups.\nRequires the Enemy Roles feature to be enabled.\n \nConfigurable Options:\nENEMY_MEDICS_MEDKITDRAINFACTOR\nENEMY_MEDICS_SEARCHRADIUS\nENEMY_MEDICS_WOUND_MINAMOUNT\nENEMY_MEDICS_HEAL_SELF",
+	L"|敌|军|角|色|功|能|：|军|官\n \n覆盖 [Tactical Enemy Role Settings] ENEMY_OFFICERS\n \n军官将出现在敌军角色中。\n \n需要开启\"敌军角色功能\"。\n \n配置选项：\nENEMY_OFFICERS_REQUIREDTEAMSIZE\nENEMY_OFFICERS_MAX\nENEMY_OFFICERS_SUPPRESSION_RESISTANCE_BONUS\nENEMY_OFFICERS_MORALE_MODIFIER\nENEMY_OFFICERS_SURRENDERSTRENGTHBONUS\n \n",	//L"|E|n|e|m|y |R|o|l|e|: |O|f|f|i|c|e|r\nOverrides [Tactical Enemy Role Settings] ENEMY_OFFICERS\n \nOfficers can appear in enemy groups.\nRequires the Enemy Roles feature to be enabled.\n \nConfigurable Options:\nENEMY_OFFICERS_REQUIREDTEAMSIZE\nENEMY_OFFICERS_MAX\nENEMY_OFFICERS_SUPPRESSION_RESISTANCE_BONUS\nENEMY_OFFICERS_MORALE_MODIFIER\nENEMY_OFFICERS_SURRENDERSTRENGTHBONUS",
+	L"|敌|军|角|色|功|能|：|将|军\n \n覆盖 [Tactical Enemy Role Settings] ENEMY_GENERALS\n \n将军会提高敌人的战略移动和决策速度。\n \n需要开启\"敌军角色功能\"。\n \n配置选项：\nENEMY_GENERALS_NUMBER\nENEMY_GENERALS_BODYGUARDS_NUMBER\nENEMY_GENERALS_STRATEGIC_DECISION_SPEEDBONUS\nENEMY_GENERALS_STRATEGIC_MOVEMENT_SPEEDBONUS\n \n",	//L"|E|n|e|m|y |R|o|l|e|: |G|e|n|e|r|a|l\nOverrides [Tactical Enemy Role Settings] ENEMY_GENERALS\n \nGenerals increase enemy strategic movement and decision speeds.\nRequires the Enemy Roles feature to be enabled.\n \nConfigurable Options:\nENEMY_GENERALS_NUMBER\nENEMY_GENERALS_BODYGUARDS_NUMBER\nENEMY_GENERALS_STRATEGIC_DECISION_SPEEDBONUS\nENEMY_GENERALS_STRATEGIC_MOVEMENT_SPEEDBONUS",
+	L"|K|e|r|b|e|r|u|s|安|保|公|司|功|能\n \n覆盖 [PMC Settings] PMC\n \n一家私人军事承包商,允许玩家雇佣安保力量。\n \n配置选项：\nPMC_MAX_REGULARS\nPMC_MAX_VETERANS\n \n",	//L"|K|e|r|b|e|r|u|s\nOverrides [PMC Settings] PMC\n \nHire militia from a private military company.\n \nConfigurable Options:\nPMC_MAX_REGULARS\nPMC_MAX_VETERANS",
+	L"|食|物|系|统\n \n覆盖 [Tactical Food Settings] FOOD\n \n你的佣兵需要食物和水才能生存。\n \n配置选项：\nFOOD_DIGESTION_HOURLY_BASE_FOOD\nFOOD_DIGESTION_HOURLY_BASE_DRINK\nFOOD_DIGESTION_SLEEP\nFOOD_DIGESTION_TRAVEL_VEHICLE\nFOOD_DIGESTION_TRAVEL\nFOOD_DIGESTION_ASSIGNMENT\nFOOD_DIGESTION_ONDUTY\nFOOD_DIGESTION_COMBAT\nFOOD_DECAY_IN_SECTORS\nFOOD_DECAY_MODIFICATOR\nFOOD_EATING_SOUNDS\n \n",	//L"|F|o|o|d\nOverrides [Tactical Food Settings] FOOD\n \nYour mercs require food and water to survive.\n \nConfigurable Options:\nFOOD_DIGESTION_HOURLY_BASE_FOOD\nFOOD_DIGESTION_HOURLY_BASE_DRINK\nFOOD_DIGESTION_SLEEP\nFOOD_DIGESTION_TRAVEL_VEHICLE\nFOOD_DIGESTION_TRAVEL\nFOOD_DIGESTION_ASSIGNMENT\nFOOD_DIGESTION_ONDUTY\nFOOD_DIGESTION_COMBAT\nFOOD_DECAY_IN_SECTORS\nFOOD_DECAY_MODIFICATOR\nFOOD_EATING_SOUNDS",
+	L"|疾|病|系|统\n \n覆盖 [Disease Settings] DISEASE\n \n你的佣兵会生病。\n \n配置选项：\nDISEASE_STRATEGIC\nDISEASE_WHO_SUBSCRIPTIONCOST\nDISEASE_CONTAMINATES_ITEMS\nDISEASE_SEVERE_LIMITATIONS\n \n",	//L"|D|i|s|e|a|s|e\nOverrides [Disease Settings] DISEASE\n \nYour mercs can catch diseases.\n \nConfigurable Options:\nDISEASE_STRATEGIC\nDISEASE_WHO_SUBSCRIPTIONCOST\nDISEASE_CONTAMINATES_ITEMS\nDISEASE_SEVERE_LIMITATIONS",
+	L"|动|态|观|点|功|能\n \n覆盖 [Dynamic Opinion Settings] DYNAMIC_OPINIONS\n \n佣兵可以互相发表意见，影响士气。\n \n配置选项：\nDYNAMIC_OPINIONS_SHOWCHANGE\nWAGE_ACCEPTANCE_FACTOR\n \n请查看Morale_Settings.ini文件中的[Dynamic Opinion Modifiers Settings]内容。\n \n",	//L"|D|y|n|a|m|i|c |O|p|i|n|i|o|n|s\nOverrides [Dynamic Opinion Settings] DYNAMIC_OPINIONS\n \nMercs can form dynamic opinions of each other, affecting morale.\n \nConfigurable Options:\nDYNAMIC_OPINIONS_SHOWCHANGE\nWAGE_ACCEPTANCE_FACTOR\nSee [Dynamic Opinion Modifiers Settings] in Morale_Settings.ini.",
+	L"|动|态|对|话|功|能\n \n覆盖 [Dynamic Dialogue Settings] DYNAMIC_DIALOGUE\n \n佣兵可以发表简短的评论，改变彼此之间的关系。\n \n要求\"动态观点功能\"处于开启状态。\n \n配置选项：\nDYNAMIC_DIALOGUE_TIME_OFFSET\n \n",	//L"|D|y|n|a|m|i|c |D|i|a|l|o|g|u|e\nOverrides [Dynamic Dialogue Settings] DYNAMIC_DIALOGUE\n \nMercs can make brief comments, changing their relationship to each other.\nRequires the Dynamic Opinions feature to be active.\n \nConfigurable Options:\nDYNAMIC_DIALOGUE_TIME_OFFSET",	
+	L"|敌|军|战|略|司|令|部|功|能\n \n覆盖 [Strategic Additional Enemy AI Settings] ASD_ACTIVE\n \n女王将获得机械化部队。\n \n配置选项：\nASD_COST_FUEL/JEEP/TANK/ROBOT\nASD_TIME_FUEL/JEEP/TANK/ROBOT\nASD_ASSIGNS_JEEPS/TANKS/ROBOTS\nASD_FUEL_REQUIRED_JEEP/TANK/ROBOT\nJEEP_MINIMUM_PROGRESS\nTANK_MINIMUM_PROGRESS\nROBOT_MINIMUM_PROGRESS\n \n",	//L"|A|S|D\nOverrides [Strategic Additional Enemy AI Settings] ASD_ACTIVE\n \nThe Arulcan army gains mechanised forces.\n \nConfigurable Options:\nASD_COST_FUEL/JEEP/TANK/ROBOT\nASD_TIME_FUEL/JEEP/TANK/ROBOT\nASD_ASSIGNS_JEEPS/TANKS/ROBOTS\nASD_FUEL_REQUIRED_JEEP/TANK/ROBOT\nJEEP_MINIMUM_PROGRESS\nTANK_MINIMUM_PROGRESS\nROBOT_MINIMUM_PROGRESS",
+	L"|敌|军|直|升|机|功|能\n \n覆盖 [Enemy Helicopter Settings] ENEMYHELI_ACTIVE\n \n女王将使用直升机快速部署部队。\n \n需要开启\"敌军战略司令部功能\"。\n \n配置选项：\nASD_COST_HELI\nASD_TIME_HELI\nENEMYHELI_DEFINITE_UNLOCK_AT_PROGRESS\nENEMYHELI_HP\nENEMYHELI_HP_REPAIRTIME\nENEMYHELI_HP_COST\nENEMYHELI_FUEL\nENEMYHELI_FUEL_REFUELTIME\n \n",	//L"|A|S|D |H|e|l|i|c|o|p|t|e|r|s\nOverrides [Enemy Helicopter Settings] ENEMYHELI_ACTIVE\n \nThe AI can use helicopters to deploy troops.\nRequires the Arulco Special Division feature to be enabled.\n \nConfigurable Options:\nASD_COST_HELI\nASD_TIME_HELI\nENEMYHELI_DEFINITE_UNLOCK_AT_PROGRESS\nENEMYHELI_HP\nENEMYHELI_HP_REPAIRTIME\nENEMYHELI_HP_COST\nENEMYHELI_FUEL\nENEMYHELI_FUEL_REFUELTIME",
+	L"|敌|军|战|斗|车|功|能\n \n覆盖 [Tactical Gameplay Settings] ENEMY_TANKS_CAN_MOVE_IN_TACTICAL\n \n敌军的战斗吉普车和坦克可以在战斗中移动。\n \n配置选项：\nALLOW_TANKS_DRIVING_OVER_PEOPLE\nTANKS_RAMMING_MAX_STRUCTURE_ARMOUR\nENEMY_JEEP_RAMMING_MAX_STRUCTURE_ARMOUR\n \n",	//L"|E|n|e|m|y |V|e|h|i|c|l|e|s |C|a|n |M|o|v|e\nOverrides [Tactical Gameplay Settings] ENEMY_TANKS_CAN_MOVE_IN_TACTICAL\n \nHostile jeeps and tanks can move in combat.\n \nConfigurable Options:\nALLOW_TANKS_DRIVING_OVER_PEOPLE\nTANKS_RAMMING_MAX_STRUCTURE_ARMOUR\nENEMY_JEEP_RAMMING_MAX_STRUCTURE_ARMOUR",
+	L"|僵|尸|系|统\n \n覆盖选项中的\"僵尸模式\"。\n \n生化危机！九死一生！\n \n配置选项：\nZOMBIE_RISE_BEHAVIOUR\nZOMBIE_SPAWN_WAVES\nZOMBIE_RISE_WAVE_FREQUENCY\nZOMBIE_CAN_CLIMB\nZOMBIE_CAN_JUMP_WINDOWS\nZOMBIE_EXPLODING_CIVS\nZOMBIE_DAMAGE_RESISTANCE\nZOMBIE_BREATH_DAMAGE_RESISTANCE\nZOMBIE_ONLY_HEADSHOTS_WORK\nZOMBIE_DIFFICULTY_LEVEL\nZOMBIE_RISE_WITH_ARMOUR\nZOMBIE_ONLY_HEADSHOTS_PERMANENTLY_KILL\n \n",	//L"|Z|o|m|b|i|e|s\nOverrides the \"Allow Zombies\" toggle in the options menu.\n \nThe dead walk!\n \nConfigurable Options:\nZOMBIE_RISE_BEHAVIOUR\nZOMBIE_SPAWN_WAVES\nZOMBIE_RISE_WAVE_FREQUENCY\nZOMBIE_CAN_CLIMB\nZOMBIE_CAN_JUMP_WINDOWS\nZOMBIE_EXPLODING_CIVS\nZOMBIE_DAMAGE_RESISTANCE\nZOMBIE_BREATH_DAMAGE_RESISTANCE\nZOMBIE_ONLY_HEADSHOTS_WORK\nZOMBIE_DIFFICULTY_LEVEL\nZOMBIE_RISE_WITH_ARMOUR\nZOMBIE_ONLY_HEADSHOTS_PERMANENTLY_KILL",
+	L"|血|猫|袭|击|功|能\n \n覆盖 [Raid Settings] RAID_BLOODCATS\n \n血猫将对你发动夜袭。\n \n配置选项：\nRAID_MAXSIZE_BLOODCATS\nRAID_MAXATTACKSPERNIGHT_BLOODCATS\n \n",	//L"|B|l|o|o|d|c|a|t |R|a|i|d|s\nOverrides [Raid Settings] RAID_BLOODCATS\n \nHungry predators stalk the night.\n \nConfigurable Options:\nRAID_MAXSIZE_BLOODCATS\nRAID_MAXATTACKSPERNIGHT_BLOODCATS",
+	L"|土|匪|袭|击|功|能\n \n覆盖 [Raid Settings] RAID_BANDITS\n \n土匪将伺机对你的城镇发动袭击。\n \n配置选项：\nRAID_MAXSIZE_BANDITS\nRAID_MAXATTACKSPERNIGHT_BANDITS\n \n",	//L"|B|a|n|d|i|t |R|a|i|d|s\nOverrides [Raid Settings] RAID_BANDITS\n \nOpportunistic bandits may attack your towns.\n \nConfigurable Options:\nRAID_MAXSIZE_BANDITS\nRAID_MAXATTACKSPERNIGHT_BANDITS",
+	L"|僵|尸|袭|击|功|能\n \n覆盖 [Raid Settings] RAID_ZOMBIES\n \n丧尸突袭！\n \n需要开启\"僵尸系统\"。\n \n配置选项：\nRAID_MAXSIZE_ZOMBIES\nRAID_MAXATTACKSPERNIGHT_ZOMBIES\n \n",	//L"|Z|o|m|b|i|e |R|a|i|d|s\nOverrides [Raid Settings] RAID_ZOMBIES\n \nThe dead raid!\nRequires the Zombies feature to be enabled.\n \nConfigurable Options:\nRAID_MAXSIZE_ZOMBIES\nRAID_MAXATTACKSPERNIGHT_ZOMBIES",
+	L"|民|兵|储|备|功|能\n \n覆盖 [Militia Volunteer Pool Settings] MILITIA_VOLUNTEER_POOL\n \n没有志愿者就不能训练民兵。\n \n配置选项：\nMILITIA_VOLUNTEER_POOL_GAINFACTOR_LIBERATION\nMILITIA_VOLUNTEER_POOL_MULTIPLIER_FARM\nMILITIA_VOLUNTEER_POOL_GAINFACTOR_HOURLY\n \n",	//L"|M|i|l|i|t|i|a |V|o|l|u|n|t|e|e|r |P|o|o|l\nOverrides [Militia Volunteer Pool Settings] MILITIA_VOLUNTEER_POOL\n \nVolunteers are required to train militia.\n \nConfigurable Options:\nMILITIA_VOLUNTEER_POOL_GAINFACTOR_LIBERATION\nMILITIA_VOLUNTEER_POOL_MULTIPLIER_FARM\nMILITIA_VOLUNTEER_POOL_GAINFACTOR_HOURLY",
+	L"|民|兵|战|术|命|令|功|能\n \n覆盖 [Tactical Interface Settings] ALLOW_TACTICAL_MILITIA_COMMAND\n \n允许在战术界面对佣兵下达战术命令。\n \n",	//L"|T|a|c|t|i|c|a|l |M|i|l|i|t|i|a |C|o|m|m|a|n|d\nOverrides [Tactical Interface Settings] ALLOW_TACTICAL_MILITIA_COMMAND\n \nIssue commands to militia in tactical view.",	
+	L"|民|兵|战|略|命|令|功|能\n \n覆盖 [Militia Strategic Movement Settings] ALLOW_MILITIA_STRATEGIC_COMMAND\n \n允许在战略界面对民兵下达移动命令。\n \n配置选项：\nMILITIA_STRATEGIC_COMMAND_REQUIRES_MERC\n \n",	//L"|S|t|r|a|t|e|g|i|c |M|i|l|i|t|i|a |C|o|m|m|a|n|d\nOverrides [Militia Strategic Movement Settings] ALLOW_MILITIA_STRATEGIC_COMMAND\n \nIssue commands to militia in the strategic map.\n \nConfigurable Options:\nMILITIA_STRATEGIC_COMMAND_REQUIRES_MERC",
+	L"|民|兵|武|装|装|备|功|能\n \n覆盖 [Militia Equipment Settings] MILITIA_USE_SECTOR_EQUIPMENT\n \n民兵的武器装备需要从当前区域获取。\n \n与\"民兵需要资源功能\"不兼容。\n \n配置选项：\nMILITIA_USE_SECTOR_EQUIPMENT_ARMOUR\nMILITIA_USE_SECTOR_EQUIPMENT_FACE\nMILITIA_USE_SECTOR_EQUIPMENT_MELEE\nMILITIA_USE_SECTOR_EQUIPMENT_GUN\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO\nMILITIA_USE_SECTOR_EQUIPMENT_GUN_ATTACHMENTS\nMILITIA_USE_SECTOR_EQUIPMENT_GRENADE\nMILITIA_USE_SECTOR_EQUIPMENT_LAUNCHER\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_MIN\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_MAX\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_OPTIMAL_MAG_COUNT\nMILITIA_USE_SECTOR_EQUIPMENT_CLASS_SPECIFIC_TABOOS\n \n",	//L"|M|i|l|i|t|i|a |U|s|e|s |S|e|c|t|o|r |E|q|u|i|p|m|e|n|t\nOverrides [Militia Equipment Settings] MILITIA_USE_SECTOR_EQUIPMENT\n \nMilitia uses gear from their current sector.\nNot compatible with the Militia Requires Resources feature.\n \nConfigurable Options:\nMILITIA_USE_SECTOR_EQUIPMENT_ARMOUR\nMILITIA_USE_SECTOR_EQUIPMENT_FACE\nMILITIA_USE_SECTOR_EQUIPMENT_MELEE\nMILITIA_USE_SECTOR_EQUIPMENT_GUN\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO\nMILITIA_USE_SECTOR_EQUIPMENT_GUN_ATTACHMENTS\nMILITIA_USE_SECTOR_EQUIPMENT_GRENADE\nMILITIA_USE_SECTOR_EQUIPMENT_LAUNCHER\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_MIN\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_MAX\nMILITIA_USE_SECTOR_EQUIPMENT_AMMO_OPTIMAL_MAG_COUNT\nMILITIA_USE_SECTOR_EQUIPMENT_CLASS_SPECIFIC_TABOOS",	
+	L"|民|兵|需|要|资|源|功|能\n \n覆盖 [Militia Resource Settings] MILITIA_REQUIRE_RESOURCES\n \n训练和升级民兵需要消耗资源。\n \n与\"民兵武装装备功能\"不兼容。\n \n配置选项：\nMILITIA_RESOURCES_PROGRESSFACTOR\nMILITIA_RESOURCES_ITEMCLASSMOD_AMMO_BULLET\nMILITIA_RESOURCES_ITEMCLASSMOD_GUN\nMILITIA_RESOURCES_ITEMCLASSMOD_ARMOUR\nMILITIA_RESOURCES_ITEMCLASSMOD_MELEE\nMILITIA_RESOURCES_ITEMCLASSMOD_BOMB\nMILITIA_RESOURCES_ITEMCLASSMOD_GRENADE\nMILITIA_RESOURCES_ITEMCLASSMOD_FACE\nMILITIA_RESOURCES_ITEMCLASSMOD_LBE\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_LOW\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_MEDIUM\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_HIGH\nMILITIA_RESOURCES_WEAPONMOD_PISTOL\nMILITIA_RESOURCES_WEAPONMOD_M_PISTOL\nMILITIA_RESOURCES_WEAPONMOD_SMG\nMILITIA_RESOURCES_WEAPONMOD_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_SN_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_AS_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_LMG\nMILITIA_RESOURCES_WEAPONMOD_SHOTGUN\n \n",	//L"|M|i|l|i|t|i|a |R|e|q|u|i|r|e|s |R|e|s|o|u|r|c|e|s\nOverrides [Militia Resource Settings] MILITIA_REQUIRE_RESOURCES\n \nMilitia require resources to be trained.\nNot compatible with the Militia Uses Sector Equipment feature.\n \nConfigurable Options:\nMILITIA_RESOURCES_PROGRESSFACTOR\nMILITIA_RESOURCES_ITEMCLASSMOD_AMMO_BULLET\nMILITIA_RESOURCES_ITEMCLASSMOD_GUN\nMILITIA_RESOURCES_ITEMCLASSMOD_ARMOUR\nMILITIA_RESOURCES_ITEMCLASSMOD_MELEE\nMILITIA_RESOURCES_ITEMCLASSMOD_BOMB\nMILITIA_RESOURCES_ITEMCLASSMOD_GRENADE\nMILITIA_RESOURCES_ITEMCLASSMOD_FACE\nMILITIA_RESOURCES_ITEMCLASSMOD_LBE\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_LOW\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_MEDIUM\nMILITIA_RESOURCES_ITEMCLASSMOD_ATTACHMENT_HIGH\nMILITIA_RESOURCES_WEAPONMOD_PISTOL\nMILITIA_RESOURCES_WEAPONMOD_M_PISTOL\nMILITIA_RESOURCES_WEAPONMOD_SMG\nMILITIA_RESOURCES_WEAPONMOD_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_SN_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_AS_RIFLE\nMILITIA_RESOURCES_WEAPONMOD_LMG\nMILITIA_RESOURCES_WEAPONMOD_SHOTGUN",
+	L"|强|化|近|战|功|能\n \n覆盖 [Tactical Gameplay Settings] ENHANCED_CLOSE_COMBAT_SYSTEM\n \n对近战系统的全面改进。\n \n",	//L"|E|n|h|a|n|c|e|d |C|l|o|s|e |C|o|m|b|a|t\nOverrides [Tactical Gameplay Settings] ENHANCED_CLOSE_COMBAT_SYSTEM\n \nA general improvement to the close combat system.",
+	L"|新|中|断|功|能\n \n覆盖 [Tactical Gameplay Settings] IMPROVED_INTERRUPT_SYSTEM\n \n对中断机制的全面改进。\n \n配置选项：\nBASIC_PERCENTAGE_APS_REGISTERED\nPERCENTAGE_APS_REGISTERED_PER_EXP_LEVEL\nBASIC_REACTION_TIME_LENGTH\nALLOW_COLLECTIVE_INTERRUPTS\nALLOW_INSTANT_INTERRUPTS_ON_SPOTTING\n \n",	//L"|I|m|p|r|o|v|e|d |I|n|t|e|r|r|u|p|t |S|y|s|t|e|m\nOverrides [Tactical Gameplay Settings] IMPROVED_INTERRUPT_SYSTEM\n \nAn overhaul of the interrupt mechanic.\n \nConfigurable Options:\nBASIC_PERCENTAGE_APS_REGISTERED\nPERCENTAGE_APS_REGISTERED_PER_EXP_LEVEL\nBASIC_REACTION_TIME_LENGTH\nALLOW_COLLECTIVE_INTERRUPTS\nALLOW_INSTANT_INTERRUPTS_ON_SPOTTING",	
+	L"|武|器|过|热|功|能\n \n覆盖 [Tactical Weapon Overheating Settings] OVERHEATING\n \n连续射击将导致武器过热。\n \n配置选项：\nOVERHEATING_DISPLAY_JAMPERCENTAGE\nOVERHEATING_DISPLAY_THERMOMETER_RED_OFFSET\nOVERHEATING_COOLDOWN_MODIFICATOR_LONELYBARREL\n \n",	//L"|O|v|e|r|h|e|a|t|i|n|g\nOverrides [Tactical Weapon Overheating Settings] OVERHEATING\n \nWeapons can overheat.\n \nConfigurable Options:\nOVERHEATING_DISPLAY_JAMPERCENTAGE\nOVERHEATING_DISPLAY_THERMOMETER_RED_OFFSET\nOVERHEATING_COOLDOWN_MODIFICATOR_LONELYBARREL",
+	L"|天|气|功|能|：|下|雨\n \n覆盖 [Tactical Weather Settings] ALLOW_RAIN\n \n下雨会降低能见度。\n \n配置选项：\nRAIN_EVENTS_PER_DAY\nRAIN_CHANCE_PER_DAY\nRAIN_MIN_LENGTH_IN_MINUTES\nRAIN_MAX_LENGTH_IN_MINUTES\nMAX_RAIN_DROPS\nWEAPON_RELIABILITY_REDUCTION_RAIN\nBREATH_GAIN_REDUCTION_RAIN\nVISUAL_DISTANCE_DECREASE_RAIN\nHEARING_REDUCTION_RAIN\n \n",	//L"|W|e|a|t|h|e|r|: |R|a|i|n\nOverrides [Tactical Weather Settings] ALLOW_RAIN\n \nRain can reduce visibility.\n \nConfigurable Options:\nRAIN_EVENTS_PER_DAY\nRAIN_CHANCE_PER_DAY\nRAIN_MIN_LENGTH_IN_MINUTES\nRAIN_MAX_LENGTH_IN_MINUTES\nMAX_RAIN_DROPS\nWEAPON_RELIABILITY_REDUCTION_RAIN\nBREATH_GAIN_REDUCTION_RAIN\nVISUAL_DISTANCE_DECREASE_RAIN\nHEARING_REDUCTION_RAIN",
+	L"|天|气|功|能|：|闪|电\n \n覆盖 [Tactical Weather Settings] ALLOW_LIGHTNING\n \n暴雨期间可能发生闪电。\n需要\"天气功能：下雨\"\n \n配置选项：\nMIN_INTERVAL_BETWEEN_LIGHTNINGS_IN_REAL_TIME_SECONDS\nMAX_INTERVAL_BETWEEN_LIGHTNINGS_IN_REAL_TIME_SECONDS\nMIN_INTERVAL_BETWEEN_LIGHTNING_AND_THUNDERCLAPS_IN_SECONDS\nMAX_INTERVAL_BETWEEN_LIGHTNING_AND_THUNDERCLAPS_IN_SECONDS\nDELAY_IN_SECONDS_IF_SEEN_SOMEONE_DURING_LIGHTNING_IN_TURNBASED\nCHANCE_TO_DO_LIGHTNING_BETWEEN_TURNS\nWEAPON_RELIABILITY_REDUCTION_THUNDERSTORM\nBREATH_GAIN_REDUCTION_THUNDERSTORM\nVISUAL_DISTANCE_DECREASE_THUNDERSTORM\nHEARING_REDUCTION_THUNDERSTORM\n \n",	//L"|W|e|a|t|h|e|r|: |L|i|g|h|t|n|i|n|g\nOverrides [Tactical Weather Settings] ALLOW_LIGHTNING\n \nLightning may occur during rainstorms.\nRequires Weather: Rain\n \nConfigurable Options:\nMIN_INTERVAL_BETWEEN_LIGHTNINGS_IN_REAL_TIME_SECONDS\nMAX_INTERVAL_BETWEEN_LIGHTNINGS_IN_REAL_TIME_SECONDS\nMIN_INTERVAL_BETWEEN_LIGHTNING_AND_THUNDERCLAPS_IN_SECONDS\nMAX_INTERVAL_BETWEEN_LIGHTNING_AND_THUNDERCLAPS_IN_SECONDS\nDELAY_IN_SECONDS_IF_SEEN_SOMEONE_DURING_LIGHTNING_IN_TURNBASED\nCHANCE_TO_DO_LIGHTNING_BETWEEN_TURNS\nWEAPON_RELIABILITY_REDUCTION_THUNDERSTORM\nBREATH_GAIN_REDUCTION_THUNDERSTORM\nVISUAL_DISTANCE_DECREASE_THUNDERSTORM\nHEARING_REDUCTION_THUNDERSTORM",	
+	L"|天|气|功|能|：|沙|尘|暴\n \n覆盖 [Tactical Weather Settings] ALLOW_SANDSTORMS\n \n沙尘暴会使战场变得更加困难。\n \n配置选项：\nSANDSTORM_EVENTS_PER_DAY\nSANDSTORM_CHANCE_PER_DAY\nSANDSTORM_MIN_LENGTH_IN_MINUTES\nSANDSTORM_MAX_LENGTH_IN_MINUTES\nWEAPON_RELIABILITY_REDUCTION_SANDSTORM\nBREATH_GAIN_REDUCTION_SANDSTORM\nVISUAL_DISTANCE_DECREASE_SANDSTORM\nHEARING_REDUCTION_SANDSTORM\n \n",	//L"|W|e|a|t|h|e|r|: |S|a|n|d|s|t|o|r|m|s\nOverrides [Tactical Weather Settings] ALLOW_SANDSTORMS\n \nSevere sandstorms make the battlefield more painful for everyone.\n \nConfigurable Options:\nSANDSTORM_EVENTS_PER_DAY\nSANDSTORM_CHANCE_PER_DAY\nSANDSTORM_MIN_LENGTH_IN_MINUTES\nSANDSTORM_MAX_LENGTH_IN_MINUTES\nWEAPON_RELIABILITY_REDUCTION_SANDSTORM\nBREATH_GAIN_REDUCTION_SANDSTORM\nVISUAL_DISTANCE_DECREASE_SANDSTORM\nHEARING_REDUCTION_SANDSTORM",
+	L"|天|气|功|能|：|暴|风|雪\n \n覆盖 [Tactical Weather Settings] ALLOW_SNOW\n \n暴风雪降低了能见度。\n \n配置选项：\nSNOW_EVENTS_PER_DAY\nSNOW_CHANCE_PER_DAY\nSNOW_MIN_LENGTH_IN_MINUTES\nSNOW_MAX_LENGTH_IN_MINUTES\nWEAPON_RELIABILITY_REDUCTION_SNOW\nBREATH_GAIN_REDUCTION_SNOW\nVISUAL_DISTANCE_DECREASE_SNOW\nHEARING_REDUCTION_SNOW\n \n",	//L"|W|e|a|t|h|e|r|: |S|n|o|w\nOverrides [Tactical Weather Settings] ALLOW_SNOW\n \nSnowstorms decrease visibility.\n \nConfigurable Options:\nSNOW_EVENTS_PER_DAY\nSNOW_CHANCE_PER_DAY\nSNOW_MIN_LENGTH_IN_MINUTES\nSNOW_MAX_LENGTH_IN_MINUTES\nWEAPON_RELIABILITY_REDUCTION_SNOW\nBREATH_GAIN_REDUCTION_SNOW\nVISUAL_DISTANCE_DECREASE_SNOW\nHEARING_REDUCTION_SNOW",
+	L"|随|机|事|件|功|能\n \n覆盖 [Mini Events Settings] MINI_EVENTS_ENABLED\n \n可能发生一些随机互动事件。\n \n配置选项：\nMINI_EVENTS_MIN_HOURS_BETWEEN_EVENTS\nMINI_EVENTS_MAX_HOURS_BETWEEN_EVENTS\n \n详细信息请查看MiniEvents.lua。\n \n",	//L"|M|i|n|i |E|v|e|n|t|s\nOverrides [Mini Events Settings] MINI_EVENTS_ENABLED\n \nRandom events can occur.\n \nConfigurable Options:\nMINI_EVENTS_MIN_HOURS_BETWEEN_EVENTS\nMINI_EVENTS_MAX_HOURS_BETWEEN_EVENTS\n \nSee MiniEvents.lua for more details.",
+	L"|反|抗|军|司|令|部|功|能\n \n覆盖 [Rebel Command Settings] REBEL_COMMAND_ENABLED\n \n允许你升级占领的城镇，控制反抗军在战略层面上运作。\n \n详细的内容设定请查看RebelCommand_Settings.ini。\n \n",	//L"|A|R|C\nOverrides [Rebel Command Settings] REBEL_COMMAND_ENABLED\n \nCommand the rebel movement at the strategic level, and upgrade captured towns.\n \nFor tweakable values, see RebelCommand_Settings.ini.",	
+};
+
+STR16	z113FeaturesPanelText[] =
+{
+	L"这个选项可以开启一些1.13新功能，启用后以下选项的生效优先级将高于JA2_Options.ini文件中的设置。如果禁用此项，以下选项将不生效。",	//L"Use the options here to enable some of 1.13's many features. If enabled, the toggle boxes here will take precedence over some booleans in JA2_Options.ini. If disabled, these boxes will have no effect.",
+	L"新NCTH瞄准系统对命中机制进行了全面改进，在射击时需要更复杂的计算和更多的变量。",	//L"New Chance to Hit (NCTH) is a complete overhaul of the vanilla chance-to-hit system. Compared to the vanilla system, it takes into account more variables when determining the trajectory of a fired bullet.",
+	L"如果启用敌人死亡时会掉落所有的物品，否则将使用标准掉落。",	//L"This controls whether enemies drop all of their items when they are killed. If enabled, everything is dropped. Otherwise, regular drop chances are used.",
+	L"如果启用敌人死亡时会掉落所有的物品，并且所掉落的物品有几率会严重损坏。",	//L"This controls whether enemies drop all of their items when they are killed. If enabled, everything is dropped, and the drop chances are used to determine whether an item is severely damaged.",
+	L"火力压制功能，是控制战场的一种方式。在重火力下，角色会逐渐受到压制损失一定比例的AP，在压制下会成为负数，这表示在下一回也会损失AP。若角色丧失了下一回合的全部AP，则被完全压制。压制的目的是压榨敌人的AP，让其不能移动或还击。注意，敌人也会对你这么做！",	//L"Suppression Fire is a way of controlling a battlefield. When under heavy fire, a character accumulates suppression, causing AP loss. In addition to AP loss, Suppression SHOCK can also be accumulated, which makes the character less useful - both Chance-to-Hit and chance to be hit are reduced. Characters can go into negative APs when under suppression fire, losing APs off their NEXT turn. Use suppression fire to prevent enemies from approaching, pin them down, and then advance and kill them while they are hiding. Note that they will try to do the same thing to you!",
+	L"该选项允许女王对Drassen城市进行反攻。若允许，这将使游戏的初始阶段变得困难。不建议新手玩家启用此功能！",	//L"When you first capture Drassen, the Queen actually follows through on her command to retake Drassen. This will make holding Drassen VERY difficult in the early game and enabling this option is not recommended for new players!",
+	L"该选项允许女王对所有的城市进行反攻。其他城市在你攻占后女王会大规模反击。",	//L"Similar to the Drassen Counterattack, other cities can be subjected to massive counterattacks by the Queen after you capture them.",
+	L"如果女王反击对你来说仍然不够，试着启用它！女王不仅会发起反击，还可能试图同时夺回多个城市。",	//L"If City Counterattacks still aren't enough for you, try enabling this! Not only will the Queen send counterattacks, but she may also try to retake multiple cities at the same time.",
+	L"你可以获取和消耗情报点数。这种资源与间谍和情报贩子密切相关。可以通过间谍活动、审讯俘虏或其他方式获得情报点数。可以在黑市购买稀有武器，也可以在情报网站上购买敌人的信息。",	//L"You can acquire and spend Intel, a resource closely tied to espionage and information brokering. Intel can be gained by spies, interrogating prisoners, and other ways. It can then be spent at a black market for rare weapons, or at the Recon Intelligence Services website for enemy info.",
+	L"允许抓捕俘虏。可以通过在战斗中劝降或者用手铐铐住不能行动的敌人来抓捕俘虏。被俘虏的敌人可以送到监狱中进行审问。审问会带来金钱、情报或者将敌人策反进你的民兵队伍。",	//L"Allows you to take prisoners, which can be done by demanding their surrender in combat, or by handcuffing incapacitated soldiers. Once captured, they can be sent to a prison you own and interrogated, which can result in money, intel, or their defection to your militia.",
+	L"在矿场上先投资才能获得它的全部收益。工人像民兵一样需要金钱和时间来训练。注意！如果失去对城镇的控制将导致工人流失！",	//L"You will need to invest a little bit in a mine before you can reap its full benefits. Workers are trained like militia, costing time and money. Note that losing control of a sector may cause worker loss!",
+	L"敌军有机率会伏击你的小队。如果的你小队遭到伏击，你的小队将会出现在地图中央并被敌人包围。",	//L"Enemy groups have a chance to ambush your squad. If your squad is ambushed, they will be placed in the centre of the map with the enemy group encircling them.",
+	L"女王现在会派出刺客。这些精英士兵是秘密行动的专家，他们会伪装成你的民兵，伺机对你的佣兵发动突袭。需要使用\"新技能系统\"，也强烈建议使用\"新物品系统\"。",	//L"The queen can now send out assassins. These are elite soldiers that are covert ops experts. They will disguise as members of your militia, and, when the time is right, they will suddenly attack your mercs. New trait system required and new inventory system recommended.",
+	L"敌军中将出现各种技能类型的敌人。被观察到的士兵身边将出现一个标识身份的小图标，身份包括无线电操作员、狙击手、迫击炮炮手和持有钥匙的敌人。",	//L"A variety of enemy types can appear in enemy groups, increasing their overall effectiveness. A small icon will appear next to an enemy who has been observed to have a role. Roles include weapon and equipment specialists, and soldiers carrying keys or keycards.",
+	L"需要开启\"敌军角色功能\"，敌军医生会给战友进行包扎和手术。",	//L"Requires the Enemy Roles feature to be enabled. Enemy medics can bandage their wounded comrades and perform field surgery on them.",	
+	L"需要开启\"敌军角色功能\"，敌军的上尉(班长)和中尉(班副)将对整个小队提供战术指挥加成。",	//L"Requires the Enemy Roles feature to be enabled. Enemy lieutenants and captains provide sector-wide bonuses for their squad.",
+	L"将军会为敌军提供战略加成奖励，他们会出现在敌军控制的城镇中，将军拥有自己的精英保镖，会在预感到危险时逃跑。",	//L"Requires the Enemy Roles feature to be enabled. Generals provide strategic bonuses to the enemy army and may be present in enemy-controlled towns. As high-value targets, they are protected by a small retinue of bodyguards and may flee when they sense danger.",
+	L"Kerberus安保公司将会为您提供安保人员，您可以从他们的网站上雇佣有经验的安保人员充当民兵。虽然价格很高，但是你不必在花时间训练他们。",	//L"Some time after you have trained militia, Kerberus will offer its services to you. On their website, you can order security personnel from them, which will act as militia. They require a high down payment but require no training time.",
+	L"你的佣兵需要食物和水才能生存。挨饿将遭受严厉的惩罚。要注意食物的质量，小心吃坏肚子！",	//L"Your team needs food and water to survive. Without them, they will starve and suffer severe penalties. Keep an eye on the quality of food you're consuming!",
+	L"伤口、尸体、沼泽、昆虫都可能导致您的佣兵生病，一些疾病会引起并发症，严重时会导致死亡。医生和药品可以治疗大多数疾病，还有一些装备可以预防疾病。",	//L"It is possible for your team to catch illnesses from a variety of sources: open wounds, corpses, swamp insects, etc. A disease will give certain mali, and in extreme cases, cause death. Most diseases can be treated by doctors or medicines, and there are items that can provide protection.",
+	L"佣兵会动态对话。遇到影响关系的事件时会发生对话。佣兵们会互相指责或赞美。其他佣兵也会做出回应，或根据他们的关系进行回答。",	//L"Mercs can form dynamic opinions of each other from a variety of events. These opinion events directly influence a merc's morale and can be both positive and negative. While an opinion event can occur once per day, the impact of one of these events can last for a few days, so it's possible for events to compound over this time period.",
+	L"这是动态对话附加功能。允许佣兵在相互交谈时，如果IMP参与其中，您将有一个简短的窗口来根据需要建立的关系选择回复内容。",	//L"This is an add-on to the Dynamic Opinions feature. This feature allows mercs to talk to each other whenever an opinion event occurs. These dialogue choices may have further impacts on how mercs see each other. If an IMP merc takes part in this, you have a brief window to choose how that character responds.",
+	L"敌军战略司令部负责订购并向陆军部署机械化部队，使用从矿山获得的收入购买战车来对付你！",	//L"The Arulco Special Division is responsible for ordering and deploying mechanised units to the Arulcan army. It uses income gained from mines to purchase vehicles for use against you.",
+	L"需要开启\"敌军战略司令部功能\"，当游戏达到一定进度时，敌军战略司令部开始使用直升机部署精锐小队士兵来骚扰你。",	//L"Requires the Arulco Strategic Division feature to be enabled. At a certain point in your campaign, the ASD can start using helicopters to deploy small squads of elite soldiers to harass you.",
+	L"敌人的战斗吉普车和坦克可以在战斗中四处移动，移动撞击会摧毁一些障碍物，甚至会试图碾过你的佣兵。",	//L"Enemy jeeps and tanks can move around during combat, and may even try to run over your mercs. They will also destroy some obstacles by ramming them.",
+	L"僵尸会从尸体中复活！（生化危机）",	//L"Zombies rise from corpses!",
+	L"致命的血猫可以在夜间对城镇发动突袭。平民死亡将造成忠诚度降低。",	//L"Arulco's deadly bloodcats can attack vulnerable town sectors at night. Civilian deaths will cause loyalty losses.",
+	L"土匪会袭击防御薄弱的城镇，平民死亡将造成忠诚度降低。",	//L"Taking advantage of open warfare, bandits can attack vulnerable town sectors. Civilian deaths will cause loyalty losses.",
+	L"需要开启\"僵尸系统\"，僵尸会成群的冲击城镇各区，平民死亡将造成忠诚度降低。",	//L"Requires the Zombies feature to be enabled. Zombies can swarm town sectors. Civilian deaths will cause loyalty losses.",
+	L"没有志愿者就不能继续训练民兵，控制城镇和周边的农田可以增加志愿者加入的数量。",	//L"Before you can train militia, you need willing volunteers. You will need to control both town sectors and the surrounding farmland to bolster your recruit pool.",
+	L"允许您在战术地图中向民兵下达命令。要执行此操作，请与任意民兵对话，然后会出现命令菜单。使用无线电的佣兵可以向不在视野范围内的民兵下达命令。",	//L"Allows you to give commands to militia while in the tactical view. To do this, speak with any militia and a command menu will appear. Mercs wearing Extended Ears or Radio Sets can issue commands to militia that are out of line of sight.",
+	L"允许您在战略地图中向民兵下达移动命令。您需要佣兵和民兵在同一区域（除非相邻区域有佣兵操作无线电或民兵指挥部有工作人员）才能发布战略移动命令。",	//L"Allows you to give sector movement commands to militia while in the strategic map. You may need to be in the same sector (unless you have a Radio Operator or someone staffing an HQ) to issue strategic movement orders.",
+	L"民兵装备不会随机生成，而是从民兵目前驻扎的区域获取。您需要充分地给民兵分配装备。当一个新的区域被装载时，民兵将把他们的装备放回他们的区域。在战术地图下，通过按\"CTRL+ .\"弹出菜单，选则militia inspection手动放下物品。如果要使民兵无法接触某些装备，则在战略模式下的物品栏中对其按下\"TAB + 鼠标左键\"。",	//L"Militia gear will not be randomly generated, but taken from the sector the militia is currently stationed in. Militia will return their gear to their sector when a new sector is loaded. Gear can be manually dropped in tactical via the 'Ctrl' + '.' menu, under 'militia inspection'. Gear can be prohibited to the militia by hovering over it in the strategic inventory and pressing 'TAB' + 'LMB'. It is up to you to sufficiently distribute gear to your militia.",
+	L"民兵需要消耗枪支、护甲、杂物才能训练，在战略地图仓库中按\"alt+鼠标右键\"将道具添加进民兵资源，绿色民兵需要消耗枪支，老兵需要枪支+盔甲，精兵消耗枪支+盔甲+杂物。",	//L"In order to be trained, militia require 3 resources: Guns, Armour, and Misc. These can be obtained by converting dropped items in the strategic item view, and ALT + Right clicking on an item. Green Militia just require a Gun, Veteran Militia require a Gun + Armour, and Elite Militia require Gun + Armour + Misc.",
+	L"对近战系统的全面改进。头部更难被击中但会造成更多伤害，击中腿部更容易倒地，但伤害更小。偷袭将造成更多的伤害。可以拿走被击晕目标身上的道具。还有一些其它小调整。",	//L"General improvements to the close combat system. Head strikes deal more damage, but are harder to hit. Leg strikes are easier to land, but do less damage. Damage increased to surprised and prone targets. Stealing all items is possible on a knocked-down victim. Several other minor tweaks.",
+	L"新的中断系统（IIS）完全改变了中断发生的方式，不在是目标进入视野时发生中断，而是以若干个变量模拟士兵的反应能力来判断是否发生中断。",	//L"The Improved Interrupt System (IIS) completely changes how the game determines whether an interrupt occurs. Instead of interrupting as soon as a hostile enters line of sight, the game tracks several variables to simulate a soldier's ability to react and gain an interrupt.",	
+	L"武器的枪管在开火时会升温，这会导致频繁的武器故障。带有可更换枪管的武器对保持冷却非常有用。",	//L"Weapon barrels heat up as you fire them, potentially opening the door for jams, misfires, and faster weapon degradation. Weapons with replaceable barrels will probably be very useful to keep things cool.",
+	L"启用下雨功能。雨水会略微降低整体能见度，使人更难听到声音。",	//L"Toggle rain in tactical. Rain will slightly decrease overall visibility and make it harder to hear things.",
+	L"启用闪电功能。闪电会短暂显示你和敌人的位置。打雷的雷声使人的听觉变差。整体体力再生有所降低。",	//L"Toggle lightning and thunderstorms during rain. Lightning can reveal soldier positions for both you and the enemy. Thunder makes it significantly harder to hear, and overall breath regeneration is somewhat lowered.",
+	L"启用沙尘暴功能，在沙尘暴中战斗会对所有战斗人员造成明显的伤害——视力和听力范围会减少，武器退化会显著增加，呼吸也会变得更加困难。",	//L"Toggle sandstorms. Fighting in a sandstorm applies noticable maluses to all combatants - vision and hearing ranges are reduced, weapon degradation is significantly increased, and it is much harder to regain breath.",
+	L"启用暴风雪功能。在暴风雪中，更难被看到，武器退化更快，呼吸也更困难。",	//L"Toggle snow. In a snowstorm, it is harder to see, weapons degrade faster, and it is a little harder to regain breath.",
+	L"在游戏过程中，可能会弹出简短的事件。您可以从两个选项中选择一个，这可能会产生积极或消极的影响。事件可以影响各种各样的事情，但主要是你的佣兵。",	//L"During the course of a campaign, brief events can pop up. You can select one of two responses, which may have positive and/or negative effects. Events can affect a wide variety of things, but mostly your mercs.",
+	L"在完成反抗军食物运送任务后，你可以访问他们的（A.R.C）指挥部网站。在这里你可以设定反抗军的政策，也可以为占领区单独设置地方政策。这将带来丰厚的奖励。作为代价，城镇的民忠会上升得更慢，所以你需要更加努力地让当地人信任你。",	//L"After completing the food delivery quest for the rebels, they will grant you access to their command website (A.R.C.). You can set the rebels' country-wide directive there, and capturing towns allows you to enact policies in that region that provide powerful bonuses. This comes at a price - town loyalty will rise slower, so you will need to work harder to have the locals trust you.",
+};
+
+
+//SaveLoadScreen
+STR16			zSaveLoadText[] =
 {
 	L"保存游戏",
 	L"载入游戏",
@@ -6308,19 +6487,19 @@ STR16 pMilitiaConfirmStrings[] =
 };
 
 //Strings used in the popup box when withdrawing, or depositing money from the $ sign at the bottom of the single merc panel
-STR16	gzMoneyWithdrawMessageText[] = 
+STR16	gzMoneyWithdrawMessageText[] =
 {
 	L"你每次最多能提取$20,000。",
 	L"你确认要把%s存入你的帐户吗？",
 };
 
-STR16	gzCopyrightText[] = 
+STR16	gzCopyrightText[] =
 {
 	L"Copyright (C) 1999 Sir-tech Canada Ltd.  All rights reserved.",
 };
 
 //option Text
-STR16		zOptionsToggleText[] = 
+STR16		zOptionsToggleText[] =
 {
 	L"语音",		//"Speech",
 	L"确认静默",		//"Mute Confirmations",
@@ -6340,6 +6519,7 @@ STR16		zOptionsToggleText[] =
 	L"锁定门",		//"Snap Cursor to Doors",
 	L"物品闪亮",	//"Make Items Glow",
 	L"显示树冠",	//"Show Tree Tops",
+	L"智能显示树冠", //L"Smart Tree Tops",
 	L"显示轮廓",		//"Show Wireframes",
 	L"显示3D光标",	//"Show 3D Cursor",
 	L"显示命中机率",	//"Show Chance to Hit on cursor",
@@ -6358,10 +6538,9 @@ STR16		zOptionsToggleText[] =
 	L"沉默的Skyrider",	//"Silent Skyrider",
 	L"增强属性框(EDB)", //L"Enhanced Description Box",
 	L"强制回合制模式",						// add forced turn mode
-	L"属性进度条", //L"Stat Progress Bars", // Show progress towards stat increase //ham3.6
 	L"替代战略地图颜色", // Change color scheme of Strategic Map
 	L"替代子弹图像", // Show alternate bullet graphics (tracers)
-	L"佣兵造型 (WIP)", //L"Use Logical Bodytypes",
+	L"佣兵外观造型", //L"Use Logical Bodytypes",
 	L"显示佣兵军衔",	// shows mercs ranks
 	L"显示脸部装备图",				
 	L"显示脸部装备图标",
@@ -6422,7 +6601,7 @@ STR16	zOptionsScreenHelpText[] =
 	L"打开时，使用铁血联盟1代的佣兵选择方式。",
 
 	//Show movement path
-	L"打开时，会实时显示移动路径(可用 |S|h|i|f|t 键来打开或者关闭)。",
+	L"打开时，会实时显示移动路径(可用|S|h|i|f|t键来打开或者关闭)。",
 
 	//show misses
 	L"打开时，会显示未击中目标的子弹落点。",
@@ -6437,7 +6616,7 @@ STR16	zOptionsScreenHelpText[] =
 	L"打开时，使用公制系统，否则使用英制系统。",
 
 	//Merc Lighted movement
-	L"打开时，佣兵移动时会照亮地表（关闭这个选项会使游戏的显示速度变快）。\n切换虚拟佣兵光照。 (|G)",
+	L"打开时，佣兵移动时会照亮地表，切换虚拟佣兵光照。（|G）\n（关闭这个选项会使游戏的显示速度变快）",
 
 	//Smart cursor
 	L"打开时，光标移动到佣兵身上时会高亮显示佣兵。",
@@ -6446,52 +6625,54 @@ STR16	zOptionsScreenHelpText[] =
 	L"打开时，光标靠近门时会自动定位到门上。",
 
 	//glow items
-	L"打开时，物品会不断的闪烁。(|C|t|r|l+|A|l|t+|I)",
+	L"打开时，物品会不断的闪烁。（|C|t|r|l+|A|l|t+|I）",
 
 	//toggle tree tops
-	L"打开时，显示树冠。(|T)",
+	L"打开时，显示树冠。（|T）",
+
+	//smart tree tops
+	L"打开时，不显示位于可见佣兵和鼠标附近的树冠。", //L"When ON, hides tree tops near visible mercs and cursor position.",
 
 	//toggle wireframe
-	L"打开时，显示未探明的墙的轮廓。(|C|t|r|l+|A|l|t+|W)",
+	L"打开时，显示未探明的墙的轮廓。（|C|t|r|l+|A|l|t+|W）",
 
-	L"打开时，移动时的光标为3D式样。(|H|o|m|e)",
+	L"打开时，移动时的光标为3D式样。（|H|o|m|e）",
 
 	// Options for 1.13
 	L"打开时，在光标上显示命中机率。",
 	L"打开时，榴弹发射器点射使用点射的准星。",
 	L"打开时，敌人行动中有时会带有对白。", // Changed from Enemies Drop All Items - SANDRO
-	L"打开时，榴弹发射器允许采用较高仰角发射榴弹(|Q)。",
-	L"打开时，潜行状态未被敌人发现时不会进入回合制模式，除非按下 |C|t|r|l+|X 。 (|C|t|r|l+|S|h|i|f|t+|X)", // Changed from Restrict Extra Aim Levels - SANDRO
-	L"打开时，按空格键自动切换到下一小队(|S|p|a|c|e)。",
+	L"打开时，榴弹发射器允许采用较高仰角发射榴弹。（|A|l|t+|Q）",
+	L"打开时，潜行状态未被敌人发现时不会进入回合制模式。\n除非按下 |C|t|r|l+|X 。（|C|t|r|l+|S|h|i|f|t+|X）", // Changed from Restrict Extra Aim Levels - SANDRO
+	L"打开时，按空格键自动切换到下一小队。（|S|p|a|c|e）",
 	L"打开时，显示物品阴影。",
 	L"打开时，用格数显示武器射程。",
 	L"打开时，单发曳光弹也显示曳光。",
 	L"打开时，下雨时能听到雨水音效。",	//"When ON, you will hear rain noises when it is raining.",
 	L"打开时，允许乌鸦出现。",
-	L"打开时，把光标定位在敌人身上并且按下 |A|l|t 键会显示敌兵装备信息窗口。",
-	L"打开时，游戏将在玩家回合后自动存盘",
+	L"打开时，把光标定位在敌人身上并且按下|A|l|t键会显示敌兵装备信息窗口。",
+	L"打开时，游戏将在玩家回合后自动存盘。",
 	L"打开时，Skyrider保持沉默。",
 	L"打开时，使用物品及武器的“增强描述框”（EDB）。",
-	L"打开时，在战术画面内存在敌军时，将一直处于回合制模式直至该地区所有敌军被消灭。（可以通过快捷键 (|C|t|r|l+|T) 来控制打开或关闭强制回合制模式）",
-	L"打开时，显示各属性的增长进度。", // L"When ON, shows character progress towards gaining levels.", //ham3.6
+	L"打开时，在战术画面内存在敌军时，将一直处于回合制模式直至该地区所有敌军被消灭。\n（可以通过快捷键 (|C|t|r|l+|T) 来控制打开或关闭强制回合制模式）",
 	L"打开时，战略地图将会根据探索状态显示不同的着色。",
 	L"打开时，当你射击时会显示间隔子弹图像。",
-	L"打开时，可设置佣兵造型\n(not fully implemented yet, will make mercs invisible if activated)", //L"When ON, mercenary body graphic can change along with equipped gear.",
+	L"打开时，佣兵外观可随着武器或防具装备的改变而改变佣兵外观造型。", //L"When ON, mercenary body graphic can change along with equipped gear.",
 	L"打开时，在战略界面的佣兵名旁显示军衔。",
 	L"打开时，显示佣兵脸部装备图。",
-	L"打开时，佣兵肖像右下角显示脸部装备图标",
-	L"打开时，在交换位置和其它动作时光标不切换。键入 |x 可以快速切换。",
+	L"打开时，佣兵肖像右下角显示脸部装备图标。",
+	L"打开时，在交换位置和其它动作时光标不切换。键入|x可以快速切换。",
 	L"打开时，佣兵训练时不会随时汇报进程。",
 	L"打开时，佣兵修理时不会随时汇报进程。",
 	L"打开时，佣兵医疗时不会随时汇报进程。",
 	L"打开时，敌军回合将被大幅加速。",
 
-	L"打开时，被击毙的敌人将有可能变成僵尸！杀出个黎明！",
+	L"打开时，被击毙的敌人将有可能变成僵尸。（生化危机模式）",
 	L"打开时，在区域物品栏界面，点击佣兵身上空白的携行具位置会弹窗匹配拾取物品。",
 	L"打开时，会直接显示该区域最后一个敌人的大致位置。",
 	L"打开时，在区域物品栏界面，右键点击装有物品的携行具时可直接显示包含的物品。",
 	L"打开时，反转鼠标滚轮方向。",
-	L"当选择了多个佣兵，他们在前进时会保持彼此的间距。(|C|t|r|l+|A|l|t+|G)",	// L"When multiple mercs are selected, they will try to keep their relative distances while moving. (|C|t|r|l+|S|h|i|f|t+|G)",
+	L"打开时，当选择了多个佣兵，他们在前进时会保持彼此的间距。（|C|t|r|l+|A|l|t+|G）",	// L"When multiple mercs are selected, they will try to keep their relative distances while moving. (|C|t|r|l+|S|h|i|f|t+|G)",
 	L"(text not rendered)TOPTION_CHEAT_MODE_OPTIONS_HEADER",
 	L"强制 Bobby Ray 出货",
 	L"(text not rendered)TOPTION_CHEAT_MODE_OPTIONS_END",
@@ -6547,7 +6728,7 @@ STR16	gzGIOScreenText[] =
 	L"读取联机游戏",
 	L"游戏初始设置（仅在服务器设置时有效）",
 	// Added by SANDRO
-	L"特殊技能",
+	L"技能系统",
 	L"旧",
 	L"新",
 	L"IMP 数量",
@@ -6862,7 +7043,7 @@ STR16 pMessageStrings[] =
 	L"%s 进入潜行模式。",	//"%s on stealth mode.",
 	L"%s 退出潜行模式。",	//"%s off stealth mode.",
 
-	//Wireframes are shown through buildings to reveal doors and windows that can't otherwise be seen in 
+	//Wireframes are shown through buildings to reveal doors and windows that can't otherwise be seen in
 	//an isometric engine.  You can toggle this mode freely in the game.
 	L"打开显示轮廓",	//"Extra Wireframes On",
 	L"关闭显示轮廓",	//"Extra Wireframes Off",
@@ -6965,7 +7146,7 @@ STR16 pMapScreenJustStartedHelpText[] =
 #endif
 };
 
-STR16 pAntiHackerString[] = 
+STR16 pAntiHackerString[] =
 {
 	L"错误。丢失或损坏文件。游戏将退出。",
 };
@@ -6999,12 +7180,13 @@ STR16 gzLaptopHelpText[] =
 	L"百科全书",
 	L"简报室",
 	L"战役历史",
-	L"佣兵喜欢或不喜欢你", //L"Mercenaries Love or Dislike You",
+	L"佣兵之家", //L"Mercenaries Love or Dislike You",
 	L"世界卫生组织", //L"World Health Organization",
 	L"Kerberus - 安保公司",//L"Kerberus - Experience In Security",
 	L"民兵总览",//L"Militia Overview",
-	L"Recon情报服务",	//L"Recon Intelligence Services",
-	L"已占领的工厂",	//L"Controlled factories", TODO.Translate
+	L"侦察情报局",	//L"Recon Intelligence Services",
+	L"已占领的工厂",	//L"Controlled factories",
+	L"Arulco反抗军司令部",   //L"Arulco Rebel Command",
 };
 
 
@@ -7036,13 +7218,13 @@ STR16 gzMiscString[] =
 	L"你丢失了加油点。",	//"You have lost a refueling site.",
 };
 
-STR16	gzIntroScreen[] = 
+STR16	gzIntroScreen[] =
 {
 	L"找不到视频文件",
 };
 
 // These strings are combined with a merc name, a volume string (from pNoiseVolStr),
-// and a direction (either "above", "below", or a string from pDirectionStr) to 
+// and a direction (either "above", "below", or a string from pDirectionStr) to
 // report a noise.
 // e.g. "Sidney hears a loud sound of MOVEMENT coming from the SOUTH."
 STR16 pNewNoiseStr[] =
@@ -7080,14 +7262,14 @@ STR16 wMapScreenSortButtonHelpText[] =
 
 
 
-STR16		BrokenLinkText[] = 
+STR16		BrokenLinkText[] =
 {
 	L"错误 404",	//"Error 404",
 	L"网站未找到",	//"Site not found.",
 };
 
 
-STR16 gzBobbyRShipmentText[] = 
+STR16 gzBobbyRShipmentText[] =
 {
 	L"近期运货",	//"Recent Shipments",
 	L"订单 #",		//"Order #",
@@ -7223,7 +7405,7 @@ STR16 gzLateLocalizedString[] =
 	//In autoresolve if there were 5 mercs fighting 8 enemies the text would be "5 vs. 8"
 	//"vs." is the abbreviation of versus.
 	L"%d vs. %d",
-	
+
 	L"%s满了。",
 
   L"%s现在不用包扎，他（她）需要认真的治疗和休息。",
@@ -7310,13 +7492,13 @@ STR16 gzLateLocalizedString[] =
 	L"没有找到铁血联盟2光盘，程序即将退出。", //The Jagged Alliance 2 v1.13 PLAY DISK was not found. Program will now exit.
 
 	L"物品组合成功。",
- 
+
 	//58
 	//Displayed with the version information when cheats are enabled.
 	L"当前/最大进展: %d%％/%d%％",		//"Current/Max Progress: %d%%/%d%%",//zww
 
 	L"护送John和Mary？",
-	
+
 	// 60
 	L"开关被激活",		//"Switch Activated.",
 
@@ -7330,7 +7512,7 @@ STR16 gzLateLocalizedString[] =
 };
 
 // HEADROCK HAM 3.5: Added sector name
-STR16 gzCWStrings[] = 
+STR16 gzCWStrings[] =
 {
 	L"是否呼叫邻近区域的援兵到%s？", //L"Call reinforcements to %s from adjacent sectors?",
 };
@@ -7434,9 +7616,9 @@ STR16 New113Message[] =
 	L"是否进行必要的手术？（%i名病人）",// L"Do you wish to make necessary surgeries first? (%i patient(s))",
 	L"是否在该病人身上进行手术？",// L"Do you wish to make the surgery on this patient first?",
 	L"在包扎前是否进行手术？",// L"Apply first aid automatically with necessary surgeries or without them?",
-	L"您不包扎%s直接进行手术吗？（可回复%i生命值，*: 使用%i血包输血）",	//L"Do you want to perform surgery on %s before bandaging? (You can heal about %i health, *: %i by blood bag use.)",
-	L"您要给%s进行手术吗？（可回复%i生命值，*: 使用%i血包输血）",	//L"Do you want to perform surgery on %s? (You can heal about %i Health, *: %i by blood bag use.)",
-	L"您希望给%s进行手术吗？（可回复%i生命值，*: 使用%i血包输血）",	//L"Do you wish to perform surgery on %s? (You can heal about %i Health, *: %i by blood bag use.)",
+	L"您不包扎%s直接进行手术吗？（手术可回复%i生命值，输血*：使用血包手术可回复%i生命值。）",	//L"Do you want to perform surgery on %s before bandaging? (You can heal about %i health, *: %i by blood bag use.)",
+	L"您要给%s进行手术吗？（手术可回复%i生命值，输血*：使用血包手术可回复%i生命值。）",	//L"Do you want to perform surgery on %s? (You can heal about %i Health, *: %i by blood bag use.)",
+	L"您希望给%s进行手术吗？（手术可回复%i生命值，输血*：使用血包手术可回复%i生命值。）",	//L"Do you wish to perform surgery on %s? (You can heal about %i Health, *: %i by blood bag use.)",
 	L"%s手术完毕。",// L"Surgery on %s finished.",
 	L"%s 胸部中弹，失去1点生命上限！",// L"%s is hit in the chest and loses a point of maximum health!",
 	L"%s 胸部中弹，失去%d点生命上限！",// L"%s is hit in the chest and loses %d points of maximum health!",
@@ -7474,13 +7656,13 @@ STR16 New113Message[] =
 	L"耐心",
 	L"%s的防护盾毁坏了！", //L"%s's shield has been destroyed!",
 	L" 延迟",	//L" DELAY",
-	L"是的*",	//L"Yes*",
+	L"输血*",	//L"Yes*",
 	L"是的",	//L"Yes",
-	L"不",	//L"No",
-	L"%s将%s应用于%s。", //L"%s applied %s to %s.", TODO.Translate
+	L"否",	//L"No",
+	L"%s将%s应用于%s。", //L"%s applied %s to %s.",
 };
 
-STR16 New113HAMMessage[] = 
+STR16 New113HAMMessage[] =
 {
 	// 0 - 5
 	L"%s 害怕得退缩了！",//	L"%s cowers in fear!",
@@ -7515,7 +7697,7 @@ STR16 New113HAMMessage[] =
 };
 
 // HEADROCK HAM 5: Text dealing exclusively with Item Transformations.
-STR16 gzTransformationMessage[] = 
+STR16 gzTransformationMessage[] =
 {
 	L"没有可用的转换方案", //L"No available adjustments",
 	L"%s被拆开了。", //L"%s was split into several parts.",
@@ -7627,7 +7809,7 @@ STR16 MissingIMPSkillsDescriptions[] =
 	L"生还者: 大自然是你第二个家。 ± ", //L"Survival: Nature is a second home to you. ± ",
 };
 
-STR16 NewInvMessage[] = 
+STR16 NewInvMessage[] =
 {
     L"此时无法拾起背包",
 	L"背包中无处可放",
@@ -7849,7 +8031,7 @@ STR16 pSkillTraitBeginIMPStrings[] =
 	L"最多只能选择%d项。这意味着如果你没有选择主技能，你可以选择%d项副技能。如果你选择了两个主技能（或者一个加强技能），你只能再选择%d项副技能。", // L"No more then %d choices altogether are possible. This means that if you choose no major traits, you can choose %d minor traits. If you choose two major traits (or one enhanced), you can then choose only %d minor trait(s)...",
 };
 
-STR16 sgAttributeSelectionText[] = 
+STR16 sgAttributeSelectionText[] =
 {
 	L"请 按 照 你 对 自 己 的 感 觉 ， 调 整 你 的 各 项 能 力 值 。 各 项 能 力 值 的 最 大 值 为",
 	L"I.M.P 能力值和技能概览。",
@@ -8090,10 +8272,10 @@ STR16 Additional113Text[]=
 	L"铁血联盟2 v1.13 全屏模式(%d x %d)不支持你的显示屏分辨率。\n请改变游戏分辨率或使用16bpp窗口模式。",	//L"Jagged Alliance 2 v1.13 fullscreen mode (%d x %d) is not supported by your primary screen.\nPlease either change the game resolution or use 16bpp windowed mode.",
 	L"存盘文件%s读取错误：存盘文件的（%d）数量跟Ja2_Options.ini设置的（%d）不一致。", //L"Internal error in reading %s slots from Savegame: Number of slots in Savegame (%d) differs from defined slots in ja2_options.ini settings (%d)",	
 	// WANNE: Savegame slots validation against INI file
-	L"佣兵 (MAX_NUMBER_PLAYER_MERCS) / 交通工具 (MAX_NUMBER_PLAYER_VEHICLES)", 
-	L"敌人 (MAX_NUMBER_ENEMIES_IN_TACTICAL)", 
-	L"动物 (MAX_NUMBER_CREATURES_IN_TACTICAL)", 
-	L"民兵 (MAX_NUMBER_MILITIA_IN_TACTICAL)", 
+	L"佣兵 (MAX_NUMBER_PLAYER_MERCS) / 交通工具 (MAX_NUMBER_PLAYER_VEHICLES)",
+	L"敌人 (MAX_NUMBER_ENEMIES_IN_TACTICAL)",
+	L"动物 (MAX_NUMBER_CREATURES_IN_TACTICAL)",
+	L"民兵 (MAX_NUMBER_MILITIA_IN_TACTICAL)",
 	L"平民 (MAX_NUMBER_CIVS_IN_TACTICAL)",
 
 };
@@ -8122,7 +8304,7 @@ STR16 sEnemyTauntsFireGun[]=
 STR16 sEnemyTauntsFireLauncher[]=
 {
 
-	L"把你们做成烤肉！",// L"We have a barbecue here.",
+	L"把你们做成烤肉！",// L"Barbecue time!",
 	L"送给你的礼物！",// L"I got a present for ya.",
 	L"灰飞烟灭吧！",// L"Bam!",
 	L"说“茄子”！",// L"Smile!",
@@ -8268,28 +8450,28 @@ STR16 gzUDBAdvIndexTooltipText[]=
 
 STR16 szUDBGenWeaponsStatsTooltipText[]=
 {
-	L"|精|度",
-	L"|杀|伤|力",
-	L"|射|程",
-	L"|操|控|难|度",
-	L"|精|瞄|等|级",
-	L"|瞄|准|镜|倍|率",
-	L"|红|点|效|果",
-	L"|消|焰",
-	L"|噪|音",
-	L"|可|靠|性",
-	L"|修|理|难|度",
-	L"|精|瞄|最|低|有|效|距|离",
-	L"|命|中|率|修|正",	
-	L"|举|枪|A|P",
-	L"|单|发|A|P",
-	L"|点|射|A|P",
-	L"|连|发|A|P",
-	L"|换|弹|匣|A|P",
-	L"|手|动|上|弹|A|P",
-	L"",
-	L"|后|坐|力",
-	L"|连|发|子|弹|数/5|A|P",
+	L"|精|度",   //L"|A|c|c|u|r|a|c|y",
+	L"|杀|伤|力",   //L"|D|a|m|a|g|e",
+	L"|射|程",   //L"|R|a|n|g|e",
+	L"|操|控|难|度",   //L"|H|a|n|d|l|i|n|g |D|i|f|f|i|c|u|l|t|y",
+	L"|精|瞄|等|级",   //L"|A|l|l|o|w|e|d |A|i|m|i|n|g |L|e|v|e|l|s",
+	L"|瞄|准|镜|倍|率",   //L"|S|c|o|p|e |M|a|g|n|i|f|i|c|a|t|i|o|n |F|a|c|t|o|r",
+	L"|红|点|效|果",   //L"|P|r|o|j|e|c|t|i|o|n |F|a|c|t|o|r",
+	L"|消|焰",   //L"|H|i|d|d|e|n |M|u|z|z|l|e |F|l|a|s|h",
+	L"|噪|音",   //L"|L|o|u|d|n|e|s|s",
+	L"|可|靠|性",   //L"|R|e|l|i|a|b|i|l|i|t|y",
+	L"|修|理|难|度",   //L"|R|e|p|a|i|r |E|a|s|e",
+	L"|精|瞄|最|低|有|效|距|离",   //L"|M|i|n|. |R|a|n|g|e |f|o|r |A|i|m|i|n|g |B|o|n|u|s",
+	L"|命|中|率|修|正",	   //L"|T|o|-|H|i|t |M|o|d|i|f|i|e|r",
+	L"|举|枪|A|P",   //L"|A|P|s |t|o |R|e|a|d|y",
+	L"|单|发|A|P",   //L"|A|P|s |t|o |A|t|t|a|c|k",
+	L"|点|射|A|P",   //L"|A|P|s |t|o |B|u|r|s|t",
+	L"|连|发|A|P",   //L"|A|P|s |t|o |A|u|t|o|f|i|r|e",
+	L"|换|弹|匣|A|P",   //L"|A|P|s |t|o |R|e|l|o|a|d",
+	L"|手|动|上|弹|A|P",   //L"|A|P|s |t|o |R|e|c|h|a|m|b|e|r",
+	L"|横|向|后|坐|力",   //L"|L|a|t|e|r|a|l |R|e|c|o|i|l",	// No longer used
+	L"|后|坐|力",   //L"|T|o|t|a|l |R|e|c|o|i|l",
+	L"|连|发|子|弹|数/5|A|P",   //L"|A|u|t|o|f|i|r|e |B|u|l|l|e|t|s |p|e|r |5 |A|P|s",
 };
 
 STR16 szUDBGenWeaponsStatsExplanationsTooltipText[]=
@@ -8313,8 +8495,8 @@ STR16 szUDBGenWeaponsStatsExplanationsTooltipText[]=
 	L"\n \n连发模式下，该武器一次齐射三发子弹所需的AP。\n \n超过3发子弹，则需要额外的AP。\n \n如果该图标发灰，则该武器不可连发。\n \n该数值越低越好。",
 	L"\n \n重新装填榴弹/更换弹匣所需的AP。\n \n该数值越低越好。",
 	L"\n \n在射击间歇为该武器手动上弹的AP消耗。\n \n该数值越低越好。",
-	L"",	// No longer used!
-	L"\n \n该参数是武器枪口在单发或自动模式下每发子弹所造成的最大偏移量。\n \n该数值越低越好。",
+	L"\n \n该参数是武器枪口在单发或连发时每颗子弹所造成的水平偏移量。\n \n正数表示向右移动。\n \n负数表示向左移动。\n \n越接近0越好。",	//L"\n \nThe distance this weapon's muzzle will shift\nhorizontally between each and every bullet in a\nburst or autofire volley.\n \nPositive numbers indicate shifting to the right.\nNegative numbers indicate shifting to the left.\n \nCloser to 0 is better.", // No longer used
+	L"\n \n该参数是武器枪口在单发或自动模式下每发子弹所造成的最大偏移量。\n \n该数值越低越好。",   //L"\n \nThe total distance this weapon's muzzle will shift\nbetween each and every bullet in a burst or\nautofire volley, if no Counter Force is applied.\n \nLower is better.", //HEADROCK HAM 5: Altered to reflect unified number.
 	L"\n \n该参数显示了该武器每多花费5AP在连发模式时\n可多发射的子弹数。\n \n该数值越高越好。",
 	L"\n \n决定了修理该武器的难度以及谁可以完全修复其损坏值。\n \n绿色 = 任何人都可以修理。\n \n黄色 = 只有特殊NPC可以修复损坏值。\n \n红色 = 这个物品不能被修理。\n \n该数值越高越好。", //L"\n \nDetermines how difficult it is to repair\nthis weapon and who can fully repair it.\n \ngreen = Anybody can repair it.\n \nyellow = Only special NPCs can\nrepair it beyond repair threshold.\n \nred = This item can't be repaired.\n \nHigher is better.",
 };
@@ -8478,7 +8660,9 @@ STR16 szUDBGenSecondaryStatsTooltipText[]=
 	L"|防|火|护|甲",	//L"|R|e|s|i|s|t|a|n|t |t|o |F|i|r|e",
 	L"|管|理|能|力|增|益|器",	//L"|A|d|m|i|n|i|s|t|r|a|t|i|o|n |M|o|d|i|f|i|e|r",
 	L"|间|谍|能|力|增|益|器",	//L"|H|a|c|k|i|n|g |M|o|d|i|f|i|e|r",
-	L"|医|用|夹|板", //L"|M|e|d|i|c|a|l |S|p|l|i|n|t", TODO.Translate
+	L"|医|用|夹|板", //L"|M|e|d|i|c|a|l |S|p|l|i|n|t",
+	L"|阻|燃|弹|药",				//L"|F|i|r|e |R|e|t|a|r|d|a|n|t |A|m|m|o",
+	L"|燃|烧|弹|药",  //L"|I|n|c|e|n|d|i|a|r|y |A|m|m|o",
 };
 
 STR16 szUDBGenSecondaryStatsExplanationsTooltipText[]=
@@ -8531,7 +8715,9 @@ STR16 szUDBGenSecondaryStatsExplanationsTooltipText[]=
 	L"\n \n可以降低%i%%的火焰伤害。",	//L"\n \nThis armor lowers fire damage by %i%%.",
 	L"\n \n这个工具可以\n提高%i%%的管理工作的效率。",	//L"\n \nThis item makes you more effective at\nadministrative work by %i%%.",
 	L"\n \n这个工具可以\n提高%i%%的间谍能力。",	//L"\n \nThis item improves your hacking skills by %i%%.",
-	L"\n \n一旦应用, 这个物品可以提高对你的手臂\n或者腿部重伤的治疗速率。", //L"\n \nOnce applied, this item increases the healing\nspeed of severe wounds to either your arms or legs.", TODO.Translate
+	L"\n \n一旦应用, 这个物品可以提高对你的手臂\n或者腿部重伤的治疗速率。", //L"\n \nOnce applied, this item increases the healing\nspeed of severe wounds to either your arms or legs.",
+	L"\n \n这种弹药可以灭火。",	//L"\n \nThis ammo can extinguish fire.",
+	L"\n \n这种弹药会引起燃烧（火灾）。",   //L"\n \nThis ammo can cause fire.",
 };
 
 STR16 szUDBAdvStatsTooltipText[]=
@@ -8603,7 +8789,7 @@ STR16 szUDBAdvStatsTooltipText[]=
 	L"|最|佳|激|光|距|离",//L"|B|e|s|t |L|a|s|e|r |R|a|n|g|e",
 	L"|后|坐|修|正|比|例",//L"|P|e|r|c|e|n|t |R|e|c|o|i|l |M|o|d|i|f|i|e|r",	// 65
 	L"|掰|击|锤|射|击",	//L"|F|a|n |t|h|e |H|a|m|m|e|r",
-	L"|配|置|结|构", //L"|B|a|r|r|e|l |C|o|n|f|i|g|u|r|a|t|i|o|n|s",
+	L"|枪|管|配|置", //L"|B|a|r|r|e|l |C|o|n|f|i|g|u|r|a|t|i|o|n|s",
 };
 
 // Alternate tooltip text for weapon Advanced Stats. Just different wording, nothing spectacular.
@@ -8776,7 +8962,7 @@ STR16 gzMapInventoryFilterOptions[] =
 	L"全部隐藏",
 };
 
-
+// MercCompare (MeLoDy)
 
 STR16 gzMercCompare[] =
 {
@@ -8836,7 +9022,7 @@ STR16 gFoodDesc[] =
 	L"！", //L".",
 };
 
-CHAR16* ranks[] = 
+CHAR16* ranks[] =
 {	L"",			//ExpLevel 0
 	L"列兵 ", //L"Pvt. ",		//ExpLevel 1
 	L"下士 ", //L"Pfc. ",		//ExpLevel 2
@@ -9112,10 +9298,10 @@ STR16	szBackgroundText_Value[]=
 	L" 非吸烟者", //L"Nonsmoker",
 	L" %s%d%％ 蹲伏在可靠掩体后面对敌人的命中率 \n", //L" %s%d%% enemy CTH if crouched against thick cover in their direction\n",
 	L" %s%d%％ 建设速度 \n",//L" %s%d%% building speed\n",
-	L" 间谍技能: %s%d ",//L" hacking skill: %s%d ",
+	L" 黑客技能：%s%d ",//L" hacking skill: %s%d ",
 	L" %s%d%% 掩埋尸体速度 \n",	//L" %s%d%% burial speed\n",
 	L" %s%d%% 管理效率 \n",	//L" %s%d%% administration effectiveness\n",
-	L" %s%d%% 探索效率\n",	//L" %s%d%% exploration effectiveness\n", TODO.Translate
+	L" %s%d%% 探索效率\n",	//L" %s%d%% exploration effectiveness\n",
 };
 
 STR16		szBackgroundTitleText[] =
@@ -9516,7 +9702,7 @@ STR16	szCampaignHistoryResultString[]=
 	L"反抗军略有损失，最终击败了精英部队。未证实消息称一些士兵可能被俘虏。",
 
 	L"在一场皮洛士式胜利中，反抗军击退了精英部队，但是自己也损失惨重。很难肯定他们在这样的连续攻势下能否坚持得住。",
-	
+
 	L"女王部队占尽天时地利人和。反抗军没有任何机会，如果不撤退，要么被杀死或者被俘虏。",
 	L"尽管反抗军在人数上占用优势，女王部队还是轻易地击退了他们。",
 
@@ -9525,7 +9711,7 @@ STR16	szCampaignHistoryResultString[]=
 
 	L"在激烈的战斗中双方都遭到了巨大损失，不过最终，女王部队以人数上的优势决定了战役的胜利。反抗军被击溃。至于有没有幸存者，我们目前还无法核实。",
 	L"在激烈的交火中，女王部队的优秀训练起到了关键性作用。反抗军被迫撤退。",
-	
+
 	L"双方都不愿轻易认输。虽然女王部队最终扫除了当地的反抗军威胁，但是巨大的损失使得女王军队本身名存实亡。不过很显然，如果女王军队能够耗得起的话，反抗军很快就会消失得一干二净了。",
 };
 
@@ -9941,7 +10127,7 @@ STR16	szCampaignStatsOperationSuffix[] =
 STR16	szMercCompareWebSite[] =
 {
 	// main page
-	L"佣兵喜欢你或不喜欢你", //L"Mercs Love or Dislike You",
+	L"佣兵之家", //L"Mercs Love or Dislike You",
 	L"互联网上最好的团队分析专家", //L"Your #1 teambuilding experts on the web",
 
 	L"关于我们", //L"About us",
@@ -10167,7 +10353,7 @@ STR16   szTacticalCoverDialogString[]=
 
 STR16   szTacticalCoverDialogPrintString[]=
 {
-        
+
         L"关闭掩护/陷阱显示模式",
         L"显示危险区域",
         L"显示佣兵视野",
@@ -11115,7 +11301,7 @@ STR16	szDiseaseText[] =
 
 	L"高度的痛苦会导致人格分裂\n",	//L"High amount of distress can cause a personality split\n",
 	L"在%s'库存中发现污染物品。\n", //L"Contaminated items found in %s' inventory.\n",
-	L"每当我们遇到这种情况的时候, 会增加一个新的伤残属性。\n",	//L"Whenever we get this, a new disability is added.\n", TODO.Translate
+	L"每当我们遇到这种情况的时候, 会增加一个新的伤残属性。\n",	//L"Whenever we get this, a new disability is added.\n",
 
 	L"只有一只手还能用。\n",	//L"Only one hand can be used.\n",
 	L"只有一只手还能用。\n已使用医用夹板来加快治疗进程。\n",	//L"Only one hand can be used.\nA medical splint was applied to speed up the healing process.\n",
@@ -11152,7 +11338,7 @@ STR16 szIMPGearWebSiteText[] =
 
 	// IMP Gear Entrance
 	L"I.M.P 装备",  //	L"I.M.P. Equipment", 
-	L"额外花费: %d$ (%d$ 预付款)",	//L"Additional Cost: %d$ (%d$ prepaid)", TODO.Translate
+	L"额外花费: %d$ (%d$ 预付款)",	//L"Additional Cost: %d$ (%d$ prepaid)",
 };
 
 STR16 szIMPGearDropDownText[] =
@@ -11276,6 +11462,7 @@ STR16 szIndividualMilitiaBattleReportText[] =
 	L"从Kerberus安保公司雇佣的时间：%d, %d:%02d 在 %s",//L"Hired from Kerberus on Day %d, %d:%02d in %s",
 	L"反叛的时间：%d, %d:%02d 在 %s",//L"Defected to us on  Day %d, %d:%02d in %s",
 	L"合同终止的时间：%d, %d:%02d",//L"Contract terminated on Day %d, %d:%02d",
+	L"在%d天投奔我们，%d:%02d在%s", //L"Defected to us on Day %d, %d:%02d in %s",
 };
 
 STR16 szIndividualMilitiaTraitRequirements[] =
@@ -11328,7 +11515,7 @@ STR16	szIdividualMilitiaWebsiteText[] =
 	L"%s 当前载入的区域尚未激活。",//L"%s is not active in the currently loaded sector.",
 	L"%s 已经被提升为熟练民兵",//L"%s has been promoted to regular militia",
 	L"%s 已经被提升为精英民兵",//L"%s has been promoted to elite militia",
-	L"状态: 逃兵",	//L"Status: Deserted",  //TODO:Translate
+	L"状态: 逃兵",	//L"Status: Deserted",
 };
 
 STR16	szIdividualMilitiaWebsiteFilterText_Dead[] =
@@ -11403,11 +11590,11 @@ STR16	szInteractiveActionText[] =
 	L"%s阅读了文件，但没找到新的内容。",//L"%s reads the file, but learns nothing new.",
 
 	L"%s离开了这个，没有意义。",//L"%s can't make sense out of this.",
-	L"%s不能使用网络。",//L"%s couldn't use the watertap.",
+	L"%s不能使用水龙头。",//L"%s couldn't use the watertap.",
 	L"%s买了一个%s。",//L"%s has bought a %s.",
 	L"%s没有足够的钱。那真让人难为情。",//L"%s doesn't have enough money. That's just embarassing.",
 
-	L"%s在使用网络",//L"%s drank from water tap",
+	L"%s使用水龙头喝水。",//L"%s drank from water tap",
 	L"这台机器看起来无法工作。", //L"This machine doesn't seem to be working.",
 };
 
@@ -11449,7 +11636,7 @@ STR16	szGearTemplateText[] =
 
 STR16	szIntelWebsiteText[] =
 {
-	L"Recon 情报服务",	//L"Recon Intelligence Services",
+	L"侦察情报局",	//L"Recon Intelligence Services",
 	L"你想要知道的情报",	//L"Your need to know base",
 	L"情报需求",	//L"Information Requests",
 	L"情报验证",	//L"Information Verification",
@@ -11601,15 +11788,15 @@ STR16	szMilitiaText[] =
 	L"取消",	//L"Cancel",
 };
 
-STR16	szFactoryText[] =	// TODO.Translate
+STR16	szFactoryText[] =
 {
 	L"%s: 的生产进程 %s 已因为忠诚度太低而被关闭。",	//L"%s: Production of %s switched off as loyalty is too low.",
 	L"%s: 的生产进程 %s 已因为资金短缺而被关闭。",	//L"%s: Production of %s switched off due to insufficient funds.",
 	L"%s: 的生产进程 %s 已因为缺少一个佣兵作为工作人员而被关闭。",	//L"%s: Production of %s switched off as it requires a merc to staff the facility.",
 	L"%s: 的生产进程 %s 已因为缺少必要的物品而被关闭。",	//L"%s: Production of %s switched off due to required items missing.",
-	L"制造列表",	//L"Item to build",
+	L"     制造列表          ", //(前空5格，后空10格)	//L"Item to build",
 
-	L"生产筹备",	//L"Preproducts", 5
+	L"生产筹备                         ", //(后空25格)	//L"Preproducts", 5
 	L"h/物品",	//L"h/item",
 };
 
@@ -11626,6 +11813,193 @@ STR16	szTurncoatText[] =
 	L"用什么方式来说服敌兵加入你的部队？",	//L"How to convince the soldier to join your forces?",
 	L"执行",	//L"Do it",
 	L"%d 变节者出现了",	//L"%d turncoats present",
+};
+
+// rftr: better lbe tooltips
+STR16 gLbeStatsDesc[14] =
+{
+	L"MOLLE可用空间：", //L"MOLLE Space Available:",
+	L"MOLLE所需空间：", //L"MOLLE Space Required:",
+	L"MOLLE小包数量：", //L"MOLLE Small Slot Count:",
+	L"MOLLE中包数量：", //L"MOLLE Medium Slot Count:",
+	L"MOLLE包容量：小型", //L"MOLLE Pouch Size: Small",
+	L"MOLLE包容量：中型", //L"MOLLE Pouch Size: Medium",
+	L"MOLLE包容量：中型（液体）", //L"MOLLE Pouch Size: Medium (Hydration)",
+	L"腿包", //L"Thigh Rig",
+	L"背心", //L"Vest",
+	L"战斗包", //L"Combat Pack",
+	L"背包", //L"Backpack",
+	L"MOLLE包", //L"MOLLE Pouch",
+	L"兼容背包：", //L"Compatible backpacks:",
+	L"兼容战斗包：", //L"Compatible combat packs:",
+};
+
+STR16 szRebelCommandText[] =
+{
+	L"Arulco反抗军司令部 - 国家总览",   //L"Arulco Rebel Command - National Overview",
+	L"Arulco反抗军司令部 - 地区总览",   //L"Arulco Rebel Command - Regional Overview",
+	L"点击地区总览",   //L"Switch to Regional Overview",
+	L"点击国家总览",   //L"Switch to National Overview",
+	L"物资：",   //L"Supplies:",
+	L"后勤物资",   //L"Incoming Supplies",
+	L"  /天",   //L"/day",
+	L"当前项目",   //L"Current Directive",
+	L"升级项目（$%d）",   //L"Improve Directive ($%d)",
+	L"升级所选项目将花费$%d。确认支付?",   //L"Improving the selected directive will cost $%d. Confirm expenditure?",
+	L"后勤物资或资金供应不足",   //L"Insufficient funds.",
+	L"新项目将于00:00开始生效",   //L"New directive will take effect at 00:00.",
+	L"民兵总览",   //L"Militia Overview",
+	L"新兵：",   //L"Green:",
+	L"正规军：",   //L"Regular:",
+	L"精英：",   //L"Elite:",
+	L"预计每日总数：",   //L"Projected Daily Total:",
+	L"志愿者总数：",   //L"Volunteer Pool:",
+	L"可用资源：",   //L"Resources Available:",
+	L"枪支：",   //L"Guns:",
+	L"防弹衣：",   //L"Armour:",
+	L"杂物：",   //L"Misc:",
+	L"训练费用：",   //L"Training Cost:",
+	L"士兵每人每天维持费用：",   //L"Upkeep Cost Per Soldier Per Day:", 
+	L"训练速度加成：",   //L"Training Speed Bonus:",
+	L"战斗加成：",   //L"Combat Bonuses:",
+	L"装备加成：",   //L"Physical Stats Bonus:", 
+	L"枪法加成：",   //L"Marksmanship Bonus:",
+	L"提升等级（$%d）",   //L"Upgrade Stats ($%d)", 
+	L"提升民兵等级需要$%d。确认支付?",   //L"Upgrading militia stats will cost $%d. Confirm expenditure?",
+	L"地区：",   //L"Region:",
+	L"下一个",   //L"Next",
+	L"上一个",   //L"Previous",
+	L"指挥部：",   //L"Administration Team:",
+	L"无",   //L"None",
+	L"激活",   //L"Active",
+	L"闲置",   //L"Inactive",
+	L"忠诚度：",   //L"Loyalty:",
+	L"最高忠诚度：",   //L"Maximum Loyalty:",
+	L"部署指挥部（%d后勤物资）",   //L"Deploy Administration Team (%d supplies)",
+	L"重新激活指挥部（%d后勤物资）",   //L"Reactivate Administration Team (%d supplies)",
+	L"目前该地区部署指挥部不安全，你必须先打下至少一个城镇区域来扩展基地。",   //L"It is currently not safe to deploy an administration team to this region. You must establish a foothold by controlling at least one town sector first.",
+	L"目前在Omerta不能进行区域行动。",   //L"No regional actions available in Omerta.",
+	L"一旦你占领了至少一个城镇区域，指挥部就可以部署到其区域。一旦活跃起来，它们将能够扩大你在该地区的影响力和军事力量。然而，他们需要后勤物资来运作和制定政策。",   //L"Administration teams can be deployed to other regions once you capture at least one town sector. Once active, they will be able to expand your influence and power in the region. However, they will need supplies to operate and enact policies.",
+	L"请注意你选择的地区，制定区域政策将增加同一区域和全国（在较小程度上）其他政策的物资成本。",   //L"Be mindful of where you choose to direct supplies. Enacting regional policies will increase supply costs for other policies in the same region and nationally (to a lesser extent).",
+	L"指挥部指令：",   //L"Administrative Actions:",
+	L"建立 %s",   //L"Establish %s",
+	L"升级 %s",   //L"Improve %s",
+	L"当前：%d",   //L"Current Tier: %d",
+	L"在该地区采取任何指挥部指令都会消耗%d后勤物资。",   //L"Taking any administrative action in this region will cost %d supplies.",
+	L"情报传递站收益：%d",   //L"Dead drop intel gain: %d",
+	L"走私贩提供收益：%d",   //L"Smuggler supply gain: %d",
+	L"一小队民兵从附近的秘密基地加入了战斗! ",   //L"A small group of militia from a nearby safehouse have joined the battle!",
+	L"通过给Omerta运送食物和物资，你已经得到反抗军的信任。并授权你访问他们的指挥系统，通过你的笔记本电脑访问A.R.C反抗军司令部网站。",   //L"[A.R.C. WEBSITE AVAILABLE] With the delivery of food and basic supplies to Omerta, you have convinced the rebels that you're here to make an impact. You have been granted access to the command system they've been working on, which is now available through your laptop.",
+	L"目前恢复这里的指挥部并不安全。必须先夺回一个城镇区域。",   //L"It is currently not safe to reactivate the administration team here. Recapture a town sector first.",
+	L"突袭矿井成功。获取$%d。",   //L"Mine raid successful. Stole $%d.",
+	L"没有足够的情报点数来策反敌人！",   //L"Insufficient Intel to create turncoats!",
+	L"更改指令操作",   //L"Change Admin Action",
+	L"取消",   //L"Cancel", 
+	L"确认",   //L"Confirm",
+	L"<",   //L"<",
+	L">",   //L">",
+	L"更改此指令操作将花费$%d并重置。确认支出？",   //L"Changing this Admin Action will cost $%d and reset its tier. Confirm expenditure?",
+};
+
+STR16 szRebelCommandHelpText[] =
+{
+	L"|物|资\n \n食物、水、医疗用品、武器以及任何\n反抗军认为有用的物资。反抗军会自动收集。",   //L"|S|u|p|p|l|i|e|s\n \nFood, water, medical supplies, weapons, and anything else that\nthe rebels might find useful. Supplies are obtained automatically\nby the rebels.",
+	L"|后|勤|物|资\n \n反抗军每天都会自动收集物资。当你\n占领更多的城镇时，他们每天能够\n找到的物资补给量将会增加。",   //L"|I|n|c|o|m|i|n|g |S|u|p|p|l|i|e|s\n \nEach day, the rebels will gather supplies on their own. As you\ntake over more towns, the amount of supplies they will be\nable to find per day will increase.",
+	L"|当|前|项|目\n \n你可以选择反抗军优先进行的战略目标。\n当你选定好战略目标时，新的项目指令将生效。",   //L"|C|u|r|r|e|n|t |D|i|r|e|c|t|i|v|e\n \nYou can choose how the rebels will prioritise their strategic\nobjectives. New directives will become available as you make\nprogress.",
+	L"|指|挥|部\n \n指挥部一旦部署，就会负责处理\n该区域内的日常事务。包括支持当地人，制造\n反抗宣传，制定地区政策等等。",   //L"|A|d|m|i|n|i|s|t|r|a|t|i|o|n |T|e|a|m\n \nOnce deployed, an admin team is responsible for handling the\nday-to-day affairs of the region. This includes supporting\nlocals, creating rebel propaganda, establishing regional\npolicies, and more.",
+	L"|忠|诚|度\n \n许多行政命令的有效性取决于\n该地区的忠诚度，提高忠诚度\n能得到最大利益化。",   //L"|L|o|y|a|l|t|y\n \nThe effectiveness of many Administrative Actions depends on\nthe region's loyalty to your cause. It is in your best interest\nto raise loyalty as high as possible.",
+	L"|最|高|忠|诚|度\n \n你需要说服当地人完全信任你。这可以\n通过为他们建立物资供应来实现，表明\n你打算改善他们的生活质量。",   //L"|M|a|x|i|m|u|m |L|o|y|a|l|t|y\n \nYou will need to convince the locals to fully trust you. This\ncan be done by creating a supply line to them, showing that\nyou intend to improve their quality of life.",
+	L"|援|助|物|资\n \n将物资送到此处的反抗军手里，并允许\n他们根据需要使用。这将少量增加\n该地区的忠诚度，但是会略微增加制定\n该地区政策的成本。",   //L"|G|r|a|n|t |S|u|p|p|l|i|e|s\n \nSend supplies to the admin team here and allow them to use them\nas needed. This will increase the region's loyalty by a small amount\neach time you do this. However, doing this will slightly increase\nthe cost of enacting regional policies.",
+	L"This Admin Action applies its bonus to town sectors only.", //TODO.Translate
+	L"This Admin Action applies its bonus to town sectors, and\nsectors immediately adjacent to them.",
+	L"This Admin Action applies its bonus to town sectors, one\nsector away at Tier 1, and up to two sectors away at Tier 2.",
+	L"This Admin Action applies its bonus to town sectors, up to\ntwo sectors away at Tier 1, and up to three sectors away at Tier 2.",
+};
+
+// follows a specific format:
+// x:	"Admin Action Button Text",
+// x+1:	"Admin action description text",
+STR16 szRebelCommandAdminActionsText[] =
+{
+	L"补给线",   //L"Supply Line",
+	L"向当地人分发生活必需品。增加最大地区忠诚度。",   //L"Distribute much-needed supplies amongst the local population. Increases maximum regional loyalty.",
+	L"反抗军电台",   //L"Rebel Radio",
+	L"开始在该地区播放反抗军公共广播。城镇每天都会获得忠诚度。",   //L"Begin broadcasting rebel public radio in the region. The town gains loyalty daily.",
+	L"秘密基地",   //L"Safehouses", 
+	L"在乡下建造反抗军的秘密基地，远离窥探者的目光。当你在这个地区作战时，会有额外的民兵加入战斗。",   //L"Construct rebel safehouses in the countryside, far from prying eyes. Bonus militia may join you in combat when operating in this region.",
+	L"后勤干扰",   //L"Supply Disruption",
+	L"反抗军将以敌方的后勤线路为目标，干扰敌人在该地区的活动。在这个地区的敌人会被削弱。",   //L"The rebels will try to disrupt enemy movements in the area by targetting their supplies. Enemies fighting in this region are weaker.",
+	L"侦察巡逻队",   //L"Scout Patrols",
+	L"开始定期侦察巡逻，监视该地区的敌对活动。敌人会在离城镇更远的地方被发现。",   //L"Start regular scout patrols to monitor hostile activity in the area. Enemy groups will be spotted further from town.",
+	L"情报传递站",   //L"Dead Drops",
+	L"为反抗军侦察员和渗透者设立情报站，以传递情报。提供日常情报工作。",   //L"Set up dead drops for rebel scouts and infiltrators to deliver their intel. Provides daily intel.",
+	L"走私团队",   //L"Smugglers",
+	L"争取走私贩的帮助，为反抗军提供物资。可使每日物资得到增加。",   //L"Enlist the aid of smugglers to bring in supplies for the rebels. Provides an unreliable daily supply boost.",
+	L"民兵武器库",   //L"Militia Warehouses",
+	L"在偏远地区建造仓库，让反抗军为民兵储备武器。提供每日民兵资源。",   //L"Construct warehouses in remote areas, allowing the rebels to stockpile weapons for the militia. Provides daily militia resources.",
+	L"税务局",   //L"Regional Taxes",
+	L"从当地人那里筹集资金来帮助你。这是一种永久的行为。增加每日收入，但地区忠诚度会逐日下降。",   //L"Collect money from the locals to assist your efforts. This is a permanent action. Increases daily income, but regional loyalty falls daily.",
+	L"民间援助",   //L"Civilian Aid",
+	L"指派一些反抗军直接协助和支持该地区的平民。增加每天志愿者的总数。",   //L"Assign some rebels to directly assist and support civilians in the area. Increases daily volunteer pool growth.",
+	L"私人佣兵团",   //L"Merc Support",
+	L"建立直接支持你的雇佣兵设施。增加雇佣兵工作的效率（医疗，修理，民兵训练等）",   //L"Set up facilities to directly support your mercs assigned in the town. Increases the effectiveness of merc assignments (doctoring, repairing, militia training, etc).",
+	L"矿产管理",   //L"Mining Policy",
+	L"进口更好的设备，与镇上的矿工合作，作出更平衡、更有效的排班表。增加城镇矿产的收入。",   //L"Import better equipment and work with the town's miners to create more balanced and efficient shift schedules. Increases the town's mine income.",
+	L"探路者",   //L"Pathfinders",
+	L"当地人会引导您的队伍通过该地区。大大减少徒步行军时间。",   //L"The locals guide your teams through shortcuts in the area. Reduces on-foot travel time in the region.",
+	L"鹞式战机",   //L"Harriers",
+	L"反抗军骚扰附近的敌军，大大增加他们在该地区的行军时间。",   //
+	L"防御工事",   //L"Fortifications",
+	L"建立杀伤区和防御阵地。友军在这个城镇战斗时更有效。仅限于自动战斗。",   //L"Set up killzones and defensive positions. Friendly forces are more effective when fighting in this town. Autoresolve only.",
+};
+
+// follows a specific format:
+// x:	"Directive Name",
+// x+1:	"Directive Bonus Description",
+// x+2:	"Directive Help Text",
+// x+3:	"Directive Improvement Button Description",
+STR16 szRebelCommandDirectivesText[] =
+{
+	L"收集物资",   //L"Gather Supplies",
+	L"每日额外获得%.0f后勤物资。",   //L"Gain an additional %.0f supplies per day.",
+	L"从有同情心的当地人那里积累物资，并向\n国际救援组织寻求援助，以增加每日后勤供应。",   //L"Increase daily supply income by amassing supplies from\nsympathetic locals, and seeking aid from international aid groups.",
+	L"升级此项将增加反抗军每日收集物资的数量。",   //L"Improving this directive will increase the amount of supplies that the rebels can gather daily.",
+	L"支援民兵",   //L"Support Militia",
+	L"减少民兵每日维护费用。                    民兵每日维护费用调整：%.2f。",   //L"Reduce militia daily upkeep costs. Militia daily upkeep cost modifier: %.2f.",
+	L"反抗军会帮你解决训练民兵\n后勤问题，减轻你的钱包负担。",   //L"The rebels will help out with logistics about the militia\nyou've trained, reducing the strain on your wallet.",
+	L"升级此项将会减少民兵的日常维护成本。",   //L"Improving this directive will reduce the daily upkeep costs of your militia.",
+	L"训练民兵",   //L"Train Militia",
+	L"降低民兵训练成本，提高民兵训练速度。      民兵训练费用调整：%.2f。                 民兵训练速度调整：%.2f。",   //L"Reduce militia training costs and increase militia training speed. Militia training cost modifier: %.2f. Militia training speed modifier: %.2f.",
+	L"当你训练民兵时，反抗军会协助你，提高训练效率。",   //L"The rebels will assist when you are training militia,\nincreasing the efficiency at which you can train them.",
+	L"升级此项将进一步降低训练成本和提高训练速度。",   //L"Improving this directive will further reduce training cost and increase training speed.",
+	L"宣传活动",   //L"Propaganda Campaign",
+	L"城镇的忠诚度上升得更快。                  忠诚加值修正值：%.2f。",   //L"Town loyalty rises faster. Loyalty gain modifier: %.2f.",
+	L"对当地人美化你的胜利和功绩。",   //L"Your victories and feats will be embellished as news reaches\nthe locals.",
+	L"升级此项将提高城镇忠诚度的上升速度。",   //L"Improving this directive will increase how quickly town loyalty rises.",
+	L"部署精兵",   //L"Deploy Elites",
+	L"Omerta每天出现%.0f精锐民兵。",   //L"%.0f elite militia appear in Omerta each day.",
+	L"反抗军将一小部分训练有素的部队交给你指挥。",   //L"The rebels release a small number of their highly-trained forces to your command.",
+	L"升级此项将会增加每天训练的民兵数量。",   //L"Improving this directive will increase the number of militia that appear each day.",
+	L"打击重点目标",   //L"High Value Target Strikes",
+	L"敌军不太可能有重点目标，除了女王。",   //L"Enemy groups are less likely to have specialised soldiers.",
+	L"对敌军进行外科手术式打击。\n军官、医务人员、无线电操作员和其他专家\n都是重点打击目标。",   //L"Surgical strikes will be conducted against enemy groups. Officers,\nmedics, radio operators, and other specialists are targetted.",
+	L"升级此项将使打击目标更加成功和有效。",   //L"Improving this directive will make strikes more successful and effective.",
+	L"侦查小队",   //L"Spotter Teams",
+	L"在战斗中，敌人的大致位置会显示在战术地图上（在战术界面中按INSERT键）",   //L"When in combat, approximate enemy locations are revealed in the overhead map (press INSERT button in tactical).",
+	L"每支部队都有一个侦查小队，在战斗中\n提供敌人的大致位置。",   //L"A small team will be attached to each of your squads, providing\napproximate locations of enemies when in combat.",
+	L"升级此项将会使敌人的位置更精确。",   //L"Improving this directive will make the locations of unspotted enemies more precise.",
+	L"突袭矿井",   //L"Raid Mines",
+	L"从不受你控制的矿井获取一些收入。当你占领该矿井时，这个指令就没多大用处了。",   //L"Steal some income from mines not under your control. This directive becomes less useful as you claim mines.",
+	L"突袭敌方矿井。虽然不是次次成功，一旦\n成功了，多多少少会为你增加少量的收入。",   //L"Conduct smash-and-grab raids on hostile mines. While not always\nsuccessful, the raids that do succeed should provide a\nsmall income bump.",
+	L"升级此项将会增加突袭矿井收入的最大值。",   //L"Improving this directive will increase the maximum value of stolen income.",
+	L"策反敌军",   //L"Create Turncoats",
+	L"每天随机在敌人队伍中策反%.0f名士兵。          每天消耗%.1f情报点数。",   //L"Create %.0f turncoats in a random enemy group per day. Consumes %.1f Intel per day.",
+	L"通过贿赂、威胁和勒索，说服敌军士兵\n背叛他们的军队并为你工作。",   //L"Convince enemy soldiers to betray their army and work for you\nthrough a combination of bribery, threats, and blackmail.",
+	L"升级此项将会增加每天士兵人数。",   //L"Improving this directive will increase the number of soldiers turned daily.",
+	L"征召平民",   //L"Draft Civilians",
+	L"每天获得%.0f名志愿者。所有城镇每天都会失去一些忠诚度。",   //L"Gain %.0f volunteers each day. All towns lose some loyalty each day.",
+	L"征召平民作为民兵新兵。不过民众\n可能不会对此感到高兴。随着您\n占领更多城镇，效率会提高。",   //L"Draft civilians as recruits for militia. The general population\nprobably won't be too happy about it, though. Effectiveness\nincreases as you capture more towns.",
+	L"升级此项将会增加每天志愿者人数。",   //L"Improving this directive will increase the number of volunteers gained per day.",
 };
 
 // WANNE: Some Chinese specific strings that needs to be in unicode!

@@ -30,6 +30,7 @@ enum
 	EXPLOSV_FLASHBANG,
 	EXPLOSV_SIGNAL_SMOKE,
 	EXPLOSV_SMOKE_DEBRIS,
+	EXPLOSV_SMOKE_FIRERETARDANT,
 	EXPLOSV_ANY_TYPE,
 };
 
@@ -197,7 +198,7 @@ BOOLEAN EvaluateValidMerge( UINT16 usMerge, UINT16 usItem, UINT16 * pusResult, U
 // is the item passed a medical/ first aid kit? and what type?
 INT8 IsMedicalKitItem( OBJECTTYPE *pObject );
 
-BOOLEAN AutoReload( SOLDIERTYPE * pSoldier );
+BOOLEAN AutoReload( SOLDIERTYPE * pSoldier, bool aReloadEvenIfNotEmpty = true );
 INT8 FindAmmoToReload( SOLDIERTYPE * pSoldier, INT8 bWeaponIn, INT8 bExcludeSlot );
 
 void SwapOutHandItem( SOLDIERTYPE * pSoldier );
@@ -429,6 +430,10 @@ INT16 GetGearAPBonus( SOLDIERTYPE * pSoldier );
 INT16 GetAPBonus( OBJECTTYPE * pObj );
 
 UINT16 GetFirstExplosiveOfType(UINT16 expType);
+UINT16 GetFirstHandGrenadeOfType(UINT16 expType);
+UINT16 GetHandGrenadeOfType(UINT16 usDefaultItem, UINT16 usType);
+
+BOOLEAN ItemIsHandGrenade(UINT16 usItem);
 
 OBJECTTYPE* FindSunGogglesInInv( SOLDIERTYPE * pSoldier, INT8 * bSlot, BOOLEAN * isAttach, BOOLEAN searchAllInventory = FALSE );
 OBJECTTYPE* FindNightGogglesInInv( SOLDIERTYPE * pSoldier, INT8 * bSlot, BOOLEAN * isAttach, BOOLEAN searchAllInventory = FALSE  );

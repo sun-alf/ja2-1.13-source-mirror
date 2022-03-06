@@ -595,8 +595,8 @@ void HourlyFoodAutoDigestion( SOLDIERTYPE *pSoldier )
 	// if we're a prisoner, we can't feed ourself, and the player can't do that either. Instead the army provides food (not much and of bad quality)
 	if (pSoldier->bAssignment == ASSIGNMENT_POW)
 	{
-		INT16 powwater   = gGameExternalOptions.usFoodDigestionHourlyBaseDrink * gGameExternalOptions.sFoodDigestionAssignment * FOOD_POW_MULTIPLICATOR;
-		INT16 powfoodadd = powwater * gGameExternalOptions.usFoodDigestionHourlyBaseFood / max(1, gGameExternalOptions.usFoodDigestionHourlyBaseDrink);
+		const INT16 powwater   = gGameExternalOptions.usFoodDigestionHourlyBaseDrink * gGameExternalOptions.sFoodDigestionAssignment * FOOD_POW_MULTIPLICATOR;
+		const INT16 powfoodadd = powwater * gGameExternalOptions.usFoodDigestionHourlyBaseFood / max(1, gGameExternalOptions.usFoodDigestionHourlyBaseDrink);
 
 		// if we're thirsty or hungry, and this is nutritious, consume it
 		if ( pSoldier->bDrinkLevel < FoodMoraleMods[FOOD_VERY_LOW].bThreshold  )
@@ -604,6 +604,18 @@ void HourlyFoodAutoDigestion( SOLDIERTYPE *pSoldier )
 
 		if ( pSoldier->bFoodLevel < FoodMoraleMods[FOOD_VERY_LOW].bThreshold )
 			AddFoodpoints(pSoldier->bDrinkLevel, powfoodadd);
+	}
+	// while on a minievent, assume that we can feed ourselves.. somehow
+	else if (pSoldier->bAssignment == ASSIGNMENT_MINIEVENT)
+	{
+		const INT16 water   = gGameExternalOptions.usFoodDigestionHourlyBaseDrink * gGameExternalOptions.sFoodDigestionAssignment;
+		const INT16 foodadd = water * gGameExternalOptions.usFoodDigestionHourlyBaseFood / max(1, gGameExternalOptions.usFoodDigestionHourlyBaseDrink);
+
+		if ( pSoldier->bDrinkLevel < FoodMoraleMods[FOOD_NORMAL].bThreshold  )
+			AddFoodpoints(pSoldier->bDrinkLevel, water);
+
+		if ( pSoldier->bFoodLevel < FoodMoraleMods[FOOD_NORMAL].bThreshold )
+			AddFoodpoints(pSoldier->bDrinkLevel, foodadd);
 	}
 	else
 	{
@@ -647,8 +659,11 @@ void HourlyFoodAutoDigestion( SOLDIERTYPE *pSoldier )
 			EatFromInventory( pSoldier, FALSE );
 		}
 
-		// dynamic opinions: if we're still really hungry  an someone in this sector has food, we get a lwoer opinion of him, as he obviously doesn't share
-		HandleDynamicOpinionChange( pSoldier, OPINIONEVENT_NOSHARINGFOOD, FALSE, FALSE );
+		if (gGameExternalOptions.fDynamicOpinions)
+		{
+			// dynamic opinions: if we're still really hungry  an someone in this sector has food, we get a lwoer opinion of him, as he obviously doesn't share
+			HandleDynamicOpinionChange(pSoldier, OPINIONEVENT_NOSHARINGFOOD, FALSE, FALSE);
+		}
 	}	
 }
 
@@ -791,7 +806,7 @@ void SectorFillCanteens( void )
 {
 	// no functionality if not in tactical or in combat, or nobody is here
 	// can be called from a messagebox, thus the check for MSG_BOX_SCREEN
-	if ( (guiCurrentScreen != GAME_SCREEN && guiCurrentScreen != MSG_BOX_SCREEN) || (gTacticalStatus.uiFlags & INCOMBAT) || gusSelectedSoldier == NOBODY )
+	if ( (guiCurrentScreen != GAME_SCREEN && guiCurrentScreen != MSG_BOX_SCREEN) || (gTacticalStatus.uiFlags & INCOMBAT) || gTacticalStatus.fEnemyInSector || gusSelectedSoldier == NOBODY )
 		return;
 
 	// determine if there are any patches of water in this sector.
@@ -1139,12 +1154,43 @@ void DrinkFromWaterTap( SOLDIERTYPE* pSoldier )
 		}
 	}
 	
-	if ( GetWaterQuality( gWorldSectorX, gWorldSectorY, gbWorldSectorZ ) == WATER_POISONOUS )
+	UINT8 waterquality = GetWaterQuality(gWorldSectorX, gWorldSectorY, gbWorldSectorZ);
+	if ( waterquality == WATER_POISONOUS )
 		HandlePossibleInfection( pSoldier, NULL, INFECTION_TYPE_BADWATER );
 	
 	INT32 bpadded = 100 * min( 20, 100 - pSoldier->bBreath );
 
 	DeductPoints( pSoldier, 20, -bpadded );
+
+	if (waterquality == WATER_DRINKABLE)//todo possibly allow refill with poisonous water
+	{
+		// the temperature of the water in this sector (temperature reflects the quality)
+		FLOAT addtemperature = OVERHEATING_MAX_TEMPERATURE;
+
+		// first step: fill all canteens in inventories	
+		INT8 invsize = (INT8)pSoldier->inv.size();									// remember inventorysize, so we don't call size() repeatedly
+		for (INT8 bLoop = 0; bLoop < invsize; ++bLoop)								// ... for all items in our inventory ...
+		{
+			// ... if Item exists and is canteen (that can have drink points) ...
+			if (pSoldier->inv[bLoop].exists() == true && Item[pSoldier->inv[bLoop].usItem].canteen && Food[Item[pSoldier->inv[bLoop].usItem].foodtype].bDrinkPoints > 0)
+			{
+				OBJECTTYPE* pObj = &(pSoldier->inv[bLoop]);							// ... get pointer for this item ...
+
+				if (pObj != NULL)													// ... if pointer is not obviously useless ...
+				{
+					for (INT16 i = 0; i < pObj->ubNumberOfObjects; ++i)				// ... there might be multiple items here (item stack), so for each one ...
+					{
+						UINT16 status = (*pObj)[i]->data.objectStatus;
+						UINT16 statusmmissing = max(0, 100 - status);
+						FLOAT temperature = (*pObj)[i]->data.bTemperature;
+
+						(*pObj)[i]->data.objectStatus = 100;						// refill canteen
+						(*pObj)[i]->data.bTemperature = (status * temperature + statusmmissing * addtemperature) / 100;
+					}
+				}
+			}
+		}
+	}
 
 	// play water sound
 	if ( pSoldier->bTeam == gbPlayerNum && gGameExternalOptions.fFoodEatingSounds )

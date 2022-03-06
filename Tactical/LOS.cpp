@@ -57,6 +57,7 @@
 #include "SkillCheck.h"			// added by Flugente
 #include "ai.h"					// sevenfm
 #include "GameInitOptionsScreen.h"
+#include "renderworld.h"		// added by Flugente for SetRenderFlags( RENDER_FLAG_FULL );
 
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
@@ -629,11 +630,17 @@ INT8 GetSightAdjustmentCamouflageOnTerrain( SOLDIERTYPE* pSoldier, const UINT8& 
 		return 0;
 	}
 
-	INT8 scaler = -(ANIM_STAND+1 - ubStance); // stand = 7-6 => 10%, crouch = 7-3 => 66%, prone = 7-1 => 100%;
+	INT16 scaler = -(ANIM_STAND+1 - ubStance); // stand = 7-6 => 10%, crouch = 7-3 => 66%, prone = 7-1 => 100%;
 
-	UINT8 effectiveness = gGameExternalOptions.ubCamouflageEffectiveness;
-	
-	effectiveness += (UINT8)(pSoldier->GetBackgroundValue(BG_PERC_CAMO));
+	INT16 effectiveness = gGameExternalOptions.ubCamouflageEffectiveness + pSoldier->GetBackgroundValue(BG_PERC_CAMO);
+
+	if (ProfileHasSkillTrait(pSoldier->ubProfile, SURVIVAL_NT))
+	{
+		effectiveness += gSkillTraitValues.ubSVCamoEffectivenessBonus;
+	}
+
+	effectiveness = min(100, effectiveness);
+	effectiveness = max(-100, effectiveness);
 
 	scaler = effectiveness * scaler / 6;
 
@@ -667,11 +674,14 @@ INT8 GetDetailedSightAdjustmentCamouflageOnTerrain( SOLDIERTYPE* pSoldier, const
 
 	INT8 bStanceModifier = zGivenTileProperties.bCamoStanceModifer;
 	
-	INT8 scaler = -(ANIM_STAND+1 - max(ANIM_PRONE, ubStance - bStanceModifier)); // stand = 7-6 => 10%, crouch = 7-3 => 66%, prone = 7-1 => 100%;
+	INT16 scaler = -(ANIM_STAND+1 - max(ANIM_PRONE, ubStance - bStanceModifier)); // stand = 7-6 => 10%, crouch = 7-3 => 66%, prone = 7-1 => 100%;
 
-	UINT8 effectiveness = gGameExternalOptions.ubCamouflageEffectiveness;
-	
-	effectiveness += (UINT8)(pSoldier->GetBackgroundValue(BG_PERC_CAMO));
+	INT16 effectiveness = gGameExternalOptions.ubCamouflageEffectiveness + pSoldier->GetBackgroundValue(BG_PERC_CAMO);
+
+	if (ProfileHasSkillTrait(pSoldier->ubProfile, SURVIVAL_NT))
+	{
+		effectiveness += gSkillTraitValues.ubSVCamoEffectivenessBonus;
+	}
 
 	scaler = effectiveness * scaler / 6;
 	if(gGameExternalOptions.fAlternateMultiTerrainCamoCalculation)
@@ -1937,7 +1947,7 @@ INT32 LineOfSightTest( FLOAT dStartX, FLOAT dStartY, FLOAT dStartZ, FLOAT dEndX,
 
 		// leaving a tile, check to see if it had gas in it
 		//		if ( pMapElement->ubExtFlags[0] & (MAPELEMENT_EXT_SMOKE | MAPELEMENT_EXT_TEARGAS | MAPELEMENT_EXT_MUSTARDGAS) )
-		if ( pMapElement->ubExtFlags[0] & (MAPELEMENT_EXT_SMOKE | MAPELEMENT_EXT_TEARGAS | MAPELEMENT_EXT_MUSTARDGAS | MAPELEMENT_EXT_BURNABLEGAS | MAPELEMENT_EXT_DEBRIS_SMOKE) )
+		if ( pMapElement->ubExtFlags[0] & (MAPELEMENT_EXT_SMOKE | MAPELEMENT_EXT_TEARGAS | MAPELEMENT_EXT_MUSTARDGAS | MAPELEMENT_EXT_BURNABLEGAS | MAPELEMENT_EXT_DEBRIS_SMOKE | MAPELEMENT_EXT_FIRERETARDANT_SMOKE ) )
 		{
 			if ( (pMapElement->ubExtFlags[0] & (MAPELEMENT_EXT_SMOKE | MAPELEMENT_EXT_DEBRIS_SMOKE) ) && !fSmell )
 			{
@@ -2049,7 +2059,7 @@ BOOLEAN CalculateSoldierZPos( SOLDIERTYPE * pSoldier, UINT8 ubPosType, FLOAT * p
 				ubPosType = TORSO_TARGET_POS;
 			}
 		}
-		else if ( ARMED_VEHICLE( pSoldier ) )
+		else if ( ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) )
 		{
 			// high up!
 			//ubPosType = HEAD_TARGET_POS;
@@ -3291,6 +3301,126 @@ BOOLEAN BulletHitMerc( BULLET * pBullet, STRUCTURE * pStructure, BOOLEAN fIntend
 			send_hit( &SWeaponHit );
 		}
 	}
+	
+	// Flugente: add blood spatter to wall next to target
+	if ( gGameExternalOptions.fAdditionalDecals
+		&&( pTarget->ubBodyType < ADULTFEMALEMONSTER || (pTarget->ubBodyType >= FATCIV && pTarget->ubBodyType <= BLOODCAT) )
+		&& iDamage > 15 )
+	{
+		// the direction in SWeaponHit.usDirection is erversed for whatever reason
+		UINT8 properdirection = gOppositeDirection[SWeaponHit.usDirection];
+
+		if ( properdirection == SOUTHWEST
+			||properdirection == WEST
+			|| properdirection == NORTHWEST
+			|| properdirection == NORTH
+			|| properdirection == NORTHEAST)
+		{
+			bool northwestalreadydone( false );
+
+			INT32 nextGridNoinSight = pBullet->sGridNo;
+
+			// If we're firing straight up (NORTHWEST), issues arise if we hit a corner.
+			// If it's an outside corner, it would be enough to simply mark both outside walls.
+			// This does not work in an inside corner, as the walls would be tied to the northern and western gridno from our position, not the northwest one.
+			// It could also be the case that it's an inside corner in a full wall.
+			// Solution: First check the northern and western gridnos for walls. Only if those don't exist, continue to the northwest gridno and check it's outside walls.
+			if ( properdirection == NORTHWEST )
+			{
+				nextGridNoinSight = NewGridNo( pBullet->sGridNo, DirectionInc( WEST ) );
+
+				if ( gubWorldMovementCosts[nextGridNoinSight][WEST][0] >= TRAVELCOST_BLOCKED )
+				{
+					STRUCTURE* pStructureForBlood = FindStructure( nextGridNoinSight, STRUCTURE_WALL );
+					while ( pStructureForBlood )
+					{
+						// add if not already set
+						// add if of proper height
+						if ( ( pStructureForBlood->ubWallOrientation == INSIDE_TOP_RIGHT ) )
+						{
+							northwestalreadydone = true;
+
+							if ( !( pStructureForBlood->ubDecalFlag & STRUCTURE_DECALFLAG_BLOOD )
+								&& StructureHeight( pStructureForBlood ) == 4 )
+							{
+								// add blood to wall
+								pStructureForBlood->ubDecalFlag |= STRUCTURE_DECALFLAG_BLOOD;
+
+								gpWorldLevelData[pStructureForBlood->sGridNo].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
+
+								// enforce a full render, so that we can draw decals on time
+								SetRenderFlags( RENDER_FLAG_FULL );
+							}
+						}
+
+						pStructureForBlood = FindNextStructure( pStructureForBlood, STRUCTURE_WALL );
+					}
+				}
+
+				nextGridNoinSight = NewGridNo( pBullet->sGridNo, DirectionInc( NORTH ) );
+
+				if ( gubWorldMovementCosts[nextGridNoinSight][NORTH][0] >= TRAVELCOST_BLOCKED )
+				{
+					STRUCTURE* pStructureForBlood = FindStructure( nextGridNoinSight, STRUCTURE_WALL );
+					while ( pStructureForBlood )
+					{
+						// add if not already set
+						// add if of proper height
+						if ( pStructureForBlood->ubWallOrientation == INSIDE_TOP_LEFT )
+						{
+							northwestalreadydone = true;
+
+							if ( !( pStructureForBlood->ubDecalFlag & STRUCTURE_DECALFLAG_BLOOD )
+								&& StructureHeight( pStructureForBlood ) == 4 )
+							{
+								// add blood to wall
+								pStructureForBlood->ubDecalFlag |= STRUCTURE_DECALFLAG_BLOOD;
+
+								gpWorldLevelData[pStructureForBlood->sGridNo].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
+
+								// enforce a full render, so that we can draw decals on time
+								SetRenderFlags( RENDER_FLAG_FULL );
+							}
+						}
+
+						pStructureForBlood = FindNextStructure( pStructureForBlood, STRUCTURE_WALL );
+					}
+				}
+			}
+
+			nextGridNoinSight = NewGridNo( pBullet->sGridNo, DirectionInc( properdirection ) );
+
+			if ( !northwestalreadydone
+				&& gubWorldMovementCosts[nextGridNoinSight][properdirection][0] >= TRAVELCOST_BLOCKED )
+			{
+				STRUCTURE* pStructureForBlood = FindStructure( nextGridNoinSight, STRUCTURE_WALL );
+				while ( pStructureForBlood )
+				{
+					// add if not already set
+					// add if of proper height
+					if ( ( ( properdirection == NORTHWEST && ( pStructureForBlood->ubWallOrientation == OUTSIDE_TOP_LEFT || pStructureForBlood->ubWallOrientation == OUTSIDE_TOP_RIGHT ) )
+						|| ( properdirection == WEST && ( pStructureForBlood->ubWallOrientation == OUTSIDE_TOP_RIGHT || pStructureForBlood->ubWallOrientation == INSIDE_TOP_RIGHT ) )
+						|| ( properdirection == SOUTHWEST && ( pStructureForBlood->ubWallOrientation == OUTSIDE_TOP_RIGHT || pStructureForBlood->ubWallOrientation == INSIDE_TOP_RIGHT ) )
+						|| ( properdirection == NORTH && ( pStructureForBlood->ubWallOrientation == OUTSIDE_TOP_LEFT || pStructureForBlood->ubWallOrientation == INSIDE_TOP_LEFT ) )
+						|| ( properdirection == NORTHEAST && ( pStructureForBlood->ubWallOrientation == OUTSIDE_TOP_LEFT || pStructureForBlood->ubWallOrientation == INSIDE_TOP_LEFT ) )
+						)
+						&& !( pStructureForBlood->ubDecalFlag & STRUCTURE_DECALFLAG_BLOOD )
+						&& StructureHeight( pStructureForBlood ) == 4 )
+					{
+						// add blood to wall
+						pStructureForBlood->ubDecalFlag |= STRUCTURE_DECALFLAG_BLOOD;
+
+						gpWorldLevelData[pStructureForBlood->sGridNo].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
+
+						// enforce a full render, so that we can draw decals on time
+						SetRenderFlags( RENDER_FLAG_FULL );
+					}
+
+					pStructureForBlood = FindNextStructure( pStructureForBlood, STRUCTURE_WALL );
+				}
+			}
+		}
+	}
 
 	if (fStopped)
 	{
@@ -3472,7 +3602,7 @@ INT32 HandleBulletStructureInteraction( BULLET * pBullet, STRUCTURE * pStructure
 
 	*pfHit = FALSE;
 
-	if (pBullet->usFlags & BULLET_FLAG_KNIFE || pBullet->usFlags & BULLET_FLAG_MISSILE || pBullet->usFlags & BULLET_FLAG_TANK_CANNON || pBullet->usFlags & BULLET_FLAG_FLAME )
+	if (pBullet->usFlags & BULLET_FLAG_KNIFE || pBullet->usFlags & BULLET_FLAG_MISSILE || pBullet->usFlags & BULLET_FLAG_TANK_CANNON || pBullet->usFlags & (BULLET_FLAG_FLAME | BULLET_FLAG_WHITESMOKE) )
 	{
 		// stops!
 		*pfHit = TRUE;
@@ -3625,7 +3755,7 @@ INT32 CTGTHandleBulletStructureInteraction( BULLET * pBullet, STRUCTURE * pStruc
 	INT32 iCurrImpact;
 	INT32 iImpactReduction;
 
-	if (pBullet->usFlags & BULLET_FLAG_KNIFE || pBullet->usFlags & BULLET_FLAG_MISSILE || pBullet->usFlags & BULLET_FLAG_FLAME || pBullet->usFlags & BULLET_FLAG_TANK_CANNON )
+	if (pBullet->usFlags & BULLET_FLAG_KNIFE || pBullet->usFlags & BULLET_FLAG_MISSILE || pBullet->usFlags & (BULLET_FLAG_FLAME | BULLET_FLAG_WHITESMOKE) || pBullet->usFlags & BULLET_FLAG_TANK_CANNON )
 	{
 		// knife/rocket stops when it hits anything, and people block completely
 		return( pBullet->iImpact );
@@ -3799,15 +3929,17 @@ UINT8 CalcChanceToGetThrough( BULLET * pBullet )
 			}
 			else if (pStructure->fFlags & STRUCTURE_ROOF)
 			{
-				// only consider roofs if the flag is set; don't add them to the array since they
-				// are a special case
-				if (pBullet->fCheckForRoof)
+				// only consider roofs if the flag is set; don't add them to the array since they are a special case
+				// sevenfm: always check roof
+				//if (pBullet->fCheckForRoof)
 				{
 					pRoofStructure = pStructure;
 
 					if ( pRoofStructure )
 					{
-						qLastZ = pBullet->qCurrZ - pBullet->qIncrZ;
+						// sevenfm: improved check to catch roof crossing
+						//qLastZ = pBullet->qCurrZ - pBullet->qIncrZ;
+						qLastZ = pBullet->qCurrZ - pBullet->qIncrZ * 10;
 
 						// if just on going to next tile we cross boundary, then roof stops bullet here!
 						if ( (qLastZ > qWallHeight && pBullet->qCurrZ <= qWallHeight) || (qLastZ < qWallHeight && pBullet->qCurrZ >= qWallHeight))
@@ -3818,7 +3950,6 @@ UINT8 CalcChanceToGetThrough( BULLET * pBullet )
 							return( 0 );
 						}
 					}
-
 				}
 			}
 			else if (pStructure->fFlags & STRUCTURE_PERSON)
@@ -4556,7 +4687,7 @@ INT8 FireBullet( UINT8 ubFirer, BULLET * pBullet, BOOLEAN fFake )
 		else
 		{
 			//afp-start  //always a fast bullet 
-			if ( pBullet->usFlags & ( BULLET_FLAG_CREATURE_SPIT | BULLET_FLAG_KNIFE | BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME /*| BULLET_FLAG_TRACER*/ ) )
+			if ( pBullet->usFlags & ( BULLET_FLAG_CREATURE_SPIT | BULLET_FLAG_KNIFE | BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_WHITESMOKE /*| BULLET_FLAG_TRACER*/ ) )
 				pBullet->usClockTicksPerUpdate = (Weapon[ pBullet->pFirer->usAttackingWeapon ].ubBulletSpeed + GetBulletSpeedBonus(&pBullet->pFirer->inv[pBullet->pFirer->ubAttackingHand]) ) / 10;
 			else
 				if (gGameSettings.fOptions[TOPTION_ALTERNATE_BULLET_GRAPHICS])				
@@ -4698,7 +4829,12 @@ INT8 FireBulletGivenTargetNCTH( SOLDIERTYPE * pFirer, FLOAT dEndX, FLOAT dEndY, 
 	{
 		usBulletFlags |= BULLET_FLAG_SMALL_MISSILE;
 	}
-	else if ( usHandItem == FLAMETHROWER )
+	else if ( AmmoTypes[( *pObjAttHand )[0]->data.gun.ubGunAmmoType].ammoflag & AMMO_TRAIL_WHITESMOKE )
+	{
+		usBulletFlags |= BULLET_FLAG_WHITESMOKE;
+		ubSpreadIndex = 2;
+	}
+	else if ( AmmoTypes[( *pObjAttHand )[0]->data.gun.ubGunAmmoType].ammoflag & AMMO_TRAIL_FIRE )
 	{
 		usBulletFlags |= BULLET_FLAG_FLAME;
 		ubSpreadIndex = 2;
@@ -5192,7 +5328,12 @@ INT8 FireBulletGivenTarget( SOLDIERTYPE * pFirer, FLOAT dEndX, FLOAT dEndY, FLOA
 	{
 		usBulletFlags |= BULLET_FLAG_SMALL_MISSILE;
 	}
-	else if ( usHandItem == FLAMETHROWER )
+	else if ( AmmoTypes[( *pObjAttHand )[0]->data.gun.ubGunAmmoType].ammoflag & AMMO_TRAIL_WHITESMOKE )
+	{
+		usBulletFlags |= BULLET_FLAG_WHITESMOKE;
+		ubSpreadIndex = 2;
+	}
+	else if ( AmmoTypes[( *pObjAttHand )[0]->data.gun.ubGunAmmoType].ammoflag & AMMO_TRAIL_FIRE )
 	{
 		usBulletFlags |= BULLET_FLAG_FLAME;
 		ubSpreadIndex = 2;
@@ -5481,8 +5622,7 @@ INT8 FireBulletGivenTarget( SOLDIERTYPE * pFirer, FLOAT dEndX, FLOAT dEndY, FLOA
 							ddHorizAngle, ddVerticAngle,
 							pFirer->ubID, ubLoop, ubShots,
 							gpSpreadPattern[ubSpreadIndex].method, gSpreadPatternMethodNames[gpSpreadPattern[ubSpreadIndex].method],
-							ubSpreadIndex, gpSpreadPattern[ubSpreadIndex].Name,
-							NULL
+							ubSpreadIndex, gpSpreadPattern[ubSpreadIndex].Name
 						);
 						fclose(OutFile);
 					}
@@ -5874,7 +6014,12 @@ INT8 FireBulletGivenTargetTrapOnly( SOLDIERTYPE* pThrower, OBJECTTYPE* pObj, INT
 	{
 		usBulletFlags |= BULLET_FLAG_SMALL_MISSILE;
 	}
-	else if ( usItem == FLAMETHROWER )
+	else if ( AmmoTypes[ammotype].ammoflag & AMMO_TRAIL_WHITESMOKE )
+	{
+		usBulletFlags |= BULLET_FLAG_WHITESMOKE;
+		ubSpreadIndex = 2;
+	}
+	else if ( AmmoTypes[ammotype].ammoflag & AMMO_TRAIL_FIRE )
 	{
 		usBulletFlags |= BULLET_FLAG_FLAME;
 		ubSpreadIndex = 2;
@@ -6136,8 +6281,7 @@ INT8 FireBulletGivenTargetTrapOnly( SOLDIERTYPE* pThrower, OBJECTTYPE* pObj, INT
 							ddHorizAngle, ddVerticAngle,
 							NOBODY, ubLoop, ubShots,
 							gpSpreadPattern[ubSpreadIndex].method, gSpreadPatternMethodNames[gpSpreadPattern[ubSpreadIndex].method],
-							ubSpreadIndex, gpSpreadPattern[ubSpreadIndex].Name,
-							NULL
+							ubSpreadIndex, gpSpreadPattern[ubSpreadIndex].Name
 						);
 						fclose(OutFile);
 					}
@@ -6273,7 +6417,7 @@ INT8 FireBulletGivenTargetTrapOnly( SOLDIERTYPE* pThrower, OBJECTTYPE* pObj, INT
 	}
 	else
 	{
-		ubVolume = __max( 1, ( ubVolume * GetPercentNoiseVolume( pObj ) ) / 100 );
+		ubVolume = __max( 1, ( ubVolume * noisefactor ) / 100 );
 	}
 
 	MakeNoise( NOBODY, gridno, 0, pThrower ? pThrower->bOverTerrainType : FLAT_GROUND, ubVolume, NOISE_GUNFIRE );
@@ -6298,17 +6442,20 @@ INT8 FireBulletGivenTargetTrapOnly( SOLDIERTYPE* pThrower, OBJECTTYPE* pObj, INT
 	// Flugente : Added a malus to reliability for overheated guns
 	// HEADROCK HAM 5: Variable NCTH base change
 	UINT32 uiDepreciateTest = 0;
+	INT32 depreciatetest = 0;
 	if ( UsingNewCTHSystem() == true)
 	{
 		UINT16 usBaseChance = gGameCTHConstants.BASIC_RELIABILITY_ODDS;
 		FLOAT dReliabilityRatio = 3.0f * ((FLOAT)usBaseChance / (FLOAT)gItemSettings.usBasicDeprecateChance); // Compare original odds to new odds.
-		uiDepreciateTest = usBaseChance + (INT16)( dReliabilityRatio * GetReliability( pObj ) - iOverheatReliabilityMalus);
-		uiDepreciateTest = max(0, uiDepreciateTest);
+		depreciatetest = usBaseChance + (INT16)( dReliabilityRatio * GetReliability( pObj ) - iOverheatReliabilityMalus);
 	}
 	else
 	{
-		uiDepreciateTest = max( gItemSettings.usBasicDeprecateChance + 3 * GetReliability( pObj ) - iOverheatReliabilityMalus, 0 );
+		depreciatetest = gItemSettings.usBasicDeprecateChance + 3 * GetReliability( pObj ) - iOverheatReliabilityMalus;
 	}
+
+	uiDepreciateTest = min( 100, max( 0, depreciatetest ) );
+
 	if ( !PreRandom( uiDepreciateTest ) && ( (*pObj)[0]->data.objectStatus > 1) )
 	{
 		(*pObj)[0]->data.objectStatus--;
@@ -6452,7 +6599,12 @@ INT8 FireBulletGivenTarget_NoObjectNoSoldier( UINT16 usItem, UINT8 ammotype, UIN
 	{
 		usBulletFlags |= BULLET_FLAG_SMALL_MISSILE;
 	}
-	else if ( usItem == FLAMETHROWER )
+	else if ( AmmoTypes[ammotype].ammoflag & AMMO_TRAIL_WHITESMOKE )
+	{
+		usBulletFlags |= BULLET_FLAG_WHITESMOKE;
+		ubSpreadIndex = 2;
+	}
+	else if ( AmmoTypes[ammotype].ammoflag & AMMO_TRAIL_FIRE )
 	{
 		usBulletFlags |= BULLET_FLAG_FLAME;
 		ubSpreadIndex = 2;
@@ -6898,7 +7050,7 @@ void MoveBullet( INT32 iBullet )
 		// check a particular tile
 		// retrieve values from world for this particular tile
 		iGridNo = pBullet->iCurrTileX + pBullet->iCurrTileY * WORLD_COLS;
-		if (!GridNoOnVisibleWorldTile( iGridNo ) || (pBullet->iCurrCubesZ > PROFILE_Z_SIZE * 2 && FIXEDPT_TO_INT32( pBullet->qIncrZ ) > 0 ) )
+		if (!GridNoOnVisibleWorldTile( iGridNo ))
 		{
 			// bullet outside of world!
 			// NB remove bullet only flags a bullet for deletion; we still have access to the
@@ -6921,6 +7073,18 @@ void MoveBullet( INT32 iBullet )
 		// calculate which level bullet is on for suppression and close call purposes
 		// figure out the LOS cube level of the current point
 		iCurrCubesAboveLevelZ = CONVERT_HEIGHTUNITS_TO_INDEX( FIXEDPT_TO_INT32( pBullet->qCurrZ - qLandHeight) );
+		if ((iCurrCubesAboveLevelZ > STRUCTURE_ON_ROOF_MAX && FIXEDPT_TO_INT32( pBullet->qIncrZ ) > 0 ))
+		{
+			// bullet too high
+			// NB remove bullet only flags a bullet for deletion; we still have access to the
+			// information in the structure
+			RemoveBullet(pBullet->iBullet);
+
+			if (ENABLE_COLLISION)
+				BulletMissed(pBullet, pBullet->pFirer);//only if local origin
+
+			return;
+		}
 		// figure out the level
 		if (iCurrCubesAboveLevelZ < STRUCTURE_ON_GROUND_MAX)
 		{
@@ -7317,7 +7481,7 @@ void MoveBullet( INT32 iBullet )
 
 				// HEADROCK HAM B2.5: Changed condition to read fTracer flag directly from bullet's struct.
 				// This is for the New Tracer System.
-				if (( pBullet->usFlags & ( BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_CREATURE_SPIT /*| BULLET_FLAG_TRACER*/	) ) 
+				if (( pBullet->usFlags & ( BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_CREATURE_SPIT | BULLET_FLAG_WHITESMOKE /*| BULLET_FLAG_TRACER*/	) )
 					|| ((gGameExternalOptions.ubRealisticTracers > 0 && gGameExternalOptions.ubNumBulletsPerTracer > 0 && pBullet->fTracer == TRUE) || (gGameExternalOptions.ubRealisticTracers == 0 && fTracer == TRUE)))
 				{
 					INT8 bStepsPerMove = STEPS_FOR_BULLET_MOVE_TRAILS;
@@ -7326,7 +7490,7 @@ void MoveBullet( INT32 iBullet )
 					{
 						bStepsPerMove = STEPS_FOR_BULLET_MOVE_SMALL_TRAILS;
 					}
-					else if ( pBullet->usFlags & ( BULLET_FLAG_FLAME ) )
+					else if ( pBullet->usFlags & ( BULLET_FLAG_FLAME | BULLET_FLAG_WHITESMOKE ) )
 					{
 						bStepsPerMove = STEPS_FOR_BULLET_MOVE_FIRE_TRAILS;
 					}
@@ -7417,6 +7581,15 @@ void MoveBullet( INT32 iBullet )
 										}
 									}
 								}
+							}
+
+							// Flugente: required check as it's possible anti-materiel bullets will destroy a structure mid-flight
+							if ( !pStructure->pShape )
+							{
+								// Moved here to keep ABC >0 as long as possible
+								RemoveBullet( iBullet );
+								// ReduceAttackBusyCount( );
+								return;
 							}
 
 							if (((*(pStructure->pShape))[pBullet->bLOSIndexX][pBullet->bLOSIndexY] & AtHeight[iCurrCubesAboveLevelZ]) > 0)
@@ -7568,7 +7741,7 @@ void MoveBullet( INT32 iBullet )
 										if (fHitStructure)
 										{
 											// ATE: NOT if we are a special bullet like a LAW trail...
-											if (pStructure->fFlags & STRUCTURE_CORPSE && !( pBullet->usFlags & ( BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_CREATURE_SPIT ) ) )
+											if (pStructure->fFlags & STRUCTURE_CORPSE && !( pBullet->usFlags & ( BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_CREATURE_SPIT | BULLET_FLAG_WHITESMOKE ) ) )
 											{
 												// ATE: In enemy territory here... ;)
 												// Now that we have hit a corpse, make the bugger twich!
@@ -7594,16 +7767,6 @@ void MoveBullet( INT32 iBullet )
 												// play animation to indicate structure being hit
 												BulletHitStructure( pBullet, pStructure->usStructureID, 1, pBullet->qCurrX, pBullet->qCurrY, pBullet->qCurrZ, FALSE );
 												gubLocalStructureNumTimesHit[iStructureLoop] = 1;
-
-												// Flugente: anti-materiel rifles have to be handled slightly different - we have to remove the bullet after impact.
-												// Otherwise we might destroy a structure, but this function won't 'realize' it, leading to invalid memory access
-												if ( pBullet->usFlags & BULLET_FLAG_ANTIMATERIEL )
-												{
-													// Moved here to keep ABC >0 as long as possible
-													RemoveBullet( iBullet );
-													// ReduceAttackBusyCount( );
-													return;
-												}
 											}
 										}
 									}
@@ -7612,7 +7775,8 @@ void MoveBullet( INT32 iBullet )
 
 							// Flugente: a riot shield would cover the entire front of a tile. We thus cannot check whether the person would be hit, as the bullet might miss a soldier
 							// Instead, we check whether the structure is indeed a person, whether that person has a riot shield equipped, and whether that shield faces the bullet before it would hit the soldier
-							if ( lastriotshieldholder != pStructure->usStructureID
+							if ( pStructure
+								&& lastriotshieldholder != pStructure->usStructureID
 								&& pStructure->fFlags & STRUCTURE_PERSON
 								&& pStructure->usStructureID < TOTAL_SOLDIERS )
 							{
@@ -7686,7 +7850,7 @@ void MoveBullet( INT32 iBullet )
 
 					// HEADROCK HAM B2.5: Changed condition to read fTracer flag directly from bullet's struct.
 					// This is for the New Tracer System.
-					if (( pBullet->usFlags & ( BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_CREATURE_SPIT /*| BULLET_FLAG_TRACER */) ) 
+					if (( pBullet->usFlags & ( BULLET_FLAG_MISSILE | BULLET_FLAG_SMALL_MISSILE | BULLET_FLAG_TANK_CANNON | BULLET_FLAG_FLAME | BULLET_FLAG_CREATURE_SPIT | BULLET_FLAG_WHITESMOKE /*| BULLET_FLAG_TRACER */) )
 						|| ((gGameExternalOptions.ubRealisticTracers > 0 && gGameExternalOptions.ubNumBulletsPerTracer > 0 && pBullet->fTracer == TRUE) || (gGameExternalOptions.ubRealisticTracers == 0 && fTracer == TRUE)))
 					{
 						INT8 bStepsPerMove = STEPS_FOR_BULLET_MOVE_TRAILS;
@@ -7695,7 +7859,7 @@ void MoveBullet( INT32 iBullet )
 						{
 							bStepsPerMove = STEPS_FOR_BULLET_MOVE_SMALL_TRAILS;
 						}
-						else if ( pBullet->usFlags & ( BULLET_FLAG_FLAME ) )
+						else if ( pBullet->usFlags & ( BULLET_FLAG_FLAME | BULLET_FLAG_WHITESMOKE ) )
 						{
 							bStepsPerMove = STEPS_FOR_BULLET_MOVE_FIRE_TRAILS;
 						}
@@ -7714,7 +7878,8 @@ void MoveBullet( INT32 iBullet )
 			}
 		} while( (pBullet->iCurrTileX == iOldTileX) && (pBullet->iCurrTileY == iOldTileY));
 
-		if ( !GridNoOnVisibleWorldTile( (pBullet->iCurrTileX + pBullet->iCurrTileY * WORLD_COLS) ) || (pBullet->iCurrCubesZ > PROFILE_Z_SIZE * 2 && FIXEDPT_TO_INT32( pBullet->qIncrZ ) > 0 ) )
+		iCurrCubesAboveLevelZ = CONVERT_HEIGHTUNITS_TO_INDEX(FIXEDPT_TO_INT32(pBullet->qCurrZ - qLandHeight));
+		if ( !GridNoOnVisibleWorldTile( (pBullet->iCurrTileX + pBullet->iCurrTileY * WORLD_COLS) ) || (iCurrCubesAboveLevelZ > STRUCTURE_ON_ROOF_MAX && FIXEDPT_TO_INT32( pBullet->qIncrZ ) > 0 ) )
 		{
 			// bullet outside of world!
 			RemoveBullet( pBullet->iBullet );
@@ -7741,7 +7906,7 @@ void MoveBullet( INT32 iBullet )
 				//pBullet->qIncrZ -= INT32_TO_FIXEDPT( 100 ) / (pBullet->iRange * 2);
 				pBullet->qIncrZ -= INT32_TO_FIXEDPT( 100 ) / (pBullet->iRange * gGameCTHConstants.GRAVITY_COEFFICIENT); 
 			}
-			else if ( (pBullet->usFlags & BULLET_FLAG_FLAME) && (dDistanceMoved > pBullet->iRange) )
+			else if ( (pBullet->usFlags & (BULLET_FLAG_FLAME | BULLET_FLAG_WHITESMOKE)) && (dDistanceMoved > pBullet->iRange) )
 			{
 				//pBullet->qIncrZ -= INT32_TO_FIXEDPT( 100 ) / (pBullet->iRange * 2);
 				pBullet->qIncrZ -= INT32_TO_FIXEDPT( 100 ) / (pBullet->iRange * (gGameCTHConstants.GRAVITY_COEFFICIENT / 2) );
@@ -7756,7 +7921,7 @@ void MoveBullet( INT32 iBullet )
 				// decrement is scaled down depending on how fast the bullet is (effective range)
 				pBullet->qIncrZ -= INT32_TO_FIXEDPT( 100 ) / (pBullet->iRange * 2);
 			}
-			else if ( (pBullet->usFlags & BULLET_FLAG_FLAME) && ( pBullet->iLoop > pBullet->iRange ) )
+			else if ( (pBullet->usFlags & (BULLET_FLAG_FLAME|BULLET_FLAG_WHITESMOKE) ) && ( pBullet->iLoop > pBullet->iRange ) )
 			{
 				pBullet->qIncrZ -= INT32_TO_FIXEDPT( 100 ) / (pBullet->iRange * 2);
 			}

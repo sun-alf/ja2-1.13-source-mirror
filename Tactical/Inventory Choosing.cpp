@@ -21,6 +21,7 @@
 	#include "Tactical Save.h"	// added by Flugente
 	#include "Soldier macros.h"		// added by Flugente
 #endif
+extern WorldItems gAllWorldItems;
 
 /*
 #define ENEMYAMMODROPRATE       100 //Madd 50      // % of time enemies drop ammunition
@@ -88,7 +89,7 @@ ARMY_GUN_CHOICE_TYPE gExtendedArmyGunChoices[SOLDIER_GUN_CHOICE_SELECTIONS][ARMY
 ARMY_GUN_CHOICE_TYPE gArmyItemChoices[SOLDIER_GUN_CHOICE_SELECTIONS][MAX_ITEM_TYPES];
 
 void RandomlyChooseWhichItemsAreDroppable( SOLDIERCREATE_STRUCT *pp, INT8 bSoldierClass );
-void EquipArmouredVehicle( SOLDIERCREATE_STRUCT *pp, BOOLEAN fTank = TRUE );
+void EquipArmouredVehicle( SOLDIERCREATE_STRUCT *pp );
 
 void ChooseKitsForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bKitClass );
 void ChooseMiscGearForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bMiscClass );
@@ -248,13 +249,14 @@ void GenerateRandomEquipment( SOLDIERCREATE_STRUCT *pp, INT8 bSoldierClass, INT8
 		return;
 	}
 		
-	if ( ARMED_VEHICLE( pp ) )
+	if ( ARMED_VEHICLE( pp ) || ENEMYROBOT( pp ) )
 	{
-		EquipArmouredVehicle( pp, TANK( pp ) );
+		EquipArmouredVehicle( pp );
 		return;
 	}
 
-	Assert( (bSoldierClass >= SOLDIER_CLASS_NONE) && (bSoldierClass <= SOLDIER_CLASS_ELITE_MILITIA) || bSoldierClass == SOLDIER_CLASS_TANK || bSoldierClass == SOLDIER_CLASS_JEEP );
+	// rftr: enemy tanks, jeeps, and robots would have early exited above
+	Assert( (bSoldierClass >= SOLDIER_CLASS_NONE) && (bSoldierClass <= SOLDIER_CLASS_ELITE_MILITIA) );
 	Assert( ( bEquipmentRating >= 0 ) && ( bEquipmentRating <= 4 ) );
 
 	// equipment level is modified by 1/10 of the difficulty percentage, -5, so it's between -5 to +5
@@ -1164,12 +1166,16 @@ void ChooseGrenadesForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bGrena
 		// return here in any case
 		if (itemMortar > 0 )
 		{
-			usItem = PickARandomLaunchable ( itemMortar );
-			if ( usItem > 0 )
+			// sevenfm: more variety for mortar shells
+			for (int i = 0; i < bGrenades; i++)
 			{
-				CreateItems( usItem, (INT8) (80 + Random(21)), bGrenades, &gTempObject );
-				gTempObject.fFlags |= OBJECT_UNDROPPABLE;
-				PlaceObjectInSoldierCreateStruct( pp, &gTempObject );
+				usItem = PickARandomLaunchable(itemMortar);
+				if (usItem > 0)
+				{
+					CreateItems(usItem, (INT8)(80 + Random(21)), 1, &gTempObject);
+					gTempObject.fFlags |= OBJECT_UNDROPPABLE;
+					PlaceObjectInSoldierCreateStruct(pp, &gTempObject);
+				}
 			}
 		}
 
@@ -1214,9 +1220,7 @@ void ChooseGrenadesForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bGrena
 		//do this for every 1-2 grenades so that we can get more variety
 		while ( bGrenades > 0 )
 		{
-			count = Random(3);
-			if ( count > bGrenades )
-				count = bGrenades;
+			count = min(1 + Random(2), bGrenades);
 
 			usItem = PickARandomLaunchable ( itemGrenadeLauncher );
 			if ( usItem > 0 && count > 0 )
@@ -1236,9 +1240,7 @@ void ChooseGrenadesForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bGrena
 	//do this for every 1-2 grenades so that we can get more variety
 	while ( bGrenades > 0 )
 	{
-		count = Random(3);
-		if ( count > bGrenades )
-			count = bGrenades;
+		count = min(1 + Random(2), bGrenades);
 
 		usItem = PickARandomItem ( GRENADE, pp->ubSoldierClass, bGrenadeClass, FALSE );
 		if ( usItem > 0 && count > 0 )
@@ -3253,12 +3255,12 @@ UINT16 SelectStandardArmyGun( UINT8 uiGunLevel, INT8 bSoldierClass )
 
 
 
-void EquipArmouredVehicle( SOLDIERCREATE_STRUCT *pp, BOOLEAN fTank )
+void EquipArmouredVehicle( SOLDIERCREATE_STRUCT *pp )
 {
 	// tanks get special equipment, and they drop nothing (MGs are hard-mounted & non-removable)
 
 	// tanks get a main cannon and a MG, other vehicles just get the MG
-	if ( fTank )
+	if ( TANK(pp) )
 	{
 		CreateItem( TANK_CANNON, ( INT8 )( 80 + Random( 21 ) ), &( pp->Inv[ HANDPOS ]) );
 		pp->Inv[ HANDPOS ].fFlags |= OBJECT_UNDROPPABLE;
@@ -3278,7 +3280,13 @@ void EquipArmouredVehicle( SOLDIERCREATE_STRUCT *pp, BOOLEAN fTank )
 		gTempObject.fFlags |= OBJECT_UNDROPPABLE;
 		PlaceObjectInSoldierCreateStruct( pp, &gTempObject );
 	}
-	else
+	else if ( COMBAT_JEEP(pp) )
+	{
+		// machine gun
+		CreateItems( MINIMI, (INT8)(80 + Random( 21 )), 1, &(pp->Inv[HANDPOS]) );
+		pp->Inv[HANDPOS].fFlags |= OBJECT_UNDROPPABLE;
+	}
+	else if ( ENEMYROBOT(pp) )
 	{
 		// machine gun
 		CreateItems( MINIMI, (INT8)(80 + Random( 21 )), 1, &(pp->Inv[HANDPOS]) );
@@ -3759,9 +3767,7 @@ void SpawnFittingAmmo(SOLDIERCREATE_STRUCT *pp, OBJECTTYPE* pObj, UINT8 ammotype
 
 void MoveOneMilitiaEquipmentSet(INT16 sSourceX, INT16 sSourceY, INT16 sTargetX, INT16 sTargetY, INT8 bSoldierClass)
 {
-	BOOLEAN fReturn					= FALSE;
 	UINT32 uiTotalNumberOfRealItems = 0;
-	UINT32 uiNumOriginalItems		= 0;
 	std::vector<WORLDITEM> pWorldItem;//dnl ch75 271013
 	SOLDIERCREATE_STRUCT tmp;
 	UINT32 uiCount					= 0;
@@ -3781,25 +3787,22 @@ void MoveOneMilitiaEquipmentSet(INT16 sSourceX, INT16 sSourceY, INT16 sTargetX, 
 	else
 	{
 		// not loaded, load
-		// get total number, visable and invisible
-		fReturn = GetNumberOfWorldItemsFromTempItemFile( sTargetX, sTargetY, 0, &( uiTotalNumberOfRealItems ), TRUE );
-		Assert( fReturn );
-
-		if( uiTotalNumberOfRealItems > 0 )
+		const auto ii = FindWorldItemSector(sTargetX, sTargetY, 0);
+		if (ii != -1)
 		{
-			// allocate space for the list
-			pWorldItem.resize(uiTotalNumberOfRealItems);//dnl ch75 271013
-
-			// now load into mem
-			LoadWorldItemsFromTempItemFile(  sTargetX,  sTargetY, 0, pWorldItem );
+			uiTotalNumberOfRealItems = gAllWorldItems.NumItems[ii];
+			pWorldItem = gAllWorldItems.Items[ii];
+		}
+		else
+		{
+			uiTotalNumberOfRealItems = 10;
+			pWorldItem.resize(uiTotalNumberOfRealItems);
 		}
 	}
 
-	uiNumOriginalItems = uiTotalNumberOfRealItems;
 
 	// we note the last item existing in the inventory (but not ammo, as we delete those). We use this to assess how much we really need to increase the inventory
 	UINT32 existingitemsfound = 0;
-
 	for( uiCount = 0; uiCount < uiTotalNumberOfRealItems; ++uiCount )				// ... for all items in the world ...
 	{
 		if( pWorldItem[ uiCount ].fExists )										// ... if item exists ...
@@ -3881,8 +3884,7 @@ void MoveOneMilitiaEquipmentSet(INT16 sSourceX, INT16 sSourceY, INT16 sTargetX, 
 	}
 	else
 	{
-		//Save the Items to the the file
-		SaveWorldItemsToTempItemFile( sTargetX, sTargetY, 0, uiTotalNumberOfRealItems, pWorldItem );
+		UpdateWorldItems(sTargetX, sTargetY, 0, uiTotalNumberOfRealItems, pWorldItem);
 	}
 }
 
@@ -3992,21 +3994,15 @@ void TakeMilitiaEquipmentfromSector( INT16 sMapX, INT16 sMapY, INT8 sMapZ, SOLDI
 	}
 	else
 	{
-		// not loaded, load
-		// get total number, visable and invisible
-		fReturn = GetNumberOfWorldItemsFromTempItemFile( sMapX, sMapY, ( INT8 )( sMapZ ), &( uiTotalNumberOfRealItems ), FALSE );
-		Assert( fReturn );
-
-		if( uiTotalNumberOfRealItems > 0 )
+		const auto ii = FindWorldItemSector(sMapX, sMapY, (INT8)(sMapZ));
+		if (ii != -1)
 		{
-			// allocate space for the list
-			pWorldItem.resize(uiTotalNumberOfRealItems);//dnl ch75 271013
-
-			if ( !uiTotalNumberOfRealItems )
-				return;
-
-			// now load into mem
-			LoadWorldItemsFromTempItemFile(  sMapX,  sMapY, ( INT8 ) ( sMapZ ), pWorldItem );
+			uiTotalNumberOfRealItems = gAllWorldItems.NumItems[ii];
+			pWorldItem = gAllWorldItems.Items[ii];
+		}
+		else
+		{
+			uiTotalNumberOfRealItems = 0;
 		}
 	}
 
@@ -4687,7 +4683,7 @@ void TakeMilitiaEquipmentfromSector( INT16 sMapX, INT16 sMapY, INT8 sMapZ, SOLDI
 	else
 	{
 		//Save the Items to the the file
-		SaveWorldItemsToTempItemFile( sMapX, sMapY, (INT8)sMapZ, uiTotalNumberOfRealItems, pWorldItem );
+		UpdateWorldItems(sMapX, sMapY, (INT8)sMapZ, uiTotalNumberOfRealItems, pWorldItem);
 	}
 
 	///////////////////////////////// Exit /////////////////////////////////////////////////////////

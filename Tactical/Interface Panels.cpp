@@ -80,6 +80,10 @@
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
+extern int UI_CHARINV_REGION_X;
+extern int UI_CHARINV_REGION_Y;
+extern int UI_CHARINV_REGION_W;
+extern int UI_CHARINV_REGION_H;
 
 
 /*
@@ -706,16 +710,10 @@ void SetSMPanelCurrentMerc( UINT8 ubNewID )
 	SetAllAutoFacesInactive( );
 
 	// Turn off compat ammo....
-	if ( gpItemPointer == NULL )
+	HandleCompatibleAmmoUI(gpSMCurrentMerc, NO_SLOT, FALSE);
+	if (gpItemPointer != NULL)
 	{
-		HandleCompatibleAmmoUI( gpSMCurrentMerc, (INT8)HANDPOS, FALSE );
-		gfCheckForMouseOverItem = FALSE;
-	}
-	else
-	{
-		// Turn it all false first....
-		InternalHandleCompatibleAmmoUI( gpSMCurrentMerc, gpItemPointer, FALSE );
-		InternalHandleCompatibleAmmoUI( gpSMCurrentMerc, gpItemPointer, TRUE );
+		gfCheckForMouseOverItem = TRUE;
 	}
 
 	// Remove item desc panel if one up....
@@ -958,41 +956,30 @@ void UpdateSMPanel( )
 	
 	GetMercClimbDirection( gpSMCurrentMerc->ubID, &fNearLowerLevel, &fNearHeigherLevel );
 
-	if ( fNearLowerLevel || fNearHeigherLevel )
+	if (fNearLowerLevel || fNearHeigherLevel)
 	{
-		if ( fNearLowerLevel )
+		if (IsValidStance(gpSMCurrentMerc, ANIM_CROUCH) && EnoughPoints(gpSMCurrentMerc, GetAPsToClimbRoof(gpSMCurrentMerc, fNearLowerLevel), GetBPsToClimbRoof(gpSMCurrentMerc, fNearLowerLevel), FALSE))
 		{
-			if ( EnoughPoints( gpSMCurrentMerc, GetAPsToClimbRoof( gpSMCurrentMerc, TRUE ), 0, FALSE ) )
-			{
-				EnableButton( iSMPanelButtons[ CLIMB_BUTTON ] );
-			}
-		}
-
-		if ( fNearHeigherLevel )
-		{
-			if ( EnoughPoints( gpSMCurrentMerc, GetAPsToClimbRoof( gpSMCurrentMerc, FALSE ), 0, FALSE ) )
-			{
-				EnableButton( iSMPanelButtons[ CLIMB_BUTTON ] );
-			}
+			EnableButton(iSMPanelButtons[CLIMB_BUTTON]);
 		}
 	}
-	
+
 	if (gGameExternalOptions.fCanClimbOnWalls == TRUE)
 	{
-        if ( FindWallJumpDirection( gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection ) )
-        {
-			if ( EnoughPoints( gpSMCurrentMerc, GetAPsToJumpWall( gpSMCurrentMerc, FALSE ), 0, FALSE ) )
+		if (FindWallJumpDirection(gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection))
+		{
+			if (IsValidStance(gpSMCurrentMerc, ANIM_CROUCH) && EnoughPoints(gpSMCurrentMerc, GetAPsToJumpWall(gpSMCurrentMerc, FALSE), GetBPsToJumpWall(gpSMCurrentMerc, FALSE), FALSE))
 			{
-				EnableButton( iSMPanelButtons[ CLIMB_BUTTON ] );
+				EnableButton(iSMPanelButtons[CLIMB_BUTTON]);
 			}
-        }
+		}
 	}
 
-	if ( FindFenceJumpDirection( gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection ) )
+	if (FindFenceJumpDirection(gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection))
 	{
-		if ( EnoughPoints( gpSMCurrentMerc, GetAPsToJumpFence( gpSMCurrentMerc, FALSE ), 0, FALSE ) )
+		if (IsValidStance(gpSMCurrentMerc, ANIM_CROUCH) && EnoughPoints(gpSMCurrentMerc, GetAPsToJumpFence(gpSMCurrentMerc, FALSE), GetBPsToJumpFence(gpSMCurrentMerc, FALSE), FALSE))
 		{
-			EnableButton( iSMPanelButtons[ CLIMB_BUTTON ] );
+			EnableButton(iSMPanelButtons[CLIMB_BUTTON]);
 		}
 	}
 
@@ -1555,7 +1542,14 @@ BOOLEAN InitializeSMPanelCoordsOld()
 
 //dnl	INTERFACE_CLOCK_X		=	xResOffset + (xResSize - 86);
 //dnl	INTERFACE_CLOCK_Y		= ( 119	+ INV_INTERFACE_START_Y );
-	INTERFACE_CLOCK_X		= xResOffset + (xResSize - 86);
+	if (isWidescreenUI())
+	{
+		INTERFACE_CLOCK_X = SCREEN_WIDTH - 86;
+	}
+	else
+	{
+		INTERFACE_CLOCK_X = SCREEN_WIDTH - xResOffset - 86;
+	}
 	INTERFACE_CLOCK_Y		= SCREEN_HEIGHT - 24;
 	LOCATION_NAME_X			=	xResOffset + (xResSize - 92);
 	LOCATION_NAME_Y			= ( 65	+ INTERFACE_START_Y	);
@@ -1915,7 +1909,14 @@ BOOLEAN InitializeSMPanelCoordsNew()
 
 //dnl	INTERFACE_CLOCK_X		= xResOffset + (xResSize - 86);
 //dnl	INTERFACE_CLOCK_Y		= ( 119	+ INV_INTERFACE_START_Y );
-	INTERFACE_CLOCK_X		= xResOffset + (xResSize - 86);
+	if (isWidescreenUI())
+	{
+		INTERFACE_CLOCK_X = SCREEN_WIDTH - 86;
+	}
+	else
+	{
+		INTERFACE_CLOCK_X		= SCREEN_WIDTH - xResOffset - 86;
+	}
 	INTERFACE_CLOCK_Y		= SCREEN_HEIGHT - 24;
 	LOCATION_NAME_X			= xResOffset + (xResSize - 92);
 	LOCATION_NAME_Y			= ( 89	+ INTERFACE_START_Y	);
@@ -2589,7 +2590,6 @@ void RenderSMPanel( BOOLEAN *pfDirty )
 			// is displayed behind the current stat value, as see on the character's info panel.
 			// This section draws TACTICAL info pages. Another section is in mapscreen.cpp and draws STRATEGIC info pages.
 			// The feature is toggled by Options-Menu switch, and its color is determined in the INI files.
-			if ( gGameSettings.fOptions[TOPTION_STAT_PROGRESS_BARS] )
 			{
 				UINT8	*pDestBuf;
 				UINT32 uiDestPitchBYTES = 0;
@@ -2960,7 +2960,7 @@ void RenderSMPanel( BOOLEAN *pfDirty )
 		SetRegionHelpEndCallback( &gSM_SELMERCCamoRegion, SkiHelpTextDoneCallBack );
 
 		// Flugente: weight help text
-		FLOAT totalweight = GetTotalWeight( gpSMCurrentMerc );
+		FLOAT totalweight = (FLOAT)GetTotalWeight( gpSMCurrentMerc );
 		swprintf( pStr, gzMiscItemStatsFasthelp[35], totalweight / 10.0 );
 
 		SetRegionFastHelpText( &(gSM_SELMERCWeightRegion), pStr );
@@ -3120,8 +3120,8 @@ void RenderSMPanel( BOOLEAN *pfDirty )
 						SetFontForeground( FONT_MCOLOR_LTGRAY );
 					}
 				}
-
-				gprintfRestore( SM_SELMERC_AP_X, SM_SELMERC_AP_Y, L"%2d", GetUIApsToDisplay( gpSMCurrentMerc ) );
+				
+				gprintfRestore( SM_SELMERC_AP_X, SM_SELMERC_AP_Y, L"%3d", GetUIApsToDisplay( gpSMCurrentMerc ) );
 				VarFindFontCenterCoordinates( SM_SELMERC_AP_X, SM_SELMERC_AP_Y, SM_SELMERC_AP_WIDTH, SM_SELMERC_AP_HEIGHT, TINYFONT1, &sFontX, &sFontY, L"%d", GetUIApsToDisplay( gpSMCurrentMerc ) );
 				mprintf( sFontX, SM_SELMERC_AP_Y, L"%d", GetUIApsToDisplay( gpSMCurrentMerc ) );
 			}
@@ -3235,14 +3235,12 @@ void UpdateStatColor( UINT32 uiTimer, BOOLEAN fIncrease, BOOLEAN fDamaged, BOOLE
 
 void SMInvMoveCallback( MOUSE_REGION * pRegion, INT32 iReason )
 {
-	UINT32 uiHandPos;
-
-	uiHandPos = MSYS_GetRegionUserData( pRegion, 0 );
-
 	if (iReason & MSYS_CALLBACK_REASON_INIT)
 	{
 		return;
 	}
+	
+	UINT32 uiHandPos = MSYS_GetRegionUserData( pRegion, 0 );
 
 	if ( gpSMCurrentMerc->inv[ uiHandPos ].exists() == false )
 		return;
@@ -3267,7 +3265,8 @@ void SMInvMoveCallback( MOUSE_REGION * pRegion, INT32 iReason )
 		{
 			HandleCompatibleAmmoUI( gpSMCurrentMerc, (INT8)uiHandPos, FALSE );
 			gfCheckForMouseOverItem = FALSE;
-			fInterfacePanelDirty		= DIRTYLEVEL2;
+			fInterfacePanelDirty = DIRTYLEVEL2;
+			gbCheckForMouseOverItemPos = NO_SLOT;
 		}
 	}
 }
@@ -3290,23 +3289,28 @@ void InvPanelButtonClickCallback( MOUSE_REGION * pRegion, INT32 iReason )
 
 void SMInvMoveCammoCallback( MOUSE_REGION * pRegion, INT32 iReason )
 {
-
 	if (iReason & MSYS_CALLBACK_REASON_INIT)
 	{
 		return;
 	}
 	else if (iReason == MSYS_CALLBACK_REASON_GAIN_MOUSE )
 	{
-		// Setup a timer....
-		guiMouseOverItemTime = GetJA2Clock( );
-		gfCheckForMouseOverItem = TRUE;
-		gbCheckForMouseOverItemPos = NO_SLOT;
+		if (gpItemPointer == NULL)
+		{
+			// Setup a timer....
+			guiMouseOverItemTime = GetJA2Clock();
+			gfCheckForMouseOverItem = TRUE;
+			gbCheckForMouseOverItemPos = NO_SLOT;
+		}
 	}
 	if (iReason == MSYS_CALLBACK_REASON_LOST_MOUSE )
 	{
-		//gfSM_HandInvDispText[ uiHandPos ] = 1;
-		HandleCompatibleAmmoUI( gpSMCurrentMerc, (INT8)NO_SLOT, FALSE );
-		gfCheckForMouseOverItem = FALSE;
+		if (gpItemPointer == NULL)
+		{
+			//gfSM_HandInvDispText[ uiHandPos ] = 1;
+			HandleCompatibleAmmoUI(gpSMCurrentMerc, (INT8)NO_SLOT, FALSE);
+			gfCheckForMouseOverItem = FALSE;
+		}
 	}
 }
 
@@ -3826,16 +3830,18 @@ void SMInvClickCallback( MOUSE_REGION * pRegion, INT32 iReason )
 
 							for (UINT8 i = 0; i<cnt;i++)
 							{
-								// silversurfer: This didn't cost any AP. Why? CTRL + LeftClick should deduct the same AP as manual attachment in the EDB.
-								usCostToMoveItem = AttachmentAPCost( gpItemPointer->usItem, gpSMCurrentMerc->inv[ uiHandPos ].usItem, gpSMCurrentMerc );
-								// Flugente: backgrounds
-								usCostToMoveItem = (usCostToMoveItem * (100 + gpSMCurrentMerc->GetBackgroundValue(BG_INVENTORY))) / 100;
-								// do we have enough AP?
-								if ( !EnoughPoints( gpSMCurrentMerc, usCostToMoveItem, 0, FALSE ) )
-									return;
-								// only deduct AP if attachment was placed successfully.
-								if ( gpSMCurrentMerc->inv[ uiHandPos ].AttachObject(gpSMCurrentMerc,gpItemPointer,TRUE,i) )
+								if ((gTacticalStatus.uiFlags & INCOMBAT))
+								{
+									// silversurfer: This didn't cost any AP. Why? CTRL + LeftClick should deduct the same AP as manual attachment in the EDB.
+									usCostToMoveItem = AttachmentAPCost(gpItemPointer->usItem, gpSMCurrentMerc->inv[uiHandPos].usItem, gpSMCurrentMerc);
+									// Flugente: backgrounds
+									usCostToMoveItem = (usCostToMoveItem * (100 + gpSMCurrentMerc->GetBackgroundValue(BG_INVENTORY))) / 100;
+									// do we have enough AP?
+									if (!EnoughPoints(gpSMCurrentMerc, usCostToMoveItem, 0, TRUE))
+										return;
 									gpSMCurrentMerc->bActionPoints -= usCostToMoveItem;
+								}
+								gpSMCurrentMerc->inv[uiHandPos].AttachObject(gpSMCurrentMerc, gpItemPointer, TRUE, i);
 							}
 						}
 					}
@@ -4630,20 +4636,48 @@ void BtnClimbCallback(GUI_BUTTON *btn,INT32 reason)
 
 		if ( fNearLowerLevel )
 		{
-			gpSMCurrentMerc->BeginSoldierClimbDownRoof(	);
+			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
+				//JMich.BackpackClimb
+				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
+				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			{
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
+				return;
+			}
+
+			gpSMCurrentMerc->BeginSoldierClimbDownRoof();
 		}
+
 		if ( fNearHeigherLevel )
 		{
-			gpSMCurrentMerc->BeginSoldierClimbUpRoof(	);
+			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
+				//JMich.BackpackClimb
+				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
+				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			{
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
+				return;
+			}
+
+			gpSMCurrentMerc->BeginSoldierClimbUpRoof();
 		}
 		
 		//---------------Legion by JAzz-----------
 		
 		if (gGameExternalOptions.fCanClimbOnWalls == TRUE)
-		{ 
+		{
+			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
+				//JMich.BackpackClimb
+				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
+				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			{
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
+				return;
+			}
+
 			if ( FindWallJumpDirection( gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection ) )
 			{
-				gpSMCurrentMerc->BeginSoldierClimbWall(  );
+				gpSMCurrentMerc->BeginSoldierClimbWall();
 			}
 		}
 		
@@ -4651,7 +4685,16 @@ void BtnClimbCallback(GUI_BUTTON *btn,INT32 reason)
 
 		if ( FindFenceJumpDirection( gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection ) )
 		{
-			gpSMCurrentMerc->BeginSoldierClimbFence(	);
+			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
+				//JMich.BackpackClimb
+				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
+				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			{
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
+				return;
+			}
+
+			gpSMCurrentMerc->BeginSoldierClimbFence();
 		}
 	}
 	else if(reason & MSYS_CALLBACK_REASON_LOST_MOUSE )
@@ -4880,7 +4923,7 @@ void BtnOptionsCallback(GUI_BUTTON *btn,INT32 reason)
 	{
 		btn->uiFlags &= (~BUTTON_CLICKED_ON );
 
-		guiPreviousOptionScreen = guiCurrentScreen;
+		SetOptionsPreviousScreen(guiCurrentScreen);
 		LeaveTacticalScreen( OPTIONS_SCREEN );
 
 	}
@@ -5669,7 +5712,7 @@ void RenderTEAMPanel( BOOLEAN fDirty )
 								SetFontForeground( FONT_MCOLOR_LTGRAY );
 							}
 						}
-						RestoreExternBackgroundRect( sTEAMApXY[ posIndex ], sTEAMApXY[ posIndex + 1 ], TM_AP_WIDTH, TM_AP_HEIGHT );
+						RestoreExternBackgroundRect( sTEAMApXY[ posIndex ], sTEAMApXY[ posIndex + 1 ], TM_AP_WIDTH+1, TM_AP_HEIGHT );
 
 						if (gTacticalStatus.uiFlags & INCOMBAT )
 						{
@@ -5685,7 +5728,7 @@ void RenderTEAMPanel( BOOLEAN fDirty )
 					//DrawUIBar( pSoldier->stats.bLife, sTEAMLifeXY[ posIndex ], sTEAMLifeXY[ posIndex + 1 ], TM_LIFEBAR_WIDTH, TM_LIFEBAR_HEIGHT, DRAW_ERASE_BAR );
 
 					// Erase APs
-					RestoreExternBackgroundRect( sTEAMApXY[ posIndex ], sTEAMApXY[ posIndex + 1 ], TM_AP_WIDTH, TM_AP_HEIGHT );
+					RestoreExternBackgroundRect( sTEAMApXY[ posIndex ], sTEAMApXY[ posIndex + 1 ], TM_AP_WIDTH+1, TM_AP_HEIGHT );
 				}
 			}
 
@@ -6755,6 +6798,10 @@ void TMClickSecondHandInvCallback( MOUSE_REGION * pRegion, INT32 iReason )
 		{
 			ExitVehicle( MercPtrs[ ubSoldierID ] );
 		}
+		else if (UsingNewInventorySystem() && !AM_A_ROBOT(MercPtrs[ubSoldierID]))
+		{
+			MercPtrs[ubSoldierID]->SwitchWeapons();
+		}
 	}
 
 	if (iReason == MSYS_CALLBACK_REASON_RBUTTON_UP )
@@ -7157,7 +7204,7 @@ UINT8 FindNextMercInTeamPanel( SOLDIERTYPE *pSoldier, BOOLEAN fGoodForLessOKLife
 
 			if ( pNewSoldier->bAssignment != iCurrentSquad )
 			{
-				if ( gGameExternalOptions.fUseXMLSquadNames && pNewSoldier->bAssignment < min(ON_DUTY, gSquadNameVector.size()) )
+				if ( gGameExternalOptions.fUseXMLSquadNames && pNewSoldier->bAssignment < min(ON_DUTY, (INT8)gSquadNameVector.size()) )
 					ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, pMessageStrings[MSG_SQUAD_ACTIVE_STRING], gSquadNameVector[pNewSoldier->bAssignment].c_str() );
 				else
 					//ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, pMessageStrings[ MSG_SQUAD_ACTIVE ], ( CurrentSquad( ) + 1 ) );
@@ -7315,8 +7362,8 @@ void KeyRingItemPanelButtonCallback( MOUSE_REGION * pRegion, INT32 iReason )
 			// want the inv done button shutdown and the region behind the keyring shaded
 			//ForceButtonUnDirty( giMapInvDoneButton );
 			// shade the background
-			ShadowVideoSurfaceRect( FRAME_BUFFER , 0, 107, 261, 359 );
-			InvalidateRegion( 0, 107, 261, 359 );
+			ShadowVideoSurfaceRect( FRAME_BUFFER, UI_CHARINV_REGION_X, UI_CHARINV_REGION_Y, UI_CHARINV_REGION_X + UI_CHARINV_REGION_W, UI_CHARINV_REGION_Y + UI_CHARINV_REGION_H);
+			InvalidateRegion(UI_CHARINV_REGION_X, UI_CHARINV_REGION_Y, UI_CHARINV_REGION_X + UI_CHARINV_REGION_W, UI_CHARINV_REGION_Y + UI_CHARINV_REGION_H);
 		}
 
 		//CHRISL: In OIV mode, we don't want to offset the keyring popup.

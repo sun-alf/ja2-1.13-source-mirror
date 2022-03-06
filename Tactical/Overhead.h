@@ -255,7 +255,7 @@ UINT32 EnterTacticalDemoMode();
 
 BOOLEAN UIOKMoveDestination( SOLDIERTYPE *pSoldier, INT32 usMapPos );
 
-INT32 FindAdjacentGridEx( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 *pubDirection, INT32 *psAdjustedGridNo, BOOLEAN fForceToPerson, BOOLEAN fDoor );
+INT32 FindAdjacentGridEx( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 *pubDirection, INT32 *psAdjustedGridNo, BOOLEAN fForceToPerson, BOOLEAN fDoor , bool allow_diagonal = false);
 INT32 FindNextToAdjacentGridEx( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 *pubDirection, INT32 *psAdjustedGridNo, BOOLEAN fForceToPerson, BOOLEAN fDoor );
 
 
@@ -291,6 +291,8 @@ SOLDIERTYPE * ReduceAttackBusyCount( );
 INT8 CalcSuppressionTolerance( SOLDIERTYPE * pSoldier );
 // HEADROCK HAM 3.2: A new function for checking the condition of nearby friendlies and returning a modifier.
 INT8 CheckStatusNearbyFriendlies( SOLDIERTYPE *pSoldier );
+// sevenfm: simplified version
+INT8 CheckStatusNearbyFriendliesSimple(SOLDIERTYPE *pSoldier);
 
 void CommonEnterCombatModeCode( );
 void CheckForPotentialAddToBattleIncrement( SOLDIERTYPE *pSoldier );

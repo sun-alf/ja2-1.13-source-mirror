@@ -3,43 +3,27 @@
 #ifdef PRECOMPILEDHEADERS
 	#include "TileEngine All.h"
 #else
-	#include "stdio.h"
-	#include "sgp.h"
-	#include "vobject.h"
-	#include "tiledef.h"
+	#include "sysutil.h"
 	#include "utilities.h"
-	#include "worlddef.h"
-	#include "isometric utils.h"
 	#include "renderworld.h"
-	#include "worlddat.h"
 	#include "vobject_blitters.h"
 	#include "overhead map.h"
-	#include "interface.h"
 	#include "interface control.h"
 	#include "overhead.h"
 	#include "radar screen.h"
 	#include "cursors.h"
 	#include "Sys Globals.h"
 	#include "render dirty.h"
-	#include "soldier find.h"
-	#include "font control.h"
 	#include "Game Clock.h"
 	#include "interface panels.h"
 	#include "english.h"
 	#include "line.h"
 	#include "map information.h"
 	#include "Tactical Placement GUI.h"
-	#include "world items.h"
-	#include "message.h"
-	#include "faces.h"
-	#include "Squads.h"
 	#include "Interactive Tiles.h"
 	#include "gameloop.h"
-	#include "sysutil.h"
-	#include "tile surface.h"
-	#include "GameSettings.h"
-	#include <vector>
 	#include "Action Items.h"	// added by Flugente
+	#include "Rebel Command.h"
 #endif
 
 #include "connect.h"
@@ -48,6 +32,15 @@
 #include "Soldier Init List.h"
 extern SOLDIERINITNODE *gpSelected;
 #endif
+
+// Forward declarations
+extern INT16 gWorldSectorX;
+extern INT16 gWorldSectorY;
+extern INT8 gbWorldSectorZ;
+extern TILE_IMAGERY* gTileSurfaceArray[NUMBEROFTILETYPES];
+extern INT32 CurrentSquad();
+extern void HandleAutoFaces();
+extern void HandleTalkingAutoFaces();
 
 
 typedef struct
@@ -121,7 +114,7 @@ void CopyOverheadDBShadetablesFromTileset( );
 void RenderOverheadOverlays();
 
 //dnl ch85 060214
-#include <math.h>
+//#include <math.h>
 #define PointToPointDist(X1, Y1, X2, Y2) (sqrtf((FLOAT)((X2-X1)*(X2-X1) + (Y2-Y1)*(Y2-Y1))))// Calculate distance between two points
 #define PointToLineDist(Xt, Yt, k, l) (sqrtf((FLOAT)((k*Xt-Yt+l) * (k*Xt-Yt+l)) / (k*k + 1)))// Calculate distance between point and line
 VOID PointFromDist(INT32 Xt, INT32 Yt, INT32 k, INT32 l, FLOAT d, INT32 *Xtnew, INT32 *Ytnew)// Calculate closest point to point (Xt,Yt) which lies at distance from line Y=kx+l and normal define by point (Xt,Yt)
@@ -670,16 +663,30 @@ void GoIntoOverheadMap( )
 	giXC += dX, giYC += dY;
 	}
 	if(WORLD_MAX == 129600){
-		if(NightTime()){
-			gubGridDivisor = ubResolutionTable360[gGameExternalOptions.ubGridResolutionNight];
-		}else{
-			gubGridDivisor = ubResolutionTable360[gGameExternalOptions.ubGridResolutionDay];
+		if (RebelCommand::ShowApproximateEnemyLocations())
+		{
+			gubGridDivisor = ubResolutionTable360[RebelCommand::GetApproximateEnemyLocationResolutionIndex()];
+		}
+		else
+		{
+			if(NightTime()){
+				gubGridDivisor = ubResolutionTable360[gGameExternalOptions.ubGridResolutionNight];
+			}else{
+				gubGridDivisor = ubResolutionTable360[gGameExternalOptions.ubGridResolutionDay];
+			}
 		}
 	}else{
-		if(NightTime()){
-			gubGridDivisor = ubResolutionTable160[gGameExternalOptions.ubGridResolutionNight];
-		}else{
-			gubGridDivisor = ubResolutionTable160[gGameExternalOptions.ubGridResolutionDay];
+		if (RebelCommand::ShowApproximateEnemyLocations())
+		{
+			gubGridDivisor = ubResolutionTable160[RebelCommand::GetApproximateEnemyLocationResolutionIndex()];
+		}
+		else
+		{
+			if(NightTime()){
+				gubGridDivisor = ubResolutionTable160[gGameExternalOptions.ubGridResolutionNight];
+			}else{
+				gubGridDivisor = ubResolutionTable160[gGameExternalOptions.ubGridResolutionDay];
+			}
 		}
 	}
 	gusGridFrameX = WORLD_COLS * 4;
@@ -1416,7 +1423,8 @@ void RenderOverheadOverlays()
 	UINT16 jamcolour = Get16BPPColor( FROMRGB( 36, 219, 151 ) );
 
 	BOOLEAN marklastenemy = FALSE;
-	if ( gGameSettings.fOptions[TOPTION_SHOW_LAST_ENEMY] && gGameExternalOptions.ubMarkerMode && gTacticalStatus.Team[ ENEMY_TEAM ].bMenInSector <= gGameExternalOptions.ubSoldiersLeft )
+	if ( (gGameSettings.fOptions[TOPTION_SHOW_LAST_ENEMY] && gGameExternalOptions.ubMarkerMode && gTacticalStatus.Team[ ENEMY_TEAM ].bMenInSector <= gGameExternalOptions.ubSoldiersLeft)
+		|| RebelCommand::ShowApproximateEnemyLocations())
 		marklastenemy = TRUE;
 	
 	for( i = 0; i < end; ++i )

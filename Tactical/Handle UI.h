@@ -34,6 +34,7 @@
 #define MOVEUI_TARGET_APPLYITEM		15
 #define MOVEUI_TARGET_INTERACTIVEACTION	16
 #define MOVEUI_TARGET_BLOODBAG		17
+#define MOVEUI_TARGET_CAMERA		18
 
 #define	MOVEUI_RETURN_ON_TARGET_MERC	1
 
@@ -60,6 +61,7 @@ typedef enum
 	EXITSECTORMENU_MODE,
 	RUBBERBAND_MODE,
 	JUMPOVER_MODE,
+	RADIOCURSOR_MODE,
 
 }	UI_MODE;
 
@@ -162,6 +164,8 @@ typedef enum
 
 	JP_ON_TERRAIN,
 	JP_JUMP,
+
+	R_CHANGE_TO_RADIO,
 
 	NUM_UI_EVENTS
 
@@ -346,6 +350,7 @@ void BeginDisplayTimedCursor( UINT32 uiCursorID, UINT32 uiDelay );
 
 void HandleHandCursorClick( INT32 usMapPos, UINT32 *puiNewEvent );
 void HandleHandCursorRightClick( INT32 usMapPos, UINT32 *puiNewEvent );
+void HandleRadioCursorClick(INT32 usMapPos, UINT32 *puiNewEvent);
 INT8 HandleMoveModeInteractiveClick( INT32 usMapPos, UINT32 *puiNewEvent );
 
 BOOLEAN HandleUIReloading( SOLDIERTYPE *pSoldier );

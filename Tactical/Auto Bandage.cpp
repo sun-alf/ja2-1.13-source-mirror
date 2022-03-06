@@ -53,7 +53,7 @@ BOOLEAN gfAutoBandageFailed;
 INT32 iEndAutoBandageButton[ 2 ];
 INT32 iEndAutoBandageButtonImage[ 2 ];
 
-
+extern BOOLEAN gfConversationPending;
 extern FACETYPE *gpCurrentTalkingFace;
 extern INT32 giMercPanelImage;
 MOUSE_REGION gAutoBandageRegion;
@@ -168,7 +168,7 @@ void HandleAutoBandagePending( )
 	{
 		// All dailogue done, music, etc...
 		//if ( gubMusicMode != MUSIC_TACTICAL_VICTORY && DialogueQueueIsEmpty( ) )
-		if ( !DialogueQueueIsEmpty( ) )
+		if (!DialogueQueueIsEmpty( ) || gfConversationPending)
 		{
 			return;
 		}
@@ -250,6 +250,16 @@ BOOLEAN HandleAutoBandage( )
 			ShadowVideoSurfaceRect( FRAME_BUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 			InvalidateScreen( );
 			RefreshScreen( NULL );
+			INT32 cnt = gTacticalStatus.Team[OUR_TEAM].bFirstID;
+			SOLDIERTYPE *pSoldier = NULL;
+			for (pSoldier = MercPtrs[cnt]; cnt <= gTacticalStatus.Team[OUR_TEAM].bLastID; ++cnt, ++pSoldier)
+			{
+				if(pSoldier->bActive && pSoldier->bInSector && pSoldier->aiData.bAction != 0)
+				{
+					//shadooow: this fixes autobandaging sometimes hang indefinitely
+					pSoldier->aiData.bAction = 0;
+				}
+			}
 		}
 
 		DisplayAutoBandageUpdatePanel( );

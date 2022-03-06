@@ -394,7 +394,7 @@ BOOLEAN SetThisSectorAsPlayerControlled( INT16 sMapX, INT16 sMapY, INT8 bMapZ, B
 #else
 
 		if( sMapX == gModSettings.ubQueenBasementSectorX && sMapY == gModSettings.ubQueenBasementSectorY 
-			&& bMapZ == gModSettings.ubQueenBasementSectorZ )
+			&& bMapZ == gModSettings.ubQueenBasementSectorZ && !SectorInfo[SECTOR(sMapX, sMapY)].fSurfaceWasEverPlayerControlled)
 		{ //Basement sector
 			gfUseAlternateQueenPosition = TRUE;
 		}
@@ -523,6 +523,23 @@ BOOLEAN SetThisSectorAsEnemyControlled( INT16 sMapX, INT16 sMapY, INT8 bMapZ, BO
 				UpdateRefuelSiteAvailability( );
 			}
 
+			//shadooow: re-enable quest if player loses control of the N7 prison and quest was disabled previously
+			if (sMapX == gModSettings.ubMeanwhileInterrogatePOWSectorX && sMapY == gModSettings.ubMeanwhileInterrogatePOWSectorY &&	gubQuest[QUEST_INTERROGATION] == QUESTCANNOTSTART)
+			{
+				gubQuest[QUEST_INTERROGATION] = QUESTNOTSTARTED;
+			}
+			//shadooow: re-enable quest if player loses control of the Alma prison and quest was disabled previously
+			if (sMapX == gModSettings.ubInitialPOWSectorX && sMapY == gModSettings.ubInitialPOWSectorY && gubQuest[QUEST_HELD_IN_ALMA] == QUESTCANNOTSTART)
+			{
+				gubQuest[QUEST_HELD_IN_ALMA] = QUESTNOTSTARTED;
+			}
+			#ifndef JA2UB
+			//shadooow: re-enable quest if player loses control of the Tixa prison and quest was disabled previously
+			if (sMapX == gModSettings.ubTixaPrisonSectorX && sMapY == gModSettings.ubTixaPrisonSectorY && gubQuest[QUEST_HELD_IN_TIXA] == QUESTCANNOTSTART)
+			{
+				gubQuest[QUEST_HELD_IN_TIXA] = QUESTNOTSTARTED;
+			}
+			#endif
 			// Flugente: reduce workforce
 			SectorInfo[SECTOR( sMapX, sMapY )].usWorkers = SectorInfo[SECTOR( sMapX, sMapY )].usWorkers * gGameExternalOptions.dInitialWorkerRate;
 

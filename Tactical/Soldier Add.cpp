@@ -42,7 +42,7 @@
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
-
+extern BOOLEAN gfHandleHeli;
 // Adds a soldier to a world gridno and set's direction
 void AddSoldierToSectorGridNo( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubDirection, BOOLEAN fUseAnimation, UINT16 usAnimState, UINT16 usAnimCode );
 
@@ -1194,6 +1194,7 @@ BOOLEAN InternalAddSoldierToSector( UINT8 ubID, BOOLEAN fCalculateDirection, BOO
 		pSoldier->usQuoteSaidFlags &= (~SOLDIER_QUOTE_SAID_SMELLED_CREATURE);
 		pSoldier->usQuoteSaidFlags &= (~SOLDIER_QUOTE_SAID_WORRIED_ABOUT_CREATURES);
 
+		BOOLEAN gfEnteredFromTacticalPlacement = FALSE;
 		// Add to interface if the are ours
 		if ( pSoldier->bTeam == CREATURE_TEAM )
 		{
@@ -1286,6 +1287,7 @@ BOOLEAN InternalAddSoldierToSector( UINT8 ubID, BOOLEAN fCalculateDirection, BOO
 			{
 				pSoldier->ubInsertionDirection = pSoldier->ubInsertionDirection - 100;
 				fCalculateDirection = FALSE;
+				gfEnteredFromTacticalPlacement = TRUE;
 			}
 
 			if ( fCalculateDirection )
@@ -1315,8 +1317,8 @@ BOOLEAN InternalAddSoldierToSector( UINT8 ubID, BOOLEAN fCalculateDirection, BOO
 		}
 
 		//Add
-		if(gTacticalStatus.uiFlags & LOADING_SAVED_GAME )
-			AddSoldierToSectorGridNo( pSoldier, sGridNo, pSoldier->ubDirection, fUseAnimation, usAnimState, usAnimCode );
+		if(gTacticalStatus.uiFlags & LOADING_SAVED_GAME || (pSoldier->ubStrategicInsertionCode == INSERTION_CODE_GRIDNO && !gfHandleHeli && !gfEnteredFromTacticalPlacement))
+			AddSoldierToSectorGridNo( pSoldier, sGridNo, pSoldier->ubDirection, TRUE, -1, 0);//shadooow: hack to make sure animations aren't changed
 		else
 			AddSoldierToSectorGridNo( pSoldier, sGridNo, ubDirection, fUseAnimation, usAnimState, usAnimCode );
 
@@ -1579,7 +1581,7 @@ void AddSoldierToSectorGridNo( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubDir
 	{
 		pSoldier->usSoldierFlagMask &= ~SOLDIER_AIRDROP;
 
-		if ( gGameExternalOptions.ubSkyriderHotLZ == 3 )
+		if ((gGameExternalOptions.ubSkyriderHotLZ == 1 || gGameExternalOptions.ubSkyriderHotLZ == 3))
 		{
 			gfIgnoreScrolling = FALSE;
 			INT16 sNewCenterWorldX, sNewCenterWorldY;
@@ -1710,7 +1712,7 @@ void AddSoldierToSectorGridNo( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubDir
 					{
 						pSoldier->EVENT_InitNewSoldierAnim( usAnimState, usAnimCode, TRUE );
 					}
-					else if ( pSoldier->ubBodyType != CROW )
+					else if ( pSoldier->ubBodyType != CROW && ubInsertionCode != INSERTION_CODE_GRIDNO)
 					{
 						pSoldier->EVENT_InitNewSoldierAnim( STANDING, 1, TRUE );
 					}
@@ -1719,7 +1721,7 @@ void AddSoldierToSectorGridNo( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubDir
 					{
 						pSoldier->EVENT_InitNewSoldierAnim( usAnimState, usAnimCode, TRUE );
 					}
-					else if ( pSoldier->ubBodyType != CROW )
+					else if ( pSoldier->ubBodyType != CROW)
 					{
 						pSoldier->EVENT_InitNewSoldierAnim( STANDING, 1, TRUE );
 					}

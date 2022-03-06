@@ -80,9 +80,11 @@ typedef struct ENEMYGROUP
 	UINT8	ubNumAdmins_Turncoat;
 	UINT8	ubNumTroops_Turncoat;
 	UINT8	ubNumElites_Turncoat;
-	UINT8	bPadding_1;
 
-	INT8	bPadding[12];
+	UINT8 ubNumRobots;						//number of enemy robots in the group
+	UINT8 ubRobotsInBattle;				//number of enemy robots currently in battle.
+
+	INT8	bPadding[11];
 }ENEMYGROUP;
 
 //NOTE:	ALL FLAGS ARE CLEARED WHENEVER A GROUP ARRIVES IN A SECTOR, OR ITS WAYPOINTS ARE
@@ -196,7 +198,7 @@ BOOLEAN SetGroupPatrolParameters( UINT8 ubGroupID, UINT8 ubRestAtFL, UINT8 ubRes
 
 //Enemy grouping functions -- private use by the strategic AI.
 //............................................................
-GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmins, UINT8 ubNumTroops, UINT8 ubNumElites, UINT8 ubNumTanksm, UINT8 ubNumJeeps );
+GROUP* CreateNewEnemyGroupDepartingFromSector( UINT32 uiSector, UINT8 ubNumAdmins, UINT8 ubNumTroops, UINT8 ubNumElites, UINT8 ubNumRobots, UINT8 ubNumTanks, UINT8 ubNumJeeps );
 
 GROUP* CreateNewMilitiaGroupDepartingFromSector( UINT32 uiSector, UINT8& arusNumAdmins, UINT8& arusNumTroops, UINT8& arusNumElites );
 

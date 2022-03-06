@@ -117,7 +117,7 @@ void LoadWeaponIfNeeded(SOLDIERTYPE *pSoldier)
 	DebugMsg(TOPIC_JA2, DBG_LEVEL_3, String("LoadWeaponIfNeeded: remove payload from its pocket, and add it as the hand weapon's first attachment"));
 	// remove payload from its pocket, and add it as the hand weapon's first attachment
 
-	if ( ARMED_VEHICLE( pSoldier ) )
+	if ( ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) )
 	{
 		// don't remove ammo
 		gTempObject = pSoldier->inv[bPayloadPocket];
@@ -337,7 +337,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 			(pOpponent->stats.bLife < OKLIFE ||
 			pOpponent->bCollapsed && pOpponent->bBreath == 0 ||
 			pOpponent->IsCowering() ||
-			CoweringShockLevel(pOpponent) ||
+			pOpponent->IsCowering() ||
 			pOpponent->IsZombie() ||
 			!IS_MERC_BODY_TYPE(pOpponent)))
 		{
@@ -514,7 +514,7 @@ void CalcBestShot(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestShot)
 				}
 
 				// no crouched/prone if we are tank/using throwing knife/hip firing
-				if ( pSoldier->bScopeMode == USE_ALT_WEAPON_HOLD || ARMED_VEHICLE( pSoldier ) || (Item[pSoldier->usAttackingWeapon].usItemClass & IC_THROWING_KNIFE) )
+				if ( pSoldier->bScopeMode == USE_ALT_WEAPON_HOLD || ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) || (Item[pSoldier->usAttackingWeapon].usItemClass & IC_THROWING_KNIFE) )
 					continue;
 
 				// --------- Crouched ---------
@@ -1146,7 +1146,7 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 			Explosive[Item[usGrenade].ubClassIndex].ubType == EXPLOSV_SMOKE &&
 			(FindAIUsableObjClass(pOpponent, IC_GUN) == NO_SLOT ||
 			(pSoldier->usAnimState == COWERING || pSoldier->usAnimState == COWERING_PRONE) ||
-			CoweringShockLevel(pOpponent) > 50 ||
+			pOpponent->ShockLevelPercent() > 50 ||
 			EffectiveMarksmanship(pOpponent) < 90 && !IsScoped(&pOpponent->inv[HANDPOS]) && !pOpponent->aiData.bLastAttackHit))
 		{
 			continue;
@@ -1159,7 +1159,7 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 			Explosive[Item[usGrenade].ubClassIndex].ubType != EXPLOSV_CREATUREGAS &&
 			Explosive[Item[usGrenade].ubClassIndex].ubType != EXPLOSV_BURNABLEGAS &&
 			Explosive[Item[usGrenade].ubClassIndex].ubType != EXPLOSV_SMOKE &&
-			(ARMED_VEHICLE(pOpponent) || pOpponent->flags.uiStatusFlags & SOLDIER_VEHICLE || AM_A_ROBOT(pOpponent)))
+			(ARMED_VEHICLE(pOpponent) || ENEMYROBOT(pOpponent) || pOpponent->flags.uiStatusFlags & SOLDIER_VEHICLE || AM_A_ROBOT(pOpponent)))
 		{
 			continue;
 		}
@@ -1337,7 +1337,10 @@ void CalcBestThrow(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 	}
 
 	// militia always try to spare grenades unless under attack or using flares
-	if (pSoldier->bTeam == MILITIA_TEAM && !pSoldier->aiData.bUnderFire && !Item[usGrenade].flare)
+	if (pSoldier->bTeam == MILITIA_TEAM && 
+		!pSoldier->aiData.bUnderFire && 
+		!Item[usGrenade].flare &&
+		!fRocketLauncher)
 	{
 		fSpare = TRUE;
 	}
@@ -3929,13 +3932,13 @@ void CheckTossFriendSmoke(SOLDIERTYPE *pSoldier, ATTACKTYPE *pBestThrow)
 					bFriendLevel = pFriend->pathing.bLevel;
 					sClosestOpponent = ClosestKnownOpponent(pFriend, NULL, NULL);
 
-					if (PythSpacesAway(sSpot, sFriendSpot) <= (INT16)DAY_VISION_RANGE &&
-						PythSpacesAway(sSpot, sFriendSpot) > (INT16)DAY_VISION_RANGE / 4 &&
+					if (PythSpacesAway(sSpot, sFriendSpot) <= (INT16)TACTICAL_RANGE &&
+						PythSpacesAway(sSpot, sFriendSpot) > (INT16)TACTICAL_RANGE / 4 &&
 						!InSmoke(sFriendSpot, bFriendLevel) &&
 						(!NightLight() || InLightAtNight(sFriendSpot, bFriendLevel)) &&
 						!Water(sFriendSpot, bFriendLevel) &&
 						!TileIsOutOfBounds(sClosestOpponent) &&
-						PythSpacesAway(sFriendSpot, sClosestOpponent) > (INT16)DAY_VISION_RANGE / 4 &&
+						PythSpacesAway(sFriendSpot, sClosestOpponent) > (INT16)TACTICAL_RANGE / 4 &&
 						!ProneSightCoverAtSpot(pFriend, sFriendSpot, TRUE) &&
 						//!SightCoverAtSpot(pFriend, sFriendSpot, FALSE) &&
 						//!AnyCoverAtSpot(pFriend, sFriendSpot) &&

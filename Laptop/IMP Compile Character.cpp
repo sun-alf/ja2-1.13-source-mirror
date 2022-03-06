@@ -119,12 +119,15 @@ BOOLEAN ShouldThisMercHaveABigBody( void );
 
 void CreateACharacterFromPlayerEnteredStats( void )
 {
-		// Kaiden: Seems like as good a place as any to stash this function call to
-		// ensure that these lists don't get overwritten or Nulled due to the amount
-		// of changes and revisions that have been made to personalities and attitudes.
+	// Kaiden: Seems like as good a place as any to stash this function call to
+	// ensure that these lists don't get overwritten or Nulled due to the amount
+	// of changes and revisions that have been made to personalities and attitudes.
 	CreatePlayersPersonalitySkillsAndAttitude();
 	
 	LaptopSaveInfo.iIMPIndex = GetFreeIMPSlot( -1 );
+
+	//shadooow: fixes many old values and items remaining when replacing dead/pow IMP
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].initialize();
 
 	// copy over full name
 	wcscpy( gMercProfiles[ LaptopSaveInfo.iIMPIndex ].zName, pFullName );
@@ -202,6 +205,25 @@ void CreateACharacterFromPlayerEnteredStats( void )
 	//  Option for badass added - SANDRO
 	if (bBadAssSelected())
 		gMercProfiles[ LaptopSaveInfo.iIMPIndex ].uiBodyTypeSubFlags = 1;
+
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].usApproachFactor[0] = 100;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].usApproachFactor[1] = 100;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].usApproachFactor[2] = 100;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].usApproachFactor[3] = 100;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].uiBlinkFrequency = 3000;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].uiExpressionFrequency = 2000;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bBuddy[0] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bBuddy[1] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bBuddy[2] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bBuddy[3] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bBuddy[4] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bLearnToLike = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bHated[0] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bHated[1] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bHated[2] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bHated[3] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bHated[4] = 255;
+	gMercProfiles[LaptopSaveInfo.iIMPIndex].bLearnToHate = 255;
 }
 
 void CreatePlayerAttitude( void )

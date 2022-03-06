@@ -443,6 +443,10 @@
 				>
 			</File>
 			<File
+				RelativePath="MiniEvents.h"
+				>
+			</File>
+			<File
 				RelativePath="MilitiaIndividual.h"
 				>
 			</File>
@@ -468,6 +472,10 @@
 			</File>
 			<File
 				RelativePath="QuestText.h"
+				>
+			</File>
+			<File
+				RelativePath="Rebel Command.h"
 				>
 			</File>
 			<File
@@ -655,6 +663,10 @@
 				>
 			</File>
 			<File
+				RelativePath="MiniEvents.cpp"
+				>
+			</File>
+			<File
 				RelativePath="MilitiaIndividual.cpp"
 				>
 			</File>
@@ -676,6 +688,10 @@
 			</File>
 			<File
 				RelativePath="Quests.cpp"
+				>
+			</File>
+			<File
+				RelativePath="Rebel Command.cpp"
 				>
 			</File>
 			<File

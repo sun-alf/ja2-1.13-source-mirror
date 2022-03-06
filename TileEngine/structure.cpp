@@ -49,6 +49,7 @@
 	#include "Animation Control.h"
 	#include "Soldier Ani.h"
 	#include "ASD.h"		// added by Flugente
+	#include "renderworld.h"		// added by Flugente for SetRenderFlags( RENDER_FLAG_FULL );
 #endif
 
 #ifdef COUNT_PATHS
@@ -1787,7 +1788,7 @@ BOOLEAN StructureDensity( STRUCTURE * pStructure, UINT8 * pubLevel0, UINT8 * pub
 	return( TRUE );
 }
 
-BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason, INT32 sGridNo, INT16 sX, INT16 sY, UINT8 ubOwner, INT32 sAntiMaterialImpact )
+INT8 DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason, INT32 sGridNo, INT16 sX, INT16 sY, UINT8 ubOwner, INT32 sAntiMaterialImpact )
 {
 	// do damage to a structure; returns TRUE if the structure should be removed
 	STRUCTURE			*pBase;
@@ -1797,12 +1798,12 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 	if (pStructure->fFlags & STRUCTURE_PERSON || pStructure->fFlags & STRUCTURE_CORPSE)
 	{
 		// don't hurt this structure, it's used for hit detection only!
-		return( FALSE );
+		return( 0 );
 	}
 	
 	if ( (pStructure->pDBStructureRef->pDBStructure->ubArmour == MATERIAL_INDESTRUCTABLE_METAL) || (pStructure->pDBStructureRef->pDBStructure->ubArmour == MATERIAL_INDESTRUCTABLE_STONE) )
 	{
-		return( FALSE );
+		return( 0 );
 	}
 
 	UINT8				ubBaseArmour = gubMaterialArmour[ pStructure->pDBStructureRef->pDBStructure->ubArmour ];
@@ -1822,7 +1823,7 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 		if (ubArmour > ubDamage)
 		{
 			// didn't even scratch the paint
-			return( FALSE );
+			return( 0 );
 		}
 		else
 		{
@@ -1834,12 +1835,7 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 	{
 		ubDamage = 0;
 	}
-
-	// Flugente: is there a wall at the loation we are damaging?
-	BOOLEAN fWallHere = FALSE;	
-	if ( FindStructure( sGridNo, STRUCTURE_WALL ) )
-		fWallHere = TRUE;
-
+	
 	// OK, Let's check our reason
 	if ( ubReason == STRUCTURE_DAMAGE_GUNFIRE || ubReason == STRUCTURE_DAMAGE_VEHICLE_TRAUMA )
 	{
@@ -1867,7 +1863,7 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 			IgniteExplosion( ubOwner, sX, sY, 0, sGridNo, STRUCTURE_IGNITE, 0 );
 
 			// ATE: Return false here, as we are dealing with deleting the graphic here...
-			return( FALSE );
+			return( 0 );
 		}
 
 		// Make hit sound....
@@ -1883,6 +1879,13 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 			}
 		}
 
+		// Flugente: is there a wall at the loation we are damaging?
+		BOOLEAN fWallHere = FALSE;
+		if ( pStructure->fFlags & STRUCTURE_WALL )
+			fWallHere = TRUE;
+		else if ( FindStructure( sGridNo, STRUCTURE_WALL ) )
+			fWallHere = TRUE;
+
 		// Flugente: anti-material rifles can damage and even destroy structures, but some structures remain indestructible (otherwise the player might gain access to inaccessible spots)
 		// the impact must be damaging enough, otherwise this won't have an effect
 		if ( ubBaseArmour < 75 && ubBaseArmour > 0 && sAntiMaterialImpact > ubBaseArmour * 5 / 12 )
@@ -1893,21 +1896,31 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 			// this is the damage we will cause. The higher our damage, the faster can we destroy a structure
 			damage += max(1, 2 * sAntiMaterialImpact / ubBaseArmour);
 
+			// the structure might not exists afterwards, thus we store the gridno
+			INT32 tmpgridno = pStructure->sGridNo;
 			BOOLEAN recompile = FALSE;
-			ExplosiveDamageGridNo( sGridNo, damage, 10, &recompile, FALSE, -1, FALSE, ubOwner, 0 );
+			ExplosiveDamageGridNo( tmpgridno, damage, 10, &recompile, FALSE, -1, FALSE, ubOwner, 0, ubReason );
 
 			//Since the structure is being damaged, set the map element that a structure is damaged
-			gpWorldLevelData[ sGridNo ].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
+			gpWorldLevelData[ tmpgridno ].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
 
-			// if we destroyed something, the roof might get damaged too
-			// recompile = TRUE means that we destroyed soemthing
-			if ( fWallHere && recompile )
+			// recompile = TRUE means that we destroyed something
+			if ( recompile )
 			{
-				HandleRoofDestruction( sGridNo, damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( NORTH ) ), damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( EAST ) ), damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( WEST ) ), damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( SOUTH ) ), damage * 0.75f );
+				// if we destroyed something, the roof might get damaged too
+				if ( fWallHere )
+				{
+					HandleRoofDestruction( tmpgridno, damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( NORTH ) ), damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( EAST ) ), damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( WEST ) ), damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( SOUTH ) ), damage * 0.75f );
+				}
+
+				RecompileLocalMovementCostsFromRadius( tmpgridno, 2 );
+
+				// if we've destroyed a structure, reveal the things inside, as destroying a structure doesn't necessarily destroy the contents inside
+				RevealAllUnburiedItems( tmpgridno, 0 );
 			}
 		}
 
@@ -1917,35 +1930,45 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 		{
 			INT16 damage = 255;
 
+			// the structure might not exists afterwards, thus we store the gridno
+			INT32 tmpgridno = pStructure->sGridNo;
 			BOOLEAN recompile = FALSE;
-			ExplosiveDamageGridNo( sGridNo, damage, 10, &recompile, FALSE, -1, FALSE, ubOwner, 0 );
+			ExplosiveDamageGridNo( tmpgridno, damage, 10, &recompile, FALSE, -1, FALSE, ubOwner, 0, ubReason );
 
 			//Since the structure is being damaged, set the map element that a structure is damaged
-			gpWorldLevelData[ sGridNo ].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
+			gpWorldLevelData[ tmpgridno ].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
 
 			// handle structure revenge - damage to vehicle
 			if ( ubOwner != NOBODY && MercPtrs[ubOwner] && !ARMED_VEHICLE( MercPtrs[ubOwner] ) )
 			{
 				MercPtrs[ ubOwner ]->SoldierTakeDamage( 0, Random(max(0,(ubBaseArmour-10)/5))+max(0,(ubBaseArmour-10)/5), 0, TAKE_DAMAGE_STRUCTURE_EXPLOSION, NOBODY, MercPtrs[ ubOwner ]->sGridNo, 0, TRUE );
 			}
-
-			// Flugente: if we destroyed a wall, the roof might get damaged too
+			
 			// recompile = TRUE means that we destroyed something
-			if ( fWallHere && recompile )
+			if ( recompile )
 			{
-				// lets not make it that extreme
-				damage = 100;
+				// if we destroyed something, the roof might get damaged too
+				if ( fWallHere )
+				{
+					// lets not make it that extreme
+					damage = 100;
 
-				HandleRoofDestruction( sGridNo, damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( NORTH ) ), damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( EAST ) ), damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( WEST ) ), damage * 0.75f );
-				HandleRoofDestruction( NewGridNo( sGridNo, DirectionInc( SOUTH ) ), damage * 0.75f );
+					HandleRoofDestruction( tmpgridno, damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( NORTH ) ), damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( EAST ) ), damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( WEST ) ), damage * 0.75f );
+					HandleRoofDestruction( NewGridNo( tmpgridno, DirectionInc( SOUTH ) ), damage * 0.75f );
+				}
+
+				RecompileLocalMovementCostsFromRadius( tmpgridno, 2 );
+
+				// if we've destroyed a structure, reveal the things inside, as destroying a structure doesn't necessarily destroy the contents inside
+				RevealAllUnburiedItems( tmpgridno, 0 );
 			}
 		}
 
 		// Don't update damage HPs....
-		return TRUE;
+		return 1;
 	}
 
 	// OK, LOOK FOR A SAM SITE, UPDATE....
@@ -1959,7 +1982,7 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 		UpdateAndDamageEnemyHeliIfFound( gWorldSectorX, gWorldSectorY, gbWorldSectorZ, sGridNo, ubDamage, TRUE );
 
 		// boom! structure destroyed!
-		return( TRUE );
+		return( 1 );
 	}
 	else
 	{
@@ -1969,6 +1992,9 @@ BOOLEAN DamageStructure( STRUCTURE * pStructure, UINT8 ubDamage, UINT8 ubReason,
 
 		//Since the structure is being damaged, set the map element that a structure is damaged
 		gpWorldLevelData[ sGridNo ].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
+
+		// Flugente: enforce a full render, so that we can draw decals on time
+		SetRenderFlags( RENDER_FLAG_FULL );
 
 		// We are a little damaged....
 		return( 2 );
@@ -2438,7 +2464,10 @@ BOOLEAN AddZStripInfoToVObject( HVOBJECT hVObject, STRUCTURE_FILE_REF * pStructu
 						// MemAlloc returns a NULL pointer which the code would interpret as
 						// allocation failing because of no memory.
 						// I hope this is OK, I don't entirely understand what is done here...
-						if (pCurr->ubNumberOfZChanges > 0)
+						// (ASDOW): Commented out the added conditional, because with an unlucky combination of sti image width and offset, eg 9x16 with x offset of -15
+						// pCurr->pbZChange would be null, which then crashes the game inside the blitting functions when dereferencing a nullptr
+						// With Bio experiencing crashes causing him to add the check, I don't know if this is just kicking the can down the road.
+//						if (pCurr->ubNumberOfZChanges > 0)
 						{
 							pCurr->pbZChange = (INT8 *)MemAlloc(pCurr->ubNumberOfZChanges);
 							if (pCurr->pbZChange == NULL)
@@ -2480,10 +2509,10 @@ BOOLEAN AddZStripInfoToVObject( HVOBJECT hVObject, STRUCTURE_FILE_REF * pStructu
 								pCurr->bInitialZChange = -(ubNumDecreasing);
 							}
 						}
-						else
-						{
-							pCurr->pbZChange = NULL;
-						}
+//						else
+//						{
+//							pCurr->pbZChange = NULL;
+//						}
 					}
 				}
 			}
@@ -2599,7 +2628,7 @@ INT8 GetBlockingStructureInfo( INT32 sGridNo, INT8 bDir, INT8 bNextDir, INT8 bLe
 	// If no struct, return
 	if ( pCurrent == NULL )
 	{
-	(*pStructHeight) = StructureHeight( pCurrent );
+		(*pStructHeight) = StructureHeight( pCurrent );
 		(*ppTallestStructure) = NULL;
 		return( NOTHING_BLOCKING );
 	}
@@ -2639,40 +2668,45 @@ INT8 GetBlockingStructureInfo( INT32 sGridNo, INT8 bDir, INT8 bNextDir, INT8 bLe
 			}
 
 			// CHECK FOR WINDOW
-			if ( pCurrent->fFlags & STRUCTURE_WALLNWINDOW )
+			if (pCurrent->fFlags & STRUCTURE_WALLNWINDOW)
 			{
+				//shadooow: full blocking for black windows
+				if (pCurrent->fFlags & STRUCTURE_SPECIAL)
+				{
+					return(FULL_BLOCKING);
+				}
 				switch( pCurrent->ubWallOrientation )
 				{
 					case OUTSIDE_TOP_LEFT:
 					case INSIDE_TOP_LEFT:
 
-			(*pStructHeight) = StructureHeight( pCurrent );
+						(*pStructHeight) = StructureHeight( pCurrent );
 						(*ppTallestStructure) = pCurrent;
 
-			if ( pCurrent->fFlags & STRUCTURE_OPEN )
-			{
-						return( BLOCKING_TOPLEFT_OPEN_WINDOW );
-			}
-			else
-			{
-						return( BLOCKING_TOPLEFT_WINDOW );
-			}
+						if ( pCurrent->fFlags & STRUCTURE_OPEN )
+						{
+									return( BLOCKING_TOPLEFT_OPEN_WINDOW );
+						}
+						else
+						{
+									return( BLOCKING_TOPLEFT_WINDOW );
+						}
 						break;
 
 					case OUTSIDE_TOP_RIGHT:
 					case INSIDE_TOP_RIGHT:
 
-			(*pStructHeight) = StructureHeight( pCurrent );
+						(*pStructHeight) = StructureHeight( pCurrent );
 						(*ppTallestStructure) = pCurrent;
 
-			if ( pCurrent->fFlags & STRUCTURE_OPEN )
-			{
-						return( BLOCKING_TOPRIGHT_OPEN_WINDOW );
-			}
-			else
-			{
-						return( BLOCKING_TOPRIGHT_WINDOW );
-			}
+						if ( pCurrent->fFlags & STRUCTURE_OPEN )
+						{
+							return( BLOCKING_TOPRIGHT_OPEN_WINDOW );
+						}
+						else
+						{
+							return( BLOCKING_TOPRIGHT_WINDOW );
+						}
 						break;
 				}
 			}
@@ -2683,7 +2717,7 @@ INT8 GetBlockingStructureInfo( INT32 sGridNo, INT8 bDir, INT8 bNextDir, INT8 bLe
 				// If we are not opem, we are full blocking!
 				if ( !(pCurrent->fFlags & STRUCTURE_OPEN ) )
 				{
-			(*pStructHeight) = StructureHeight( pCurrent );
+					(*pStructHeight) = StructureHeight( pCurrent );
 					(*ppTallestStructure) = pCurrent;
 					return( FULL_BLOCKING );
 					break;
@@ -2695,7 +2729,7 @@ INT8 GetBlockingStructureInfo( INT32 sGridNo, INT8 bDir, INT8 bNextDir, INT8 bLe
 						case OUTSIDE_TOP_LEFT:
 						case INSIDE_TOP_LEFT:
 
-				(*pStructHeight) = StructureHeight( pCurrent );
+							(*pStructHeight) = StructureHeight( pCurrent );
 							(*ppTallestStructure) = pCurrent;
 							return( BLOCKING_TOPLEFT_DOOR );
 							break;
@@ -2703,7 +2737,7 @@ INT8 GetBlockingStructureInfo( INT32 sGridNo, INT8 bDir, INT8 bNextDir, INT8 bLe
 						case OUTSIDE_TOP_RIGHT:
 						case INSIDE_TOP_RIGHT:
 
-				(*pStructHeight) = StructureHeight( pCurrent );
+							(*pStructHeight) = StructureHeight( pCurrent );
 							(*ppTallestStructure) = pCurrent;
 							return( BLOCKING_TOPRIGHT_DOOR );
 							break;

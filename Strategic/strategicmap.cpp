@@ -3162,13 +3162,14 @@ BOOLEAN EnterSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ )
 	//Moa: removed this function and replaced by the handling function.
 	//SectorInventoryCooldownFunctions(sSectorX, sSectorY, bSectorZ);
 	//moved from SectorInventoryCooldownFunctions. Invisible items are handled as well.
-	//Since we have allready loaded the items previously we can use the globals here.
+	//Since we have already loaded the items previously we can use the globals here.
 	HandleSectorCooldownFunctions( sSectorX, sSectorY, (INT8)bSectorZ, gWorldItems, guiNumWorldItems, TRUE );
 	//Update LastTimePlayerWasInSector
 	SetLastTimePlayerWasInSector( );
 
-	//Save to tempfile
-	SaveWorldItemsToTempItemFile( sSectorX, sSectorY, (INT8)bSectorZ, guiNumWorldItems, gWorldItems );
+	UpdateWorldItems(sSectorX, sSectorY, (INT8)bSectorZ, guiNumWorldItems, gWorldItems);
+
+	DebugQuestInfo(String("Enter Sector %s%s Level %d", pVertStrings[sSectorY], pHortStrings[sSectorX], bSectorZ));
 
 	return TRUE; //because the map was loaded.
 }
@@ -3273,7 +3274,8 @@ void UpdateMercsInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ )
 								fPOWSquadSet = TRUE;
 
 								// ATE: If we are in i13 - pop up message!
-								if ( sSectorX == gModSettings.ubInitialPOWSectorX && sSectorY == gModSettings.ubInitialPOWSectorY ) //(13, 9)
+								if ((sSectorX == gModSettings.ubInitialPOWSectorX && sSectorY == gModSettings.ubInitialPOWSectorY) || //(13, 9)
+								(sSectorX == gModSettings.ubTixaPrisonSectorX && sSectorY == gModSettings.ubTixaPrisonSectorY))
 								{
 									swprintf( zTemp, TacticalStr[POW_MERCS_ARE_HERE], gMercProfiles[QUEEN].zNickname );
 									DoMessageBox( MSG_BOX_BASIC_STYLE, zTemp, GAME_SCREEN, (UINT8)MSG_BOX_FLAG_OK, NULL, NULL );
@@ -3287,7 +3289,8 @@ void UpdateMercsInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ )
 							}
 							else
 							{
-								if ( sSectorX != gModSettings.ubInitialPOWSectorX && sSectorY != gModSettings.ubInitialPOWSectorY ) //(13, 9)
+								if ((sSectorX != gModSettings.ubInitialPOWSectorX && sSectorY != gModSettings.ubInitialPOWSectorY) && //(13, 9)
+									(sSectorX != gModSettings.ubTixaPrisonSectorX && sSectorY != gModSettings.ubTixaPrisonSectorY))
 								{
 									AddCharacterToSquad( pSoldier, ubPOWSquad );
 								}
@@ -3302,6 +3305,16 @@ void UpdateMercsInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ )
 								// Do action
 								HandleNPCDoAction( 0, NPC_ACTION_GRANT_EXPERIENCE_3, 0 );
 							}
+							#ifndef JA2UB
+							else if (gubQuest[QUEST_HELD_IN_TIXA] == QUESTINPROGRESS)
+							{
+								// Complete quest
+								EndQuest(QUEST_HELD_IN_TIXA, sSectorX, sSectorY);
+
+								// Do action
+								HandleNPCDoAction(0, NPC_ACTION_GRANT_EXPERIENCE_3, 0);
+							}
+							#endif
 						}
 					}
 				}
@@ -5217,7 +5230,7 @@ BOOLEAN CanGoToTacticalInSector( INT16 sX, INT16 sY, UINT8 ubZ )
 	{
 		// ARM: now allows loading of sector with all mercs below OKLIFE as long as they're alive
 		if( ( pSoldier->bActive && pSoldier->stats.bLife ) && !( pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE ) &&
-			( pSoldier->bAssignment != IN_TRANSIT ) && ( pSoldier->bAssignment != ASSIGNMENT_POW ) &&
+			( pSoldier->bAssignment != IN_TRANSIT ) && ( pSoldier->bAssignment != ASSIGNMENT_POW ) && ( pSoldier->bAssignment != ASSIGNMENT_MINIEVENT ) &&
 			( pSoldier->bAssignment != ASSIGNMENT_DEAD ) && !SoldierAboardAirborneHeli( pSoldier )
 			)
 
@@ -6357,7 +6370,7 @@ void HandleSlayDailyEvent( void )
 	}
 
 	// valid soldier?
-	if ( (pSoldier->bActive == FALSE) || (pSoldier->stats.bLife == 0) || (pSoldier->bAssignment == IN_TRANSIT) || (pSoldier->bAssignment == ASSIGNMENT_POW) )
+	if ( (pSoldier->bActive == FALSE) || (pSoldier->stats.bLife == 0) || (pSoldier->bAssignment == IN_TRANSIT) || (pSoldier->bAssignment == ASSIGNMENT_POW) || (pSoldier->bAssignment == ASSIGNMENT_MINIEVENT) )
 	{
 		// no
 		return;

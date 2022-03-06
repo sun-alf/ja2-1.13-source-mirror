@@ -151,6 +151,9 @@ CursorFileData CursorFileDatabase[] =
 
 	{ "CURSORS\\medicalsplint.sti"									, FALSE, 0, ANIMATED_CURSOR, 11, NULL },	// Flugente: medical splint
 	{ "CURSORS\\medicalsplint_r.sti"								, FALSE, 0, ANIMATED_CURSOR, 1, NULL },
+
+	{ "CURSORS\\gearwheel.sti"										, FALSE, 0, ANIMATED_CURSOR, 4, NULL },	// Flugente: gearwheel
+	{ "CURSORS\\gearwheel_r.sti"									, FALSE, 0, ANIMATED_CURSOR, 4, NULL },
 	
 	{ "CURSORS\\can_01.sti"												, FALSE, 0, 0, 0, NULL },
 	{ "CURSORS\\can_02.sti"												, FALSE, 0, 0, 0, NULL },
@@ -1376,6 +1379,21 @@ CursorData CursorDatabase[] =
 		0, 0, 0, 0, 0,
 		0, 0, 0, 0, 0,
 		2, CENTER_CURSOR, CENTER_CURSOR, 0, 0, 0, 0 },
+
+	// Flugente: gearwheel
+	{ C_TRINGS, 6, 0, HIDE_SUBCURSOR, HIDE_SUBCURSOR,
+		C_GEARWHEEL, 0, 0, CENTER_SUBCURSOR, CENTER_SUBCURSOR,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		2, CENTER_CURSOR, CENTER_CURSOR, 0, 0, 0, 0 },
+
+	{ C_TRINGS, 6, 0, HIDE_SUBCURSOR, HIDE_SUBCURSOR,
+		C_GEARWHEEL_RED, 0, 0, CENTER_SUBCURSOR, CENTER_SUBCURSOR,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+		2, CENTER_CURSOR, CENTER_CURSOR, 0, 0, 0, 0 },
 	
 	{ C_TRINGS,				6, 0, HIDE_SUBCURSOR, HIDE_SUBCURSOR,
 		C_FUEL				,	0, 0, CENTER_SUBCURSOR, CENTER_SUBCURSOR,
@@ -1892,7 +1910,7 @@ void UpdateAnimatedCursorFrames( UINT32 uiCursorIndex )
 			pCurImage = &( pCurData->Composites[ cnt ] );
 			// Flugente: now using enums instead of hardcoded values
 			//CHRISL: NCTH uses a completely different cursor so if we're in NCTH mode, we want to use different graphics
-			if(UsingNewCTHSystem() == true)
+			if (UsingNewCTHSystem() == true && !(uiCursorIndex >= CURSOR_PUNCHRED_ON1 && uiCursorIndex <= CURSOR_PUNCHNOGO_ON2) && !(uiCursorIndex >= CURSOR_KNIFE_HIT_ON1 && uiCursorIndex <= CURSOR_KNIFE_NOGO_ON2))
 			{
 				switch(pCurImage->uiFileIndex)
 				{

@@ -82,6 +82,7 @@ extern UINT8	gubWaitingForAllMercsToExitCode;
 extern	BOOLEAN	gfDoneWithSplashScreen;
 extern UINT32 iStringToUseLua;
 extern INT8 Test;
+extern INT32 GetAmountOfWorldItems(INT16 x, INT16 y, INT16 z);
 
 static int l_HireMerc (lua_State *L);
 
@@ -629,7 +630,7 @@ static int l_AddSameDayStrategicEvent(lua_State *L);
 static int l_FunctionCheckForKingpinsMoneyMissing(lua_State *L);
 
 static int l_MoveItemPools(lua_State *L);
-static int l_GetNumberOfWorldItemsFromTempItemFile(lua_State *L);
+static int l_GetNumberOfWorldItems(lua_State *L);
 
 static int l_gubFact(lua_State *L);
 
@@ -837,6 +838,10 @@ static int l_TalkingMenuDialogue (lua_State *L);
 static int l_StartDialogueMessageBox (lua_State *L);
 
 static int l_CreateItemInv (lua_State *L);
+static int l_CreateItemInvOrFloor ( lua_State *L );
+static int l_DestroyOneItemInInventory( lua_State *L );
+static int l_HasItemInInventory( lua_State *L );
+
 static int l_MercSalary(lua_State *L);
 static int l_PlayerTeamFull (lua_State *L);
 
@@ -860,6 +865,7 @@ static int l_CreateCivilian( lua_State *L );
 
 static int l_BuildFortification( lua_State *L );
 static int l_RemoveFortification( lua_State *L );
+static int l_DestroyAndReplaceDecal( lua_State *L );
 
 static int l_GetFact( lua_State *L );
 static int l_SetFact( lua_State *L );
@@ -878,6 +884,7 @@ static int l_SetSamSiteHackStatus( lua_State *L );
 static int l_GetSamSiteHackStatus( lua_State *L );
 
 static int l_SetMiniGameType( lua_State *L );
+static int l_DisplayPictureTactical( lua_State *L );
 static int l_SoldierSpendMoney( lua_State *L );
 
 static int l_SetAdditionalDialogue( lua_State *L );
@@ -1164,6 +1171,9 @@ void IniFunction(lua_State *L, BOOLEAN bQuests )
 	lua_register(L, "SoldierGiveItem", l_SoldierGiveItem);
 	lua_register(L, "ProfilGiveItem", l_SoldierGiveItem);
 	lua_register(L, "AddItemToInventory", l_CreateItemInv);
+	lua_register(L, "CreateItemInvOrFloor", l_CreateItemInvOrFloor );
+	lua_register(L, "DestroyOneItemInInventory", l_DestroyOneItemInInventory );
+	lua_register(L, "HasItemInInventory", l_HasItemInInventory );
 	lua_register(L, "TacticalCharacterDialogueWithSpecialEvent", l_TacticalCharacterDialogueWithSpecialEvent);
 	lua_register(L, "SetSalary", l_MercSalary);
 	lua_register(L, "SetProfileStrategicInsertionData", l_ProfilesStrategicInsertionData);
@@ -1267,7 +1277,7 @@ void IniFunction(lua_State *L, BOOLEAN bQuests )
 	lua_register(L, "GetWorldItemsObjectItem", l_gWorldItemsObjectItem);
 	lua_register(L, "GetWorldItemsObjectDataMoney", l_gWorldItemsObjectDataMoney);	
 	lua_register(L, "MoveItemPools", l_MoveItemPools);
-	lua_register(L, "GetNumberOfWorldItemsFromTempItemFile", l_GetNumberOfWorldItemsFromTempItemFile);
+	lua_register(L, "GetNumberOfWorldItems", l_GetNumberOfWorldItems);
 	lua_register(L, "ItemExistsAtLocation", l_ItemExistsAtLocation);
 	lua_register(L, "AddCreateItemToPool", l_CreateItemToPool);
 	lua_register(L, "AddCreateItemsToUnLoadedSector", l_CreateToUnLoadedSector);
@@ -1754,6 +1764,7 @@ void IniFunction(lua_State *L, BOOLEAN bQuests )
 
 	lua_register( L, "BuildFortification", l_BuildFortification );
 	lua_register( L, "RemoveFortification", l_RemoveFortification );
+	lua_register( L, "DestroyAndReplaceDecal", l_DestroyAndReplaceDecal );
 	
 	lua_register(L, "GetFact", l_GetFact );
 	lua_register(L, "SetFact", l_SetFact );
@@ -1772,6 +1783,7 @@ void IniFunction(lua_State *L, BOOLEAN bQuests )
 	lua_register( L, "GetSamSiteHackStatus", l_GetSamSiteHackStatus );
 
 	lua_register( L, "SetMiniGameType", l_SetMiniGameType );
+	lua_register( L, "DisplayPictureTactical", l_DisplayPictureTactical );
 	lua_register( L, "SoldierSpendMoney", l_SoldierSpendMoney );
 
 	lua_register( L, "SetAdditionalDialogue", l_SetAdditionalDialogue );
@@ -2266,6 +2278,7 @@ int i;
 	UINT8	ubNumElites=0;
 	UINT8	ubNumTanks=0;
 	UINT8	ubNumJeeps=0;
+	UINT8	ubNumRobots=0;
 	
 INT16 sSectorX;
 INT16 sSectorY;
@@ -2279,7 +2292,7 @@ INT16 sSectorY;
 		if (i == 5 ) ubNumElites = lua_tointeger(L,i);
 		if (i == 6 ) ubNumTanks = lua_tointeger(L,i);
 	}	
-	SetNumberJa25EnemiesInSurfaceSector( SECTOR( sSectorX, sSectorY ), ubNumAdmins, ubNumTroops, ubNumElites, ubNumTanks, ubNumJeeps );
+	SetNumberJa25EnemiesInSurfaceSector( SECTOR( sSectorX, sSectorY ), ubNumAdmins, ubNumTroops, ubNumElites, ubNumTanks, ubNumJeeps, ubNumRobots );
 	return 0;
 }
 
@@ -3556,28 +3569,28 @@ int i;
 
 static int l_BoxerExists(lua_State *L)
 {
-BOOLEAN Bool;
-
-	Bool = BoxerExists( );
+	BOOLEAN Bool = BoxerExists( );
 	
 	lua_pushboolean(L, Bool);
 	
-return 1;
+	return 1;
 }
 
 static int l_gubBoxerID(lua_State *L)
 {
 	UINT8  n = lua_gettop(L);
-	UINT8 val, val2;
 
-	for (int i = 1; i <= n; i++)
+	if ( n >= 2 )
 	{
-		if (i == 1) val = lua_tointeger(L, i);
-		if (i == 2) val2 = lua_tointeger(L, i);
-	}
+		UINT8 val = lua_tointeger( L, 1 );
+		UINT8 val2 = lua_tointeger( L, 2 );
 
-	if (val <= 2)
-		gubBoxerID[val] = val2;
+		if (val <= 2)
+		{
+			gubBoxerID[val] = val2;
+			DebugQuestInfo(String("Lua: set gubBoxerID[%d] %d", val, gubBoxerID[val]));
+		}
+	}
 
 	return 0;
 }
@@ -4922,23 +4935,19 @@ return 0;
 }
 
 
-static int l_GetNumberOfWorldItemsFromTempItemFile(lua_State *L)
+static int l_GetNumberOfWorldItems(lua_State *L)
 {
 
-	if ( lua_gettop(L) >= 5 )
+	if ( lua_gettop(L) >= 3 )
 	{
-		 INT16 sMapX = lua_tointeger(L,1);
-		 INT16 sMapY = lua_tointeger(L,2);
-		 INT8 bMapZ = lua_tointeger(L,3);
-		 UINT32 puiNumberOfItems = lua_tointeger(L,4);
-		 BOOLEAN fIfEmptyCreate = lua_toboolean(L,5);
-
-	
-		BOOLEAN Bool = GetNumberOfWorldItemsFromTempItemFile( sMapX, sMapY, bMapZ, &puiNumberOfItems, fIfEmptyCreate );
-
-		lua_pushboolean(L, Bool);
+		INT16 sMapX = lua_tointeger(L,1);
+		INT16 sMapY = lua_tointeger(L,2);
+		INT8 bMapZ = lua_tointeger(L,3);
 		
-	}		
+
+		INT32 NumItems = GetAmountOfWorldItems(sMapX, sMapY, bMapZ);
+		lua_pushinteger(L, NumItems);
+	}
 		
 return 1;
 }
@@ -8186,6 +8195,7 @@ static int l_SetgfBoxerFought (lua_State *L)
 		BOOLEAN Bool	= lua_toboolean( L, 2 );
 
 		gfBoxerFought[id] = Bool;
+		DebugQuestInfo(String("lua: set gfBoxerFought[%d] %d ", id, Bool));
 	}
 		
 	return 0;
@@ -8194,7 +8204,10 @@ static int l_SetgfBoxerFought (lua_State *L)
 static int l_SetgfBoxersResting(lua_State *L)
 {
 	if (lua_gettop(L))
+	{
 		gfBoxersResting = lua_toboolean(L, 1);
+		DebugQuestInfo(String("lua: set gfBoxersResting %d", gfBoxersResting));
+	}
 
 	return 0;
 }
@@ -8202,7 +8215,10 @@ static int l_SetgfBoxersResting(lua_State *L)
 static int l_SetgubBoxersRests(lua_State *L)
 {
 	if (lua_gettop(L))
+	{
 		gubBoxersRests = lua_tointeger(L, 1);
+		DebugQuestInfo(String("lua: set gubBoxersRests %d ", gubBoxersRests));
+	}
 
 	return 0;
 }
@@ -8447,6 +8463,67 @@ static int l_CreateItemInv(lua_State *L)
 	}
 
 	return 0;
+}
+
+static int l_CreateItemInvOrFloor( lua_State *L )
+{
+	if ( lua_gettop( L ) >= 2 )
+	{
+		UINT16 ubID = lua_tointeger( L, 1 );
+		UINT16 usItem = lua_tointeger( L, 2 );
+
+		if ( ubID < TOTAL_SOLDIERS )
+		{
+			SOLDIERTYPE* pSoldier = MercPtrs[ubID];
+			if ( pSoldier )
+			{
+				CreateItem( usItem, 100, &gTempObject );
+
+				if ( !AutoPlaceObject( pSoldier, &gTempObject, TRUE ) )
+				{
+					AddItemToPool( pSoldier->sGridNo, &gTempObject, 1, pSoldier->pathing.bLevel, 0, -1 );
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int l_DestroyOneItemInInventory( lua_State *L )
+{
+	if ( lua_gettop( L ) >= 2 )
+	{
+		UINT16 ubID = lua_tointeger( L, 1 );
+		UINT16 usItem = lua_tointeger( L, 2 );
+
+		if ( ubID < TOTAL_SOLDIERS )
+		{
+			MercPtrs[ubID]->DestroyOneItemInInventory( usItem );
+		}
+	}
+
+	return 0;
+}
+
+static int l_HasItemInInventory( lua_State *L )
+{
+	bool Bool = FALSE;
+
+	if ( lua_gettop( L ) >= 2 )
+	{
+		UINT16 ubID = lua_tointeger( L, 1 );
+		UINT16 usItem = lua_tointeger( L, 2 );
+
+		if ( ubID < TOTAL_SOLDIERS )
+		{
+			Bool = MercPtrs[ubID]->HasItemInInventory( usItem );
+		}
+	}
+
+	lua_pushboolean( L, Bool );
+
+	return 1;
 }
 
 static int l_CreateKeyProfInvAndAddItemToPool(lua_State *L)
@@ -10535,6 +10612,7 @@ static int l_ResetBoxers( lua_State *L )
 		gubBoxerID[i] = NOBODY;
 		// sevenfm: keep gfBoxerFought[] unchanged as it will be reset every day at 16:00 by HourlyQuestUpdate(), HourlyUpdate.lua		
 		//gfBoxerFought[i] = FALSE;
+		DebugQuestInfo(String("Lua: reset boxer gubBoxerID[%d] %d", i, gubBoxerID[i]));
 	}
 
 	return 0;
@@ -13055,6 +13133,32 @@ static int l_RemoveFortification( lua_State *L )
 	return 0;
 }
 
+static int l_DestroyAndReplaceDecal( lua_State *L )
+{
+	if ( lua_gettop( L ) >= 3 )
+	{
+		INT32 sGridNo = lua_tointeger( L, 1 );
+
+		size_t len = 0;
+		const char* str = lua_tolstring( L, 2, &len );
+
+		UINT8 index = lua_tointeger( L, 3 );
+
+		ApplyMapChangesToMapTempFile( TRUE );
+
+		RemoveAllStructsOfTypeRange( sGridNo, FIRSTWALLDECAL, FOURTHWALLDECAL );
+		RemoveAllStructsOfTypeRange( sGridNo, FIFTHWALLDECAL, EIGTHWALLDECAL );
+		RemoveAllStructsOfTypeRange( sGridNo, FIRSTDECORATIONS, FOURTHDECORATIONS );
+
+
+		BuildStructFromName( sGridNo, 0, str, index );
+
+		ApplyMapChangesToMapTempFile( FALSE );
+	}
+
+	return 0;
+}
+
 static int l_GetFact( lua_State *L )
 {
 	if ( lua_gettop( L ) )
@@ -13241,6 +13345,27 @@ static int l_SetMiniGameType( lua_State *L )
 		UINT32 usMiniGame = lua_tointeger( L, 1 );
 
 		SetNextGame( usMiniGame );
+	}
+
+	return 0;
+}
+
+static int l_DisplayPictureTactical( lua_State *L )
+{
+	if ( lua_gettop( L ) >= 2 )
+	{
+		size_t len = 0;
+		const char* str = lua_tolstring( L, 1, &len );
+		bool stretch = lua_tointeger( L, 2 );
+		
+		if ( guiCurrentScreen == GAME_SCREEN
+			&& (std::strstr(str, ".png") != NULL || std::strstr( str, ".PNG" ) != NULL ) )
+		{
+			SetInteractivePicture( str, stretch );
+
+			SetNextGame( PICTURE );
+			SetPendingNewScreen( MINIGAME_SCREEN );
+		}
 	}
 
 	return 0;

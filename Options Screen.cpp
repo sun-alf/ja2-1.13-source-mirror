@@ -6,7 +6,6 @@
 	#include	"Video.h"
 	#include	"Font Control.h"
 	#include	"Game Clock.h"
-	#include	"Render Dirty.h"
 	#include	"Text Input.h"
 	#include	"WordWrap.h"
 	#include	"SaveLoadScreen.h"
@@ -43,104 +42,10 @@
 #include		"Cheats.h"
 #include		"connect.h"
 #include		"WorldMan.h"
-
+#include		"Init.h"
 #include		"Game Events.h"
 #include		"PostalService.h"
 extern CPostalService gPostalService;
-
-/////////////////////////////////
-//
-//	Defines
-//
-/////////////////////////////////
-#define	OPT_MAIN_FONT							FONT10ARIAL
-#define	OPT_SLIDER_FONT							FONT12ARIAL
-
-#define	OPT_MAIN_COLOR							OPT_BUTTON_ON_COLOR
-#define	OPT_HIGHLIGHT_COLOR						FONT_MCOLOR_WHITE
-
-// these both could be established at run time, then never worry about it again
-// derived from "OPTIONSCREENBASE.sti"
-#define	OPTIONS_SCREEN_WIDTH					638
-#define	OPTIONS_SCREEN_HEIGHT					478
-
-#define	OPTIONS__TOP_LEFT_X						iScreenWidthOffset
-#define	OPTIONS__TOP_LEFT_Y						iScreenHeightOffset
-#define	OPTIONS__BOTTOM_RIGHT_X					OPTIONS__TOP_LEFT_X + OPTIONS_SCREEN_WIDTH
-#define	OPTIONS__BOTTOM_RIGHT_Y					OPTIONS__TOP_LEFT_Y + OPTIONS_SCREEN_HEIGHT
-
-#define	OPT_SAVE_BTN_X							iScreenWidthOffset + 50
-#define	OPT_SAVE_BTN_Y							iScreenHeightOffset + 438
-
-#define	OPT_LOAD_BTN_X							iScreenWidthOffset + 120
-#define	OPT_LOAD_BTN_Y							OPT_SAVE_BTN_Y
-
-#define	OPT_QUIT_BTN_X							iScreenWidthOffset + 190
-#define	OPT_QUIT_BTN_Y							OPT_SAVE_BTN_Y
-// ary-05/05/2009 : need more option screen toggles : Add in buttons that allow for options column paging
-#define	OPT_PREV_BTN_X							iScreenWidthOffset + 310
-#define	OPT_PREV_BTN_Y							OPT_SAVE_BTN_Y 
-
-#define	OPT_PAGE_X								iScreenWidthOffset + 364
-#define	OPT_PAGE_Y								OPT_SAVE_BTN_Y + 7
-
-#define	OPT_NEXT_BTN_X							iScreenWidthOffset + 420
-#define	OPT_NEXT_BTN_Y							OPT_SAVE_BTN_Y 
-
-#define	OPT_DONE_BTN_X							iScreenWidthOffset + 550
-#define	OPT_DONE_BTN_Y							OPT_SAVE_BTN_Y
-
-#define	OPT_GAP_BETWEEN_TOGGLE_BOXES			18
-
-//Text
-#define	OPT_TOGGLE_BOX_FIRST_COL_TEXT_X			OPT_TOGGLE_BOX_FIRST_COLUMN_X + OPT_SPACE_BETWEEN_TEXT_AND_TOGGLE_BOX
-#define	OPT_TOGGLE_BOX_FIRST_COL_TEXT_Y			OPT_TOGGLE_BOX_FIRST_COLUMN_START_Y
-
-#define	OPT_TOGGLE_BOX_SECOND_TEXT_X			OPT_TOGGLE_BOX_SECOND_COLUMN_X + OPT_SPACE_BETWEEN_TEXT_AND_TOGGLE_BOX
-#define	OPT_TOGGLE_BOX_SECOND_TEXT_Y			OPT_TOGGLE_BOX_SECOND_COLUMN_START_Y
-
-//toggle boxes
-#define	OPT_SPACE_BETWEEN_TEXT_AND_TOGGLE_BOX	30
-#define	OPT_TOGGLE_TEXT_OFFSET_Y				2
-
-#define	OPT_TOGGLE_BOX_FIRST_COLUMN_X			iScreenWidthOffset + 260
-#define	OPT_TOGGLE_BOX_FIRST_COLUMN_START_Y		iScreenHeightOffset + 82
-
-#define	OPT_TOGGLE_BOX_SECOND_COLUMN_X			iScreenWidthOffset + 435
-#define	OPT_TOGGLE_BOX_SECOND_COLUMN_START_Y	OPT_TOGGLE_BOX_FIRST_COLUMN_START_Y
-
-#define	OPT_TOGGLE_BOX_TEXT_WIDTH				OPT_TOGGLE_BOX_SECOND_COLUMN_X - OPT_TOGGLE_BOX_FIRST_COLUMN_X - 20
-
-// Slider bar defines
-#define	OPT_GAP_BETWEEN_SLIDER_BARS				60
-#define	OPT_SLIDER_BAR_SIZE						258
-
-#define	OPT_SLIDER_TEXT_WIDTH					45
-
-#define	OPT_SOUND_FX_TEXT_X						iScreenWidthOffset + 38
-#define	OPT_SOUND_FX_TEXT_Y						iScreenHeightOffset + 87
-
-#define	OPT_SPEECH_TEXT_X						iScreenWidthOffset + 85
-#define	OPT_SPEECH_TEXT_Y						OPT_SOUND_FX_TEXT_Y
-
-#define	OPT_MUSIC_TEXT_X						iScreenWidthOffset + 137
-#define	OPT_MUSIC_TEXT_Y						OPT_SOUND_FX_TEXT_Y
-
-#define	OPT_TEXT_TO_SLIDER_OFFSET_Y				25
-
-#define	OPT_SOUND_EFFECTS_SLIDER_X				iScreenWidthOffset + 56
-#define	OPT_SOUND_EFFECTS_SLIDER_Y				iScreenHeightOffset + 126
-
-#define	OPT_SPEECH_SLIDER_X						iScreenWidthOffset + 107
-#define	OPT_SPEECH_SLIDER_Y						OPT_SOUND_EFFECTS_SLIDER_Y
-
-#define	OPT_MUSIC_SLIDER_X						iScreenWidthOffset + 158
-#define	OPT_MUSIC_SLIDER_Y						OPT_SOUND_EFFECTS_SLIDER_Y
-
-#define	OPT_MUSIC_SLIDER_PLAY_SOUND_DELAY		75
-
-#define	OPT_FIRST_COLUMN_TOGGLE_CUT_OFF			18
-#define	MAX_NUMBER_OF_OPTION_TOGGLES			(OPT_FIRST_COLUMN_TOGGLE_CUT_OFF * 2)
 
 /////////////////////////////////
 //
@@ -176,6 +81,7 @@ INT32		giOptionsMessageBox = -1;			// Options pop up messages index value
 
 INT8		gbHighLightedOptionText = -1;
 
+BOOLEAN		gfOptionsScreenUnloading = FALSE;
 //BOOLEAN		gfHideBloodAndGoreOption=FALSE;	//all this blood gore option enforcment is unused
 												//If a germany build we are to hide the blood and gore option
 
@@ -201,6 +107,11 @@ INT32		giGotoLoadBtnImage;
 void BtnOptQuitCallback(GUI_BUTTON *btn,INT32 reason);
 UINT32		guiQuitButton;
 INT32		giQuitBtnImage;
+
+// 1.13 Features Button
+void Btn113FeaturesCallback(GUI_BUTTON *btn,INT32 reason);
+UINT32 gui113FeaturesButton;
+INT32 gi113FeaturesBtnImage;
 
 // arynn : need more option screen toggles : Add in button that allow for options column paging
 // Options Screen globals
@@ -265,7 +176,8 @@ void			RenderOptionsScreen();
 void			ExitOptionsScreen();
 void			HandleOptionsScreen();
 void			GetOptionsScreenUserInput();
-
+void			NextPage();
+void			PreviousPage();
 
 void			SoundFXSliderChangeCallBack( INT32 iNewValue );
 void			SpeechSliderChangeCallBack( INT32 iNewValue );
@@ -315,10 +227,12 @@ UINT32	OptionsScreenHandle()
 		BlitBufferToBuffer( guiRENDERBUFFER, guiSAVEBUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 		InvalidateRegion( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 	}
+	else
+	{
+		GetOptionsScreenUserInput();
+	}
 
 	RestoreBackgroundRects();
-
-	GetOptionsScreenUserInput();
 
 	HandleOptionsScreen();
 
@@ -716,7 +630,7 @@ BOOLEAN EnterOptionsScreen()
 													OPT_SAVE_BTN_X, OPT_SAVE_BTN_Y, BUTTON_TOGGLE, MSYS_PRIORITY_HIGH,
 													DEFAULT_MOVE_CALLBACK, BtnOptGotoSaveGameCallback);
 	SpecifyDisabledButtonStyle( guiOptGotoSaveGameBtn, DISABLED_STYLE_HATCHED );
-	if( guiPreviousOptionScreen == MAINMENU_SCREEN || !CanGameBeSaved() )
+	if( guiPreviousOptionScreen == MAINMENU_SCREEN || !CanGameBeSaved() || guiPreviousOptionScreen == GAME_INIT_OPTIONS_SCREEN )
 	{
 		DisableButton( guiOptGotoSaveGameBtn );
 	}
@@ -741,6 +655,19 @@ BOOLEAN EnterOptionsScreen()
 													DEFAULT_MOVE_CALLBACK, BtnOptQuitCallback);
 	SpecifyDisabledButtonStyle( guiQuitButton, DISABLED_STYLE_HATCHED );
 //	DisableButton( guiQuitButton );
+
+	// 1.13 Features Button
+	gi113FeaturesBtnImage = UseLoadedButtonImage( giOptionsButtonImages, -1,2,-1,3,-1 );
+	gui113FeaturesButton = CreateIconAndTextButton( gi113FeaturesBtnImage, zOptionsText[OPT_NEW_IN_113], OPT_BUTTON_FONT2,
+													FONT_MCOLOR_LTYELLOW, DEFAULT_SHADOW,
+													FONT_MCOLOR_LTYELLOW, DEFAULT_SHADOW,
+													TEXT_CJUSTIFIED,
+													OPT_SWAP_BTN_X, OPT_SWAP_BTN_Y, BUTTON_TOGGLE, MSYS_PRIORITY_HIGH,
+													DEFAULT_MOVE_CALLBACK, Btn113FeaturesCallback);
+	if (is_networked)
+	{
+		DisableButton(gui113FeaturesButton);
+	}
 
 // ary-05/05/2009 : need more option screen toggles : Add in buttons that allow for options column paging
 	// Previous Column of options
@@ -835,11 +762,16 @@ BOOLEAN EnterOptionsScreen()
 	gfSettingOfDontAnimateSmoke = gGameSettings.fOptions[ TOPTION_ANIMATE_SMOKE ];
 
 	gfSettingOfTacticalFaceIcon = gGameSettings.fOptions[ TOPTION_SHOW_TACTICAL_FACE_ICONS ];
+	gfOptionsScreenUnloading = FALSE;
 	return( TRUE );
 }
 
 void ExitOptionsScreen()
 {
+	if (gfOptionsScreenUnloading == TRUE)
+		return;
+
+	gfOptionsScreenUnloading = TRUE;
 
 	if( gfExitOptionsDueToMessageBox )
 	{
@@ -865,9 +797,16 @@ void ExitOptionsScreen()
 		EnterTacticalScreen( );
 	}
 
+	if (guiOptionsScreen == SAVE_LOAD_SCREEN && guiPreviousOptionScreen == MAINMENU_SCREEN)
+	{
+		giMAXIMUM_NUMBER_OF_PLAYER_SLOTS = CODE_MAXIMUM_NUMBER_OF_PLAYER_SLOTS;
+		InitDependingGameStyleOptions();
+	}
+
 	RemoveButton( guiOptGotoSaveGameBtn );
 	RemoveButton( guiOptGotoLoadGameBtn );
 	RemoveButton( guiQuitButton );
+	RemoveButton( gui113FeaturesButton );
 	RemoveButton( guiOptNextButton );// ary-05/05/2009 : more option screen toggles
 	RemoveButton( guiOptPrevButton );
 	RemoveButton( guiDoneButton );
@@ -875,6 +814,7 @@ void ExitOptionsScreen()
 	UnloadButtonImage( giOptionsButtonImages );
 	UnloadButtonImage( giGotoLoadBtnImage );
 	UnloadButtonImage( giQuitBtnImage );
+	UnloadButtonImage( gi113FeaturesBtnImage);
 	UnloadButtonImage( giOptNextBtnImage );// ary-05/05/2009 : more option screen toggles
 	UnloadButtonImage( giOptPrevBtnImage );
 	UnloadButtonImage( giDoneBtnImage );
@@ -904,7 +844,9 @@ void ExitOptionsScreen()
 	}
 
 	//if the user changed the TREE TOP option, AND a world is loaded
-	if( gfSettingOfTreeTopStatusOnEnterOfOptionScreen != gGameSettings.fOptions[ TOPTION_TOGGLE_TREE_TOPS ] && gfWorldLoaded )
+	// sevenfm: always update tree top state
+	//if( gfSettingOfTreeTopStatusOnEnterOfOptionScreen != gGameSettings.fOptions[ TOPTION_TOGGLE_TREE_TOPS ] && gfWorldLoaded )
+	if (gfWorldLoaded)
 	{
 		SetTreeTopStateForMap();
 	}
@@ -1029,6 +971,13 @@ void GetOptionsScreenUserInput()
 		{
 			switch( Event.usParam )
 			{
+				case 'q':
+				case 'Q':
+					//Confirm the Exit to the main menu screen
+					DoOptionsMessageBox(	MSG_BOX_BASIC_STYLE, zOptionsText[OPT_RETURN_TO_MAIN], OPTIONS_SCREEN, MSG_BOX_FLAG_YESNO, 
+											ConfirmQuitToMainMenuMessageBoxCallBack );
+				break;
+
 				case ESC:
 					SetOptionsExitScreen( guiPreviousOptionScreen );
 					break;
@@ -1051,6 +1000,24 @@ void GetOptionsScreenUserInput()
 					gfSaveGame = FALSE;
 					break;
 
+				// toggle between features and options screen
+				case TAB:
+					SetOptionsExitScreen(FEATURES_SCREEN);
+					break;
+
+				// page left
+				case 'a':
+				case 'A':
+				case LEFTARROW:
+					PreviousPage();
+					break;
+
+				// page right
+				case 'd':
+				case 'D':
+				case RIGHTARROW:
+					NextPage();
+					break;
 
 #ifdef JA2TESTVERSION
 
@@ -1107,13 +1074,82 @@ void GetOptionsScreenUserInput()
 					SetErrorMode( SEM_FAILCRITICALERRORS );
 					break;
 
-				case 'q':
+//				case 'q':
 //					ShouldMercSayPrecedentToRepeatOneSelf( 11, 99 );
-					break;
+//					break;
 #endif
 			}
 		}
 	}
+
+	// mousewheel input
+	if (OptionsList_Column_Offset > 0)
+	{
+		BOOL act = FALSE;
+
+		// check general screen mouseregion
+		if (gSelectedToggleBoxAreaRegion.WheelState > 0)
+		{
+			act = TRUE;
+		}
+
+		// check toggle box mouseregions
+		for (int i = 0; i < MAX_NUMBER_OF_OPTION_TOGGLES; ++i)
+		{
+			if (act) break;
+			if (gSelectedOptionTextRegion[i].WheelState > 0)
+			{
+				act = TRUE;
+			}
+		}
+
+		if (act) PreviousPage();
+	}
+
+	if (OptionsList_Column_Offset < Max_Number_Of_Pages-2)
+	{
+		BOOL act = FALSE;
+
+		// check general screen mouseregion
+		if (gSelectedToggleBoxAreaRegion.WheelState < 0)
+		{
+			act = TRUE;
+		}
+
+		// check toggle box mouseregions
+		for (int i = 0; i < MAX_NUMBER_OF_OPTION_TOGGLES; ++i)
+		{
+			if (act) break;
+			if (gSelectedOptionTextRegion[i].WheelState < 0)
+			{
+				act = TRUE;
+			}
+		}
+
+		if (act) NextPage();
+	}
+}
+
+void NextPage()
+{
+	ExitOptionsScreen();
+
+	OptionsList_Column_Offset++;
+	if (OptionsList_Column_Offset >= Max_Number_Of_Pages - 1) // ary-05/05/2009 : Max_Number_Of_Pages
+		OptionsList_Column_Offset = (Max_Number_Of_Pages - 2);
+
+	OptionsScreenInit();	// ary-05/05/2009 : This is important to refresh the screen properly, it stores a new SAVE_BUFFER
+}
+
+void PreviousPage()
+{
+	ExitOptionsScreen();
+
+	OptionsList_Column_Offset--;
+	if(OptionsList_Column_Offset < 0)
+		OptionsList_Column_Offset = 0;
+
+	OptionsScreenInit();	// ary-05/05/2009 : This is important to refresh the screen properly, it stores a new SAVE_BUFFER
 }
 
 void SetOptionsExitScreen( UINT32 uiExitScreen )
@@ -1121,6 +1157,13 @@ void SetOptionsExitScreen( UINT32 uiExitScreen )
 	OptionsList_Column_Offset	= 0 ; // reset the pager till next visit
 	guiOptionsScreen = uiExitScreen;
 	gfOptionsScreenExit	= TRUE;
+}
+
+void SetOptionsPreviousScreen( UINT32 uiPrevScreen, BOOLEAN setFeaturesToo )
+{
+	guiPreviousOptionScreen = uiPrevScreen;
+	if (setFeaturesToo == TRUE)
+		FeaturesScreen::SetPreviousScreen(uiPrevScreen, FALSE);
 }
 
 void BtnOptGotoSaveGameCallback(GUI_BUTTON *btn,INT32 reason)
@@ -1197,6 +1240,27 @@ void BtnOptQuitCallback(GUI_BUTTON *btn,INT32 reason)
 	}
 }
 
+void Btn113FeaturesCallback(GUI_BUTTON* btn, INT32 reason)
+{
+	if(reason & MSYS_CALLBACK_REASON_LBUTTON_DWN )
+	{
+		btn->uiFlags |= BUTTON_CLICKED_ON;
+		InvalidateRegion(btn->Area.RegionTopLeftX, btn->Area.RegionTopLeftY, btn->Area.RegionBottomRightX, btn->Area.RegionBottomRightY);
+	}
+	if(reason & MSYS_CALLBACK_REASON_LBUTTON_UP )
+	{
+		btn->uiFlags &= (~BUTTON_CLICKED_ON );
+
+		SetOptionsExitScreen(FEATURES_SCREEN);
+		InvalidateRegion(btn->Area.RegionTopLeftX, btn->Area.RegionTopLeftY, btn->Area.RegionBottomRightX, btn->Area.RegionBottomRightY);
+	}
+	if(reason & MSYS_CALLBACK_REASON_LOST_MOUSE)
+	{
+		btn->uiFlags &= (~BUTTON_CLICKED_ON );
+		InvalidateRegion(btn->Area.RegionTopLeftX, btn->Area.RegionTopLeftY, btn->Area.RegionBottomRightX, btn->Area.RegionBottomRightY);
+	}
+}
+
 // ary-05/05/2009 : need more option screen toggles : Functions for button callbacks
 void BtnOptPrevCallback(GUI_BUTTON *btn,INT32 reason)
 {
@@ -1210,12 +1274,7 @@ void BtnOptPrevCallback(GUI_BUTTON *btn,INT32 reason)
 	{
 		btn->uiFlags &= (~BUTTON_CLICKED_ON );
 
-		ExitOptionsScreen();
-
-		OptionsList_Column_Offset--;
-		if(OptionsList_Column_Offset < 0) OptionsList_Column_Offset = 0;
-
-		OptionsScreenInit();	// ary-05/05/2009 : This is important to refresh the screen properly, it stores a new SAVE_BUFFER
+		PreviousPage();
 
 		InvalidateRegion(	btn->Area.RegionTopLeftX,		btn->Area.RegionTopLeftY, 
 							btn->Area.RegionBottomRightX,	btn->Area.RegionBottomRightY);
@@ -1240,13 +1299,7 @@ void BtnOptNextCallback(GUI_BUTTON *btn,INT32 reason)
 	{
 		btn->uiFlags &= (~BUTTON_CLICKED_ON );
 
-		ExitOptionsScreen();
-
-		OptionsList_Column_Offset++;
-		if(	OptionsList_Column_Offset >= Max_Number_Of_Pages) // ary-05/05/2009 : Max_Number_Of_Pages
-			OptionsList_Column_Offset = (Max_Number_Of_Pages-1);
-
-		OptionsScreenInit();	// ary-05/05/2009 : This is important to refresh the screen properly, it stores a new SAVE_BUFFER
+		NextPage();
 
 		InvalidateRegion(	btn->Area.RegionTopLeftX,		btn->Area.RegionTopLeftY, 
 							btn->Area.RegionBottomRightX,	btn->Area.RegionBottomRightY);

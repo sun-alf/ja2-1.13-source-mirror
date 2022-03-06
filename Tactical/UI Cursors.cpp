@@ -254,26 +254,6 @@ UINT8	GetProperItemCursor( UINT8 ubSoldierID, UINT16 ubItemIndex, INT32 usMapPos
 			{
 				ubCursorID =	HandleNonActivatedTossCursor( pSoldier, sTargetGridNo, fRecalc, uiCursorFlags, ubItemCursor );
 			}
-
-#if 0
-			if ( gCurrentUIMode == ACTION_MODE && ubItemCursor == TRAJECTORYCURS && ( gTacticalStatus.uiFlags & INCOMBAT ) )
-			{
-				// Alrighty, let's change the cursor!
-				if ( fRecalc && gfUIFullTargetFound )
-				{
-						// ATE: Check for ammo
-						if ( IsValidTargetMerc( (UINT8)gusUIFullTargetID ) && EnoughAmmo( pSoldier, FALSE, HANDPOS ) )
-						{
-							// IF it's an ememy, goto confirm action mode
-							if ( ( guiUIFullTargetFlags & ENEMY_MERC ) && ( guiUIFullTargetFlags & VISIBLE_MERC ) && !( guiUIFullTargetFlags & DEAD_MERC ) && !gfCannotGetThrough )
-							{
-									guiPendingOverrideEvent = A_CHANGE_TO_CONFIM_ACTION;
-							}
-
-						}
-				}
-			}
-#endif
 			break;
 
 		case BOMBCURS:
@@ -1268,7 +1248,7 @@ UINT8 HandleNonActivatedTargetCursor( SOLDIERTYPE *pSoldier, INT32 usMapPos , BO
 
 		//CHRISL: We need to only check the second hand if the weapon in the second hand is onehanded
 		// Check for enough ammo...
-		if ( !EnoughAmmo( pSoldier, FALSE, HANDPOS ) || (pSoldier->IsValidSecondHandShotForReloadingPurposes( ) && !EnoughAmmo( pSoldier, FALSE, SECONDHANDPOS) && !Item[pSoldier->inv[SECONDHANDPOS].usItem].twohanded ) )
+		if ( !EnoughAmmo( pSoldier, FALSE, HANDPOS ) || (pSoldier->IsValidSecondHandShotForReloadingPurposes( ) && !Item[pSoldier->inv[SECONDHANDPOS].usItem].twohanded && !EnoughAmmo( pSoldier, FALSE, SECONDHANDPOS) ) )
 		{
 			// Check if ANY ammo exists.....
 			if ( FindAmmoToReload( pSoldier, HANDPOS, NO_SLOT ) == NO_SLOT )
@@ -1279,7 +1259,7 @@ UINT8 HandleNonActivatedTargetCursor( SOLDIERTYPE *pSoldier, INT32 usMapPos , BO
 			else
 			{
 				// Check APs to reload...
-				gsCurrentActionPoints = GetAPsToAutoReload( pSoldier );
+				gsCurrentActionPoints = GetAPsToAutoReload( pSoldier, false );
 
 				gfUIDisplayActionPoints = TRUE;
 				//gUIDisplayActionPointsOffX = 14;
@@ -1322,10 +1302,6 @@ UINT8 HandleNonActivatedTargetCursor( SOLDIERTYPE *pSoldier, INT32 usMapPos , BO
 			pSoldier->bDoAutofire = 1;
 			// sevenfm: init autofire bullet num next time when the cursor will be on target
 			gfAutofireInitBulletNum = FALSE;
-		}
-		else
-		{
-			pSoldier->bDoAutofire = 6;
 		}
 
 		pSoldier->flags.autofireLastStep = FALSE;
@@ -1667,6 +1643,11 @@ UINT8 HandleKnifeCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 	INT8							bFutureAim;
 	BOOLEAN						fEnoughPoints = TRUE;
 
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return KNIFE_REG_UICURSOR;
+	}
+
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_MERCS );
 
@@ -1677,6 +1658,8 @@ UINT8 HandleKnifeCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 	if ( fActivated )
 	{
 		DetermineCursorBodyLocation( pSoldier->ubID, TRUE, TRUE );
+		//shadooow: this fixes bug where the original aim location is lost if the attack is stopped due to interrupt
+		pSoldier->bAimMeleeLocation = pSoldier->bAimShotLocation;
 
 		if ( gfUIHandleShowMoveGrid )
 		{
@@ -1686,7 +1669,7 @@ UINT8 HandleKnifeCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 		// Calculate action points
 		if ( gTacticalStatus.uiFlags & TURNBASED && (gTacticalStatus.uiFlags & INCOMBAT) )
 		{
-			gsCurrentActionPoints = CalcTotalAPsToAttack( pSoldier, sGridNo, TRUE, (INT8)(pSoldier->aiData.bShownAimTime ) );
+			gsCurrentActionPoints = CalcTotalAPsToAttack( pSoldier, sGridNo, TRUE, (INT8)(pSoldier->aiData.bShownAimTime / 2) );
 			gfUIDisplayActionPoints = TRUE;
 			gfUIDisplayActionPointsCenter = TRUE;
 
@@ -1701,8 +1684,7 @@ UINT8 HandleKnifeCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 				}
 			}
 
-			// SANDRO - changed this
-			bFutureAim = (INT8)( gGameExternalOptions.fEnhancedCloseCombatSystem ? gSkillTraitValues.ubModifierForAPsAddedOnAimedBladedAttackes : REFINE_KNIFE_2 );
+			bFutureAim = (INT8)( REFINE_KNIFE_2 );
 
 			sAPCosts = CalcTotalAPsToAttack( pSoldier, sGridNo, TRUE, (INT8)(bFutureAim / 2) );
 
@@ -1736,7 +1718,6 @@ UINT8 HandleKnifeCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 
 
 		//////////////////////////////////////////////////////////////
-		// SANDRO - slightly changed the formula here
 		if( pSoldier->aiData.bShownAimTime == REFINE_KNIFE_1 )
 		{
 			if ( gfDisplayFullCountRing )
@@ -1752,7 +1733,7 @@ UINT8 HandleKnifeCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 				return( KNIFE_NOGO_AIM1_UICURSOR );
 			}
 		}
-		else if( pSoldier->aiData.bShownAimTime == ( gGameExternalOptions.fEnhancedCloseCombatSystem ? gSkillTraitValues.ubModifierForAPsAddedOnAimedBladedAttackes : REFINE_KNIFE_2 ) )
+		else if( pSoldier->aiData.bShownAimTime == REFINE_KNIFE_2 )
 		{
 			if ( gfDisplayFullCountRing )
 			{
@@ -1799,12 +1780,19 @@ UINT8 HandlePunchCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 	INT8							bFutureAim;
 	BOOLEAN						fEnoughPoints = TRUE;
 
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return ACTION_PUNCH_GRAY;
+	}
+
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_MERCS );
 
 	if ( fActivated )
 	{
 		DetermineCursorBodyLocation( pSoldier->ubID, TRUE, TRUE );
+		//shadooow: this fixes bug where the original aim location is lost if the attack is stopped due to interrupt
+		pSoldier->bAimMeleeLocation = pSoldier->bAimShotLocation;
 
 		if ( gfUIHandleShowMoveGrid )
 		{
@@ -1814,7 +1802,7 @@ UINT8 HandlePunchCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 		// Calculate action points
 		if ( gTacticalStatus.uiFlags & TURNBASED )
 		{
-			gsCurrentActionPoints = CalcTotalAPsToAttack( pSoldier, sGridNo, TRUE, (INT8)(pSoldier->aiData.bShownAimTime ) );
+			gsCurrentActionPoints = CalcTotalAPsToAttack( pSoldier, sGridNo, TRUE, (INT8)(pSoldier->aiData.bShownAimTime / 2) );
 			gfUIDisplayActionPoints = TRUE;
 			gfUIDisplayActionPointsCenter = TRUE;
 
@@ -1855,15 +1843,13 @@ UINT8 HandlePunchCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 						PlayJA2Sample( TARG_REFINE_BEEP, RATE_11025, MIDVOLUME, 1, MIDDLEPAN );
 					}
 
-					// SANDRO - make aimed punch less expensive for APS
-					pSoldier->aiData.bShownAimTime = (gGameExternalOptions.fEnhancedCloseCombatSystem ? gSkillTraitValues.ubModifierForAPsAddedOnAimedPunches : REFINE_PUNCH_2);
+					pSoldier->aiData.bShownAimTime = REFINE_PUNCH_2;
 
 				}
 			}
 		}
 
 		//////////////////////////////////////////////////////////////
-		// SANDRO - slightly changed the formula here
 		if( pSoldier->aiData.bShownAimTime == REFINE_PUNCH_1)
 		{
 			if ( gfDisplayFullCountRing )
@@ -1879,7 +1865,7 @@ UINT8 HandlePunchCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 				return( ACTION_PUNCH_NOGO_AIM1_UICURSOR );
 			}
 		}
-		else if ( pSoldier->aiData.bShownAimTime == (gGameExternalOptions.fEnhancedCloseCombatSystem ? gSkillTraitValues.ubModifierForAPsAddedOnAimedPunches : REFINE_PUNCH_2) )
+		else if ( pSoldier->aiData.bShownAimTime == REFINE_PUNCH_2 )
 		{
 			if ( gfDisplayFullCountRing )
 			{
@@ -1921,6 +1907,11 @@ UINT8 HandlePunchCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivate
 
 UINT8 HandleAidCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivated, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return ACTION_FIRSTAID_GRAY;
+	}
+
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_MERCSFORAID );
 
@@ -1981,7 +1972,7 @@ UINT8 HandleNonActivatedTossCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEA
 			else
 			{
 				// Check APs to reload...
-				gsCurrentActionPoints = GetAPsToAutoReload( pSoldier );
+				gsCurrentActionPoints = GetAPsToAutoReload( pSoldier, false );
 
 				gfUIDisplayActionPoints = TRUE;
 				//gUIDisplayActionPointsOffX = 14;
@@ -2097,7 +2088,13 @@ UINT8 HandleWirecutterCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCur
 	{
 		return( GOOD_WIRECUTTER_UICURSOR );
 	}
-
+	else if (IsStructureDeconstructItem(pSoldier->inv[HANDPOS].usItem, sGridNo, pSoldier))
+	{
+		if (FindStructure(sGridNo, (STRUCTURE_GENERIC | STRUCTURE_WIREFENCE)))
+		{
+			return(GOOD_WIRECUTTER_UICURSOR);
+		}
+	}
 	return( BAD_WIRECUTTER_UICURSOR );
 }
 
@@ -2133,6 +2130,10 @@ UINT8 HandleRefuelCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorF
 
 UINT8 HandleJarCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return BAD_JAR_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_JAR );
 
@@ -2152,6 +2153,10 @@ UINT8 HandleTinCanCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorF
 	INT32 sIntTileGridNo;
 	LEVELNODE					*pIntTile;
 
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return PLACE_TINCAN_RED_UICURSOR;
+	}
 
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_CAN );
@@ -2202,7 +2207,7 @@ UINT8 HandleRemoteCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivat
 UINT8 HandleCameraCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivated, UINT32 uiCursorFlags )
 {
 	// DRAW PATH TO GUY
-	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_HANDCUFF );
+	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_CAMERA );
 
 	// do we have handcuffs in our hand?
 	if ( HasItemFlag( ( &( pSoldier->inv[HANDPOS] ) )->usItem, CAMERA ) && SoldierTo3DLocationLineOfSightTest( pSoldier, sGridNo, gsInterfaceLevel, 0, TRUE, CALC_FROM_WANTED_DIR, TRUE ) )
@@ -2215,6 +2220,10 @@ UINT8 HandleCameraCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivat
 
 UINT8 HandleBloodbagCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivated, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return BLOODBAG_RED_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_APPLYITEM );
 
@@ -2234,6 +2243,10 @@ UINT8 HandleBloodbagCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActiv
 
 UINT8 HandleSplintCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivated, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return SPLINT_RED_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_APPLYITEM );
 
@@ -2265,7 +2278,10 @@ UINT8 HandleSplintCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivat
 
 UINT8 HandleBombCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivated, UINT32 uiCursorFlags )
 {
-
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return PLACE_BOMB_GREY_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_BOMB );
 
@@ -2295,6 +2311,10 @@ UINT8 HandleBombCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN fActivated
 
 UINT8 HandleFortificationCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return FORTIFICATION_RED_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_FORTIFICATION );
 
@@ -2320,6 +2340,10 @@ UINT8 HandleFortificationCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 ui
 
 UINT8 HandleHandcuffCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return HANDCUFF_RED_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_HANDCUFF );
 	
@@ -2328,7 +2352,7 @@ UINT8 HandleHandcuffCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCurso
 	{
 		// is there a person here?
 		UINT8 usSoldierIndex = WhoIsThere2( sGridNo, pSoldier->pathing.bLevel );
-		if ( usSoldierIndex != NOBODY && MercPtrs[usSoldierIndex]->CanBeCaptured( ) )
+		if (usSoldierIndex != NOBODY && MercPtrs[usSoldierIndex] && MercPtrs[usSoldierIndex]->bVisible >= 0 && MercPtrs[usSoldierIndex]->CanBeCaptured())
 		{
 			return( HANDCUFF_GREY_UICURSOR );
 		}
@@ -2337,26 +2361,34 @@ UINT8 HandleHandcuffCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCurso
 	return( HANDCUFF_RED_UICURSOR );
 }
 
-UINT8 HandleApplyItemCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFlags )
+UINT8 HandleApplyItemCursor(SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFlags)
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return APPLYITEM_RED_UICURSOR;
+	}
 	// DRAW PATH TO GUY
-	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_APPLYITEM );
-		
-	if ( ItemCanBeAppliedToOthers( (&(pSoldier->inv[HANDPOS]))->usItem ) )
+	HandleUIMovementCursor(pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_APPLYITEM);
+
+	if (ItemCanBeAppliedToOthers((&(pSoldier->inv[HANDPOS]))->usItem))
 	{
 		// is there a person here?
-		UINT8 usSoldierIndex = WhoIsThere2( sGridNo, pSoldier->pathing.bLevel );
-		if ( usSoldierIndex != NOBODY )
+		UINT8 ubPerson = WhoIsThere2(sGridNo, pSoldier->pathing.bLevel);
+		if (ubPerson != NOBODY && MercPtrs[ubPerson] && MercPtrs[ubPerson]->bVisible >= 0)
 		{
-			return( APPLYITEM_GREY_UICURSOR );
+			return(APPLYITEM_GREY_UICURSOR);
 		}
 	}
 
-	return( APPLYITEM_RED_UICURSOR );
+	return(APPLYITEM_RED_UICURSOR);
 }
 
 UINT8 HandleHackCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFlags )
 {
+	if (pSoldier->pathing.bLevel != gsInterfaceLevel)
+	{
+		return NO_UICURSOR;
+	}
 	// DRAW PATH TO GUY
 	HandleUIMovementCursor( pSoldier, uiCursorFlags, sGridNo, MOVEUI_TARGET_INTERACTIVEACTION );
 
@@ -2374,6 +2406,8 @@ UINT8 HandleHackCursor( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT32 uiCursorFla
 		return skill ? SODAMACHINE_GREY_UICURSOR : SODAMACHINE_RED_UICURSOR;
 	else if ( possibleaction == INTERACTIVE_STRUCTURE_MINIGAME )
 		return skill ? MINIGAME_GREY_UICURSOR : MINIGAME_RED_UICURSOR;
+	else if ( possibleaction == INTERACTIVE_STRUCTURE_VARIOUS )
+		return skill ? GEARWHEEL_GREY_UICURSOR : GEARWHEEL_RED_UICURSOR;
 	
 	return NO_UICURSOR;
 }
@@ -2504,9 +2538,6 @@ void HandleRightClickAdjustCursor( SOLDIERTYPE *pSoldier, INT32 usMapPos )
 	SOLDIERTYPE				*pTSoldier;
 	INT32					sGridNo;
 	INT8					bTargetLevel;
-	// SANDRO - added these two
-	INT8 bAimTimeAddedForPunch = 2;
-	INT8 bAimTimeAddedForKnife = 2;
 
 
 	usInHand = pSoldier->inv[HANDPOS].usItem;
@@ -2720,23 +2751,20 @@ void HandleRightClickAdjustCursor( SOLDIERTYPE *pSoldier, INT32 usMapPos )
 
 		case PUNCHCURS:
 
-			// SANDRO - changed the formula here to make aimed punch less expensive for APS
-			bAimTimeAddedForPunch = (gGameExternalOptions.fEnhancedCloseCombatSystem ? gSkillTraitValues.ubModifierForAPsAddedOnAimedPunches : REFINE_PUNCH_2);
+			bFutureAim = (INT8)( pSoldier->aiData.bShownAimTime + REFINE_PUNCH_2);
 
-			bFutureAim = (INT8)( pSoldier->aiData.bShownAimTime + bAimTimeAddedForPunch );
-
-			if ( bFutureAim <= bAimTimeAddedForPunch )
+			if ( bFutureAim <= REFINE_PUNCH_2)
 			{
 				sAPCosts = CalcTotalAPsToAttack( pSoldier, usMapPos, TRUE, (INT8)(bFutureAim / 2) );
 
 				// Determine if we can afford!
 				if ( EnoughPoints( pSoldier, sAPCosts, 0, FALSE ) )
 				{
-					pSoldier->aiData.bShownAimTime+= bAimTimeAddedForPunch;
+					pSoldier->aiData.bShownAimTime+= REFINE_PUNCH_2;
 
-					if ( pSoldier->aiData.bShownAimTime > bAimTimeAddedForPunch )
+					if ( pSoldier->aiData.bShownAimTime > REFINE_PUNCH_2)
 					{
-						pSoldier->aiData.bShownAimTime = bAimTimeAddedForPunch;
+						pSoldier->aiData.bShownAimTime = REFINE_PUNCH_2;
 					}
 				}
 				// Else - goto first level!
@@ -2770,23 +2798,20 @@ void HandleRightClickAdjustCursor( SOLDIERTYPE *pSoldier, INT32 usMapPos )
 
 		case KNIFECURS:
 
-			// SANDRO - changed the formula here to make aimed blade attack less expensive for APS
-			bAimTimeAddedForKnife = (gGameExternalOptions.fEnhancedCloseCombatSystem ? gSkillTraitValues.ubModifierForAPsAddedOnAimedBladedAttackes : REFINE_KNIFE_2);
+			bFutureAim = (INT8)( pSoldier->aiData.bShownAimTime + REFINE_KNIFE_2);
 
-			bFutureAim = (INT8)( pSoldier->aiData.bShownAimTime + bAimTimeAddedForKnife );
-
-			if ( bFutureAim <= bAimTimeAddedForKnife )
+			if ( bFutureAim <= REFINE_KNIFE_2)
 			{
 				sAPCosts = CalcTotalAPsToAttack( pSoldier, usMapPos, TRUE, (INT8)(bFutureAim / 2) );
 
 				// Determine if we can afford!
 				if ( EnoughPoints( pSoldier, sAPCosts, 0, FALSE ) )
 				{
-					pSoldier->aiData.bShownAimTime+= bAimTimeAddedForKnife;
+					pSoldier->aiData.bShownAimTime+= REFINE_KNIFE_2;
 
-					if ( pSoldier->aiData.bShownAimTime > bAimTimeAddedForKnife )
+					if ( pSoldier->aiData.bShownAimTime > REFINE_KNIFE_2)
 					{
-						pSoldier->aiData.bShownAimTime = bAimTimeAddedForKnife;
+						pSoldier->aiData.bShownAimTime = REFINE_KNIFE_2;
 					}
 				}
 				// Else - goto first level!
@@ -2918,8 +2943,10 @@ UINT8 GetActionModeCursor( SOLDIERTYPE *pSoldier )
 
 	// Flugente: cursor for constructing/deconstructing
 	// at the moment the gridno is not required in these functions, thus 1 suffices
-	if ( IsStructureConstructItem( usInHand, 1, pSoldier ) || IsStructureDeconstructItem( usInHand, 1, pSoldier ) )
+	if (!Item[usInHand].wirecutters && (IsStructureConstructItem(usInHand, 1, pSoldier) || IsStructureDeconstructItem(usInHand, 1, pSoldier)))
+	{		
 		ubCursor = FORTICURS;
+	}
 
 	// Flugente: cursor for handcuffs
 	if ( gGameExternalOptions.fAllowPrisonerSystem && HasItemFlag(usInHand, HANDCUFFS) )
@@ -2952,7 +2979,7 @@ UINT8 GetActionModeCursor( SOLDIERTYPE *pSoldier )
 	}
 
 	// Flugente: apply misc items to other soldiers
-	// exception: not for medical items (medkists can have drug effects that are applied during bandaging)
+	// exception: not for medical items (medkits can have drug effects that are applied during bandaging)
 	if ( ubCursor != AIDCURS && ItemCanBeAppliedToOthers( usInHand ) )
 	{
 		// if item is a bomb, only allow apply if hovering over a soldier (otherwise we cannot mine anymore)
@@ -2962,12 +2989,17 @@ UINT8 GetActionModeCursor( SOLDIERTYPE *pSoldier )
 			if ( GetMouseMapPos( &usMapPos ) )
 			{
 				// is there a person here?
-				 if ( WhoIsThere2( usMapPos, pSoldier->pathing.bLevel ) != NOBODY )
-					 ubCursor = APPLYITEMCURS;
+				UINT8 ubPerson = WhoIsThere2(usMapPos, pSoldier->pathing.bLevel);
+				if (ubPerson != NOBODY && MercPtrs[ubPerson] && MercPtrs[ubPerson]->bVisible >= 0)
+				{
+					ubCursor = APPLYITEMCURS;
+				}
 			}
 		}
 		else
+		{
 			ubCursor = APPLYITEMCURS;
+		}
 	}
 		
 	// WANNE.WATER: Allow shooting if we are on a "water" tile, but on level > 0
@@ -3724,7 +3756,7 @@ void HandleWheelAdjustCursor( SOLDIERTYPE *pSoldier, INT32 sMapPos, INT32 sDelta
 					// Determine if we can afford!
 					if ( EnoughPoints( pSoldier, sAPCosts, 0, FALSE ) )
 					{
-						pSoldier->aiData.bShownAimTime+= REFINE_KNIFE_2;
+						pSoldier->aiData.bShownAimTime+= (sDelta*REFINE_KNIFE_2);
 						if ( pSoldier->aiData.bShownAimTime > REFINE_KNIFE_2 )
 							pSoldier->aiData.bShownAimTime = REFINE_KNIFE_2;
 						gfDisplayFullCountRing = FALSE;
@@ -3915,7 +3947,7 @@ void HandleWheelAdjustCursorWOAB( SOLDIERTYPE *pSoldier, INT32 sMapPos, INT32 sD
 				// Determine if we can afford!
 				if ( EnoughPoints( pSoldier, sAPCosts, 0, FALSE ) )
 				{
-					pSoldier->aiData.bShownAimTime+= REFINE_KNIFE_2;
+					pSoldier->aiData.bShownAimTime+= (sDelta*REFINE_KNIFE_2);
 					if ( pSoldier->aiData.bShownAimTime > REFINE_KNIFE_2 )
 						pSoldier->aiData.bShownAimTime = REFINE_KNIFE_2;
 					gfDisplayFullCountRing = FALSE;

@@ -26,6 +26,7 @@
 	#include "Isometric Utils.h"	// added by Flugente for NOWHERE
 	#include "strategic.h"			// added by Flugente
 	#include "message.h"			// added by Flugente for ScreenMsg(...)
+	#include "Rebel Command.h"
 #endif
 
 #include "Luaglobal.h"
@@ -54,6 +55,7 @@ void HourlyFactoryUpdate();	// Flugente: update factories
 void HourlySnitchUpdate();	// anv: decreasing cooldown after exposition
 
 extern SECTOR_EXT_DATA	SectorExternalData[256][4];
+extern WorldItems gAllWorldItems;
 
 extern INT32 GetCurrentBalance( void );
 extern void PayOffSkyriderDebtIfAny( );
@@ -156,6 +158,8 @@ CHAR16	zString[128];
 	
 	HourlyDrugUpdate();
 
+	RebelCommand::HourlyUpdate();
+
 	// WANNE: This check should avoid the resaving of a loaded auto-save game, when entering tactical
 	BOOLEAN doAutoSave = TRUE;
 	if (lastLoadedSaveGameDay == GetWorldDay() && lastLoadedSaveGameHour == GetWorldHour() )
@@ -174,7 +178,7 @@ CHAR16	zString[128];
 				{
 					if( CanGameBeSaved() || ( gGameOptions.ubIronManMode == 3 && GetWorldHour() == gGameExternalOptions.ubExtremeIronManSavingHour ) )
 					{
-						guiPreviousOptionScreen = guiCurrentScreen;
+						SetOptionsPreviousScreen(guiCurrentScreen);
 						swprintf( zString, L"%s%d",pMessageStrings[ MSG_SAVE_AUTOSAVE_TEXT ],SAVE__TIMED_AUTOSAVE_SLOT1);
 						DoAutoSave(SAVE__TIMED_AUTOSAVE_SLOT1,zString);
 
@@ -189,7 +193,7 @@ CHAR16	zString[128];
 				{
 					if( CanGameBeSaved() || ( gGameOptions.ubIronManMode == 3 && GetWorldHour() == gGameExternalOptions.ubExtremeIronManSavingHour ) )
 					{
-						guiPreviousOptionScreen = guiCurrentScreen;
+						SetOptionsPreviousScreen(guiCurrentScreen);
 						swprintf( zString, L"%s%d",pMessageStrings[ MSG_SAVE_AUTOSAVE_TEXT ],SAVE__TIMED_AUTOSAVE_SLOT2);
 						DoAutoSave(SAVE__TIMED_AUTOSAVE_SLOT2,zString);
 
@@ -204,7 +208,7 @@ CHAR16	zString[128];
 				{
 					if( CanGameBeSaved() || ( gGameOptions.ubIronManMode == 3 && GetWorldHour() == gGameExternalOptions.ubExtremeIronManSavingHour ) )
 					{
-						guiPreviousOptionScreen = guiCurrentScreen;
+						SetOptionsPreviousScreen(guiCurrentScreen);
 						swprintf( zString, L"%s%d",pMessageStrings[ MSG_SAVE_AUTOSAVE_TEXT ],SAVE__TIMED_AUTOSAVE_SLOT3);
 						DoAutoSave(SAVE__TIMED_AUTOSAVE_SLOT3,zString);
 
@@ -219,7 +223,7 @@ CHAR16	zString[128];
 				{
 					if( CanGameBeSaved() || ( gGameOptions.ubIronManMode == 3 && GetWorldHour() == gGameExternalOptions.ubExtremeIronManSavingHour ) )
 					{
-						guiPreviousOptionScreen = guiCurrentScreen;
+						SetOptionsPreviousScreen(guiCurrentScreen);
 						swprintf( zString, L"%s%d",pMessageStrings[ MSG_SAVE_AUTOSAVE_TEXT ],SAVE__TIMED_AUTOSAVE_SLOT4);
 						DoAutoSave(SAVE__TIMED_AUTOSAVE_SLOT4,zString);
 
@@ -234,7 +238,7 @@ CHAR16	zString[128];
 				{
 					if( CanGameBeSaved() || ( gGameOptions.ubIronManMode == 3 && GetWorldHour() == gGameExternalOptions.ubExtremeIronManSavingHour ) )
 					{
-						guiPreviousOptionScreen = guiCurrentScreen;
+						SetOptionsPreviousScreen(guiCurrentScreen);
 						swprintf( zString, L"%s%d",pMessageStrings[ MSG_SAVE_AUTOSAVE_TEXT ],SAVE__TIMED_AUTOSAVE_SLOT5);
 						DoAutoSave(SAVE__TIMED_AUTOSAVE_SLOT5,zString);
 
@@ -261,7 +265,7 @@ CHAR16	zString[128];
 		else if( gGameExternalOptions.ubExtremeIronManSavingTimeNotification == 0 )
 		{
 			gfSaveGame = TRUE;
-			guiPreviousOptionScreen = guiCurrentScreen;
+			SetOptionsPreviousScreen(guiCurrentScreen);
 			SetPendingNewScreen( SAVE_LOAD_SCREEN );
 		}
 	}
@@ -373,7 +377,7 @@ void HourlyLarryUpdate()
 	{
 		pSoldier = MercPtrs[ cnt ];
 
-		if ( pSoldier && pSoldier->bActive && ( pSoldier->ubProfile == LARRY_NORMAL || pSoldier->ubProfile == LARRY_DRUNK || pSoldier->HasBackgroundFlag( BACKGROUND_DRUGUSE ) ) )
+		if ( pSoldier && pSoldier->bActive && !pSoldier->flags.fMercAsleep && ( pSoldier->ubProfile == LARRY_NORMAL || pSoldier->ubProfile == LARRY_DRUNK || pSoldier->HasBackgroundFlag( BACKGROUND_DRUGUSE ) ) )
 		{
 			fTookDrugs = FALSE;
 
@@ -461,7 +465,10 @@ void HourlyLarryUpdate()
 						fTookDrugs = TRUE;
 
 						// Flugente: dynamic opinion
-						HandleDynamicOpinionChange( pSoldier, OPINIONEVENT_ADDICT, TRUE, FALSE );
+						if (gGameExternalOptions.fDynamicOpinions)
+						{
+							HandleDynamicOpinionChange(pSoldier, OPINIONEVENT_ADDICT, TRUE, FALSE);
+						}
 
 						if ( fBar )
 						{
@@ -645,7 +652,10 @@ void HourlyDisabilityUpdate( )
 						pSoldier->bBleeding = oldbleeding;
 
 						// Flugente: dynamic opinions
-						HandleDynamicOpinionChange( pSoldier, OPINIONEVENT_ANNOYINGDISABILITY, TRUE, TRUE );
+						if (gGameExternalOptions.fDynamicOpinions)
+						{
+							HandleDynamicOpinionChange(pSoldier, OPINIONEVENT_ANNOYINGDISABILITY, TRUE, TRUE);
+						}
 
 						// say something (which might also alert the player to what we just did)
 						TacticalCharacterDialogue( pSoldier, QUOTE_PERSONALITY_TRAIT );
@@ -701,6 +711,7 @@ void HourlyStealUpdate()
 			&& !pSoldier->flags.fMercAsleep
 			&& pSoldier->bAssignment != IN_TRANSIT
 			&& pSoldier->bAssignment != ASSIGNMENT_POW
+			&& pSoldier->bAssignment != ASSIGNMENT_MINIEVENT
 			&& !( ( ( gWorldSectorX == pSoldier->sSectorX ) && ( gWorldSectorY == pSoldier->sSectorY ) && ( gbWorldSectorZ == pSoldier->bSectorZ ) ) && ( gTacticalStatus.fEnemyInSector || guiCurrentScreen == GAME_SCREEN ) ) )
 		{
 			UINT8 ubSectorId = SECTOR( pSoldier->sSectorX, pSoldier->sSectorY );
@@ -729,6 +740,7 @@ void HourlyStealUpdate()
 					&& !pOtherSoldier->flags.fBetweenSectors
 					&& pOtherSoldier->bAssignment != IN_TRANSIT
 					&& pOtherSoldier->bAssignment != ASSIGNMENT_POW
+					&& pOtherSoldier->bAssignment != ASSIGNMENT_MINIEVENT
 					&& !SPY_LOCATION( pOtherSoldier->bAssignment )
 					&& pOtherSoldier->bActive
 					&& !pOtherSoldier->flags.fMercAsleep
@@ -820,43 +832,39 @@ void HourlyStealUpdate()
 			}
 			
 			// Flugente: dynamic opinion
-			HandleDynamicOpinionChange( pSoldier, OPINIONEVENT_THIEF, TRUE, FALSE );
+			if (gGameExternalOptions.fDynamicOpinions)
+			{
+				HandleDynamicOpinionChange(pSoldier, OPINIONEVENT_THIEF, TRUE, FALSE);
+			}
 		}
 	}
 }
 
 BOOLEAN RemoveItemInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ, UINT16 usItem, UINT32 usNumToRemove )
 {
-	// open sector inv
 	UINT32 uiTotalNumberOfRealItems = 0;
 	std::vector<WORLDITEM> pWorldItem;//dnl ch75 271013
-	BOOLEAN fReturn = FALSE;
 
+	// open sector inventory
 	if ( ( gWorldSectorX == sSectorX ) && ( gWorldSectorY == sSectorY ) && ( gbWorldSectorZ == bSectorZ ) )
 	{
 		uiTotalNumberOfRealItems = guiNumWorldItems;
-
 		pWorldItem = gWorldItems;
 	}
 	else
 	{
-		// not loaded, load
-		// get total number, visable and invisible
-		fReturn = GetNumberOfWorldItemsFromTempItemFile( sSectorX, sSectorY, bSectorZ, &( uiTotalNumberOfRealItems ), FALSE );
-		Assert( fReturn );
-
-		if ( uiTotalNumberOfRealItems > 0 )
+		// Check for unloaded sector
+		const auto i = FindWorldItemSector( sSectorX, sSectorY, bSectorZ);
+		if (i != -1)
 		{
-			// allocate space for the list
-			pWorldItem.resize( uiTotalNumberOfRealItems );//dnl ch75 271013
-
-														  // now load into mem
-			LoadWorldItemsFromTempItemFile( sSectorX, sSectorY, bSectorZ, pWorldItem );
+			uiTotalNumberOfRealItems = gAllWorldItems.NumItems[i];
+			pWorldItem = gAllWorldItems.Items[i];
 		}
 	}
 
 	if ( !uiTotalNumberOfRealItems )
 		return FALSE;
+
 
 	BOOLEAN removedsth = FALSE;
 	OBJECTTYPE* pObj = NULL;
@@ -892,7 +900,6 @@ BOOLEAN RemoveItemInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ, UINT1
 	if ( removedsth )
 	{
 		// save the changed inventory
-		// open sector inv
 		if ( ( gWorldSectorX == sSectorX ) && ( gWorldSectorY == sSectorY ) && ( gbWorldSectorZ == bSectorZ ) )
 		{
 			guiNumWorldItems = uiTotalNumberOfRealItems;
@@ -900,8 +907,7 @@ BOOLEAN RemoveItemInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ, UINT1
 		}
 		else
 		{
-			//Save the Items to the the file
-			SaveWorldItemsToTempItemFile( sSectorX, sSectorY, bSectorZ, uiTotalNumberOfRealItems, pWorldItem );
+			UpdateWorldItems(sSectorX, sSectorY, bSectorZ, uiTotalNumberOfRealItems, pWorldItem);
 		}
 
 		return TRUE;
@@ -913,34 +919,26 @@ BOOLEAN RemoveItemInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ, UINT1
 UINT32 CountAccessibleItemsInSector( INT16 sSectorX, INT16 sSectorY, INT8 bSectorZ, UINT16 usItem )
 {
 	UINT32 numfound = 0;
-
-	// open sector inv
 	UINT32 uiTotalNumberOfRealItems = 0;
 	std::vector<WORLDITEM> pWorldItem;//dnl ch75 271013
-	BOOLEAN fReturn = FALSE;
 
+	// open sector inv
 	if ( ( gWorldSectorX == sSectorX ) && ( gWorldSectorY == sSectorY ) && ( gbWorldSectorZ == bSectorZ ) )
 	{
 		uiTotalNumberOfRealItems = guiNumWorldItems;
-
 		pWorldItem = gWorldItems;
 	}
 	else
 	{
-		// not loaded, load
-		// get total number, visable and invisible
-		fReturn = GetNumberOfWorldItemsFromTempItemFile( sSectorX, sSectorY, bSectorZ, &( uiTotalNumberOfRealItems ), FALSE );
-		Assert( fReturn );
-
-		if ( uiTotalNumberOfRealItems > 0 )
+		// Check for unloaded sector
+		const auto i = FindWorldItemSector(sSectorX, sSectorY, bSectorZ);
+		if (i != -1)
 		{
-			// allocate space for the list
-			pWorldItem.resize( uiTotalNumberOfRealItems );//dnl ch75 271013
-
-														  // now load into mem
-			LoadWorldItemsFromTempItemFile( sSectorX, sSectorY, bSectorZ, pWorldItem );
+			uiTotalNumberOfRealItems = gAllWorldItems.NumItems[i];
+			pWorldItem = gAllWorldItems.Items[i];
 		}
 	}
+
 
 	OBJECTTYPE* pObj = NULL;
 	for ( UINT32 uiCount = 0; uiCount < uiTotalNumberOfRealItems; ++uiCount )				// ... for all items in the world ...

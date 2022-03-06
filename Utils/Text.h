@@ -1113,6 +1113,7 @@ enum
 	PRISONER_OFFER_SURRENDER_STR,
 	PRISONER_DISTRACT_STR, 
 	PRISONER_TALK_STR,
+	PRISONER_RECRUIT_TURNCOAT_STR,
 	
     // sevenfm: new disarm trap dialog, new messages for wrong mines when arming
     DISARM_DIALOG_DISARM,
@@ -1498,6 +1499,9 @@ enum
 	BOBBYR_GUNS_STUN,
 	BOBBYR_GUNS_PROTECTION,
 	BOBBYR_GUNS_CAMO,
+	BOBBYR_GUNS_ARMOUR_PIERCING_MODIFIER,
+	BOBBYR_GUNS_BULLET_TUMBLE_MODIFIER,
+	BOBBYR_GUNS_NUM_PROJECTILES,
 	BOBBYR_GUNS_COST,
 	BOBBYR_GUNS_IN_STOCK,
 	BOBBYR_GUNS_QTY_ON_ORDER,
@@ -1795,6 +1799,13 @@ BOOLEAN LoadItemProsAndCons( UINT16 usIndex, STR16 pProsString, STR16 pConsStrin
 BOOLEAN LoadBRDesc(UINT16 ubIndex, STR16 pDescString );
 BOOLEAN LoadBRName(UINT16 ubIndex, STR16 pNameString );
 
+// sevenfm
+inline std::string narrow(std::wstring const& text);
+// convert UTF-8 string to wstring
+std::wstring utf8_to_wstring(const std::string& str);
+// convert wstring to UTF-8 string
+std::string wstring_to_utf8(const std::wstring& str);
+
 enum
 {
 	//Coordinating simultaneous arrival dialog strings
@@ -1885,6 +1896,7 @@ enum
 	STR_MILITIAMOVEMENT_NO_LIMITEDROAMING,
 	STR_MILITIAMOVEMENT_NO_STAFF_ABORT,
 
+	STR_AR_ROBOT_NAME,
 	STR_AR_TANK_NAME,
 	STR_AR_JEEP_NAME,
 
@@ -2049,6 +2061,9 @@ enum
 	OPT_NEXT,
 	OPT_PREV,
 	OPT_DONE,
+	OPT_113_FEATURES,
+	OPT_NEW_IN_113,
+	OPT_OPTIONS,
 	OPT_SOUND_FX,
 	OPT_SPEECH,
 	OPT_MUSIC,
@@ -2059,6 +2074,10 @@ enum
 
 extern	STR16	zOptionsText[];
 
+extern	STR16	z113FeaturesScreenText[]; // main UI text
+extern	STR16	z113FeaturesToggleText[]; // toggle button text
+extern	STR16	z113FeaturesHelpText[]; // hover text
+extern	STR16	z113FeaturesPanelText[]; // left panel text
 
 //used with the gMoneyStatsDesc[]
 enum
@@ -2619,6 +2638,9 @@ enum
 };
 extern STR16	gszPocketPopupText[];
 
+// rftr: better LBE tooltips
+extern STR16		gLbeStatsDesc[14];
+
 // Flugente: backgrounds
 extern STR16		szBackgroundText_Flags[];
 extern STR16		szBackgroundText_Value[];
@@ -3109,6 +3131,11 @@ extern STR16	szMilitiaText[];
 extern STR16	szFactoryText[];
 
 extern STR16	szTurncoatText[];
+
+extern STR16	szRebelCommandText[];
+extern STR16	szRebelCommandHelpText[];
+extern STR16	szRebelCommandAdminActionsText[];
+extern STR16	szRebelCommandDirectivesText[];
 
 #define TACTICAL_INVENTORY_DIALOG_NUM    16
 #define TACTICAL_COVER_DIALOG_NUM        16

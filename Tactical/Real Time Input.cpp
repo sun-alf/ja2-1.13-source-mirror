@@ -148,6 +148,8 @@ extern void HandleTBPickUpBackpacks( void );
 extern void HandleTBDropBackpacks( void );
 extern void HandleTBLocatePrevMerc( void );
 extern void HandleTBLocateNextMerc( void );
+extern void HandleTBLevelDown(void);
+extern void HandleTBLevelUp(void);
 extern void HandleTBSwapGoogles( void );
 extern void HandleTBSwapSidearm( void );
 extern void HandleTBSwapKnife( void );
@@ -248,6 +250,7 @@ void	QueryRTLeftButton( UINT32 *puiNewEvent )
 										{
 											pSoldier->sStartGridNo = usMapPos;
 											ResetBurstLocations( );
+											pSoldier->bDoAutofire = 6;
 											*puiNewEvent = A_CHANGE_TO_CONFIM_ACTION;
 										}
 										else
@@ -479,15 +482,13 @@ void	QueryRTLeftButton( UINT32 *puiNewEvent )
 						}
 
 						// CHECK IF WE CLICKED-HELD
-						if ( COUNTERDONE( LMOUSECLICK_DELAY_COUNTER ) && gpItemPointer != NULL )
+						if ( COUNTERDONE( LMOUSECLICK_DELAY_COUNTER ) )
 						{
 							// LEFT CLICK-HOLD EVENT
 							// Switch on UI mode
 							switch( gCurrentUIMode )
 							{
 							case CONFIRM_ACTION_MODE:
-							case ACTION_MODE:
-
 								if(	GetSoldier( &pSoldier, gusSelectedSoldier ) )
 								{
 									if ( pSoldier->bDoBurst )
@@ -578,6 +579,11 @@ void	QueryRTLeftButton( UINT32 *puiNewEvent )
 													HandleHandCursorClick( usMapPos, puiNewEvent );
 													break;
 
+												case RADIOCURSOR_MODE:
+
+													HandleRadioCursorClick(usMapPos, puiNewEvent);
+													break;
+
 												case ACTION_MODE:
 
 													//*puiNewEvent = A_CHANGE_TO_CONFIM_ACTION;
@@ -629,6 +635,11 @@ void	QueryRTLeftButton( UINT32 *puiNewEvent )
 													//		{
 													//	*puiNewEvent = CA_MERC_SHOOT;
 													//		}
+													if (GetSoldier(&pSoldier, gusSelectedSoldier))
+													{
+														//shadooow: this fixes merc randomly shooting in different direction than assigned
+														pSoldier->flags.fDoSpread = 0;
+													}
 													*puiNewEvent = CA_MERC_SHOOT;
 													//	}
 													//}
@@ -1108,6 +1119,7 @@ void	QueryRTRightButton( UINT32 *puiNewEvent )
 						case IDLE_MODE:
 						case ACTION_MODE:
 						case HANDCURSOR_MODE:
+						case RADIOCURSOR_MODE:
 						case LOOKCURSOR_MODE:
 						case TALKCURSOR_MODE:
 						case MOVE_MODE:
@@ -1322,6 +1334,11 @@ void	QueryRTRightButton( UINT32 *puiNewEvent )
 											*puiNewEvent = A_CHANGE_TO_MOVE;
 											break;
 
+										case RADIOCURSOR_MODE:
+											// If we cannot actually do anything, return to movement mode
+											*puiNewEvent = A_CHANGE_TO_MOVE;
+											break;
+
 										case LOOKCURSOR_MODE:
 
 											// If we cannot actually do anything, return to movement mode
@@ -1489,6 +1506,10 @@ void GetRTMousePositionInput( UINT32 *puiNewEvent )
 		case HANDCURSOR_MODE:
 
 			*puiNewEvent = HC_ON_TERRAIN;
+			break;
+
+		case RADIOCURSOR_MODE:
+			//*puiNewEvent = A_CHANGE_TO_MOVE;
 			break;
 
 		case MOVE_MODE:
@@ -1806,6 +1827,7 @@ void	QueryRTMButton( UINT32 *puiNewEvent )
 
 void	QueryRTWheels( UINT32 *puiNewEvent )
 {
+	SOLDIERTYPE *pSoldier;
 	INT32		sMapPos=0;
 
 	gViewportRegion.WheelState = gViewportRegion.WheelState * ( gGameSettings.fOptions[TOPTION_INVERT_WHEEL] ? -1 : 1 );
@@ -1826,6 +1848,7 @@ void	QueryRTWheels( UINT32 *puiNewEvent )
 						case IDLE_MODE:
 						case MOVE_MODE:
 						case HANDCURSOR_MODE:
+						case RADIOCURSOR_MODE:
 							if(gGameExternalOptions.bAlternateMouseCommands)
 								HandleAltMouseRTWheel();
 							else
@@ -1838,6 +1861,11 @@ void	QueryRTWheels( UINT32 *puiNewEvent )
 						case MENU_MODE:
 						break;
 						case CONFIRM_ACTION_MODE: //shoot here. but is never gets here :)
+							if (GetSoldier(&pSoldier, gusSelectedSoldier))
+							{
+									HandleWheelAdjustCursorWOAB(pSoldier, sMapPos, -gViewportRegion.WheelState);
+							}
+							break;
 								break;
 					}//switch
 				}//if ( gusSelectedSoldier != NOBODY )
@@ -1931,7 +1959,7 @@ void HandleAltMouseRTWheel(void)
 			else if (_KeyDown(SHIFT))			// SHIFT
 				HandleTBCycleThroughVisibleEnemiesBackward();
 			else
-				;
+				HandleTBLevelUp();
 		}
 		else										// wheel down
 		{
@@ -1957,7 +1985,7 @@ void HandleAltMouseRTWheel(void)
 			else if (_KeyDown(SHIFT))			// SHIFT
 				HandleTBCycleThroughVisibleEnemies();
 			else
-				;
+				HandleTBLevelDown();
 		}
 	}
 }

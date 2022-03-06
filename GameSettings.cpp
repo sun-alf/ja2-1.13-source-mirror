@@ -55,6 +55,8 @@
 
 #define				GAME_SETTINGS_FILE				"Ja2_Settings.INI"
 
+#define				FEATURE_FLAGS_FILE				"Ja2_Features.ini"
+
 #define				GAME_EXTERNAL_OPTIONS_FILE		"Ja2_Options.ini"
 
 #define				AP_BP_CONSTANTS_FILE			"APBPConstants.ini"
@@ -82,6 +84,8 @@
 
 #define				CREATURES_SETTINGS_FILE			"Creatures_Settings.ini"
 
+#define				REBEL_COMMAND_SETTINGS_FILE		"RebelCommand_Settings.ini"
+
 #define				CD_ROOT_DIR						"DATA\\"
 
 GAME_SETTINGS		gGameSettings;
@@ -94,6 +98,7 @@ HELICOPTER_SETTINGS gHelicopterSettings;
 MORALE_SETTINGS gMoraleSettings;
 REPUTATION_SETTINGS gReputationSettings;
 CREATURES_SETTINGS gCreaturesSettings;
+REBELCOMMAND_SETTINGS gRebelCommandSettings;
 CTH_CONSTANTS gGameCTHConstants;	// HEADROCK HAM 4: CTH constants
 
 MOD_SETTINGS gModSettings;	//DBrot: mod specific settings
@@ -189,6 +194,74 @@ BOOLEAN IsNIVModeValid(bool checkRes)
 	return isValid;
 }
 
+void UpdateFeatureFlags()
+{
+	// do we need to override some ini settings?
+	if (gGameSettings.fFeatures[FF_FEATURES_SCREEN])
+	{
+		gGameExternalOptions.fUseNCTH = gGameSettings.fFeatures[FF_NCTH];
+		if (gGameSettings.fFeatures[FF_DROP_ALL])
+			gGameExternalOptions.fEnemiesDropAllItems = 1;
+		else if (gGameSettings.fFeatures[FF_DROP_ALL_DAMAGED])
+			gGameExternalOptions.fEnemiesDropAllItems = 2;
+		else
+			gGameExternalOptions.fEnemiesDropAllItems = 0;
+
+		gGameExternalOptions.sSuppressionEffectiveness = gGameSettings.fFeatures[FF_SUPPRESSION] ? 100 : 0;
+		gGameExternalOptions.ubSendTroopsToDrassen = gGameSettings.fFeatures[FF_TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN];
+		if (gGameSettings.fFeatures[FF_AGGRESSIVE_STRATEGIC_AI])
+			gGameExternalOptions.ubAgressiveStrategicAI = 1;
+		else if (gGameSettings.fFeatures[FF_AGGRESSIVE_STRATEGIC_AI_2])
+			gGameExternalOptions.ubAgressiveStrategicAI = 2;
+		else
+			gGameExternalOptions.ubAgressiveStrategicAI = 0;
+		
+		gGameExternalOptions.fIntelResource = gGameSettings.fFeatures[FF_INTEL];
+		gGameExternalOptions.fAllowPrisonerSystem = gGameSettings.fFeatures[FF_PRISONERS];
+		gGameExternalOptions.fMineRequiresWorkers = gGameSettings.fFeatures[FF_MINES_REQUIRE_WORKERS];
+		gGameExternalOptions.fEnableChanceOfEnemyAmbushes = gGameSettings.fFeatures[FF_ENEMY_AMBUSHES];
+		gGameExternalOptions.fEnemyAssassins = gGameSettings.fFeatures[FF_ENEMY_ASSASSINS];
+		gGameExternalOptions.fEnemyRoles = gGameSettings.fFeatures[FF_ENEMY_ROLES];
+		gGameExternalOptions.fEnemyMedics = gGameSettings.fFeatures[FF_ENEMY_ROLE_MEDIC];
+		gGameExternalOptions.fEnemyOfficers = gGameSettings.fFeatures[FF_ENEMY_ROLE_OFFICER];
+		gGameExternalOptions.fEnemyGenerals = gGameSettings.fFeatures[FF_ENEMY_ROLE_GENERAL];
+		gGameExternalOptions.fPMC = gGameSettings.fFeatures[FF_KERBERUS];
+		gGameExternalOptions.fFoodSystem = gGameSettings.fFeatures[FF_FOOD];
+		gGameExternalOptions.fDisease = gGameSettings.fFeatures[FF_DISEASE];
+		gGameExternalOptions.fDynamicOpinions = gGameSettings.fFeatures[FF_DYNAMIC_OPINIONS];
+		gGameExternalOptions.fDynamicDialogue = gGameSettings.fFeatures[FF_DYNAMIC_DIALOGUE];
+		gGameExternalOptions.fASDActive = gGameSettings.fFeatures[FF_ASD];
+		gGameExternalOptions.fEnemyHeliActive = gGameSettings.fFeatures[FF_ASD_HELICOPTERS];
+		gGameExternalOptions.fEnemyTanksCanMoveInTactical = gGameSettings.fFeatures[FF_ENEMY_VEHICLES_CAN_MOVE];
+		gGameSettings.fOptions[TOPTION_ZOMBIES] = gGameSettings.fFeatures[FF_ZOMBIES];
+		gGameExternalOptions.gRaid_Bloodcats = gGameSettings.fFeatures[FF_BLOODCAT_RAIDS];
+		gGameExternalOptions.gRaid_Bandits = gGameSettings.fFeatures[FF_BANDIT_RAIDS];
+		gGameExternalOptions.gRaid_Zombies = gGameSettings.fFeatures[FF_ZOMBIE_RAIDS];
+		gGameExternalOptions.fMilitiaVolunteerPool = gGameSettings.fFeatures[FF_MILITIA_VOLUNTEER_POOL];
+		gGameExternalOptions.fAllowTacticalMilitiaCommand = gGameSettings.fFeatures[FF_ALLOW_TACTICAL_MILITIA_COMMAND];
+		gGameExternalOptions.fMilitiaStrategicCommand = gGameSettings.fFeatures[FF_ALLOW_STRATEGIC_MILITIA_COMMAND];
+		gGameExternalOptions.fMilitiaUseSectorInventory = gGameSettings.fFeatures[FF_MILITIA_USE_SECTOR_EQUIPMENT];
+		gGameExternalOptions.fMilitiaResources = gGameSettings.fFeatures[FF_MILITIA_REQUIRE_RESOURCES];
+		gGameExternalOptions.fEnhancedCloseCombatSystem = gGameSettings.fFeatures[FF_ENHANCED_CLOSE_COMBAT_SYSTEM];
+		gGameExternalOptions.fImprovedInterruptSystem = gGameSettings.fFeatures[FF_IMPROVED_INTERRUPT_SYSTEM];
+		gGameExternalOptions.fWeaponOverheating = gGameSettings.fFeatures[FF_OVERHEATING];
+		gGameExternalOptions.gfAllowRain = gGameSettings.fFeatures[FF_ALLOW_RAIN];
+		gGameExternalOptions.gfAllowLightning = gGameSettings.fFeatures[FF_ALLOW_LIGHTNING];
+		gGameExternalOptions.gfAllowSandStorms = gGameSettings.fFeatures[FF_ALLOW_SANDSTORM];
+		gGameExternalOptions.gfAllowSnow = gGameSettings.fFeatures[FF_ALLOW_SNOW];
+		gGameExternalOptions.fMiniEventsEnabled = gGameSettings.fFeatures[FF_MINI_EVENTS];
+		gGameExternalOptions.fRebelCommandEnabled = gGameSettings.fFeatures[FF_REBEL_COMMAND];
+	}
+	else
+	{
+		// reload options, since we may have overwritten them
+		CIniReader iniReader(GAME_SETTINGS_FILE, TRUE);
+		gGameSettings.fOptions[TOPTION_ZOMBIES] = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_ZOMBIES",FALSE);
+		LoadGameExternalOptions();
+	}
+}
+
+
 BOOLEAN LoadGameSettings()
 {	
 	try
@@ -219,6 +292,7 @@ BOOLEAN LoadGameSettings()
 		gGameSettings.fOptions[TOPTION_SNAP_CURSOR_TO_DOOR]             = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_SNAP_CURSOR_TO_DOOR"              ,  TRUE  );
 		gGameSettings.fOptions[TOPTION_GLOW_ITEMS]                      = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_GLOW_ITEMS"                       ,  TRUE  );
 		gGameSettings.fOptions[TOPTION_TOGGLE_TREE_TOPS]                = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_TOGGLE_TREE_TOPS"                 ,  TRUE  );
+		gGameSettings.fOptions[TOPTION_SMART_TREE_TOPS]					= iniReader.ReadBoolean("JA2 Game Settings", "TOPTION_SMART_TREE_TOPS"				   ,  FALSE );
 		gGameSettings.fOptions[TOPTION_TOGGLE_WIREFRAME]                = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_TOGGLE_WIREFRAME"                 ,  TRUE  );
 		gGameSettings.fOptions[TOPTION_3D_CURSOR]                       = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_3D_CURSOR"                        ,  FALSE );
 		gGameSettings.fOptions[TOPTION_CTH_CURSOR]                      = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_CTH_CURSOR"                       ,  TRUE  );
@@ -261,7 +335,6 @@ BOOLEAN LoadGameSettings()
 		else
 			gGameSettings.fOptions[TOPTION_TOGGLE_TURN_MODE]			= FALSE;
 
-		gGameSettings.fOptions[TOPTION_STAT_PROGRESS_BARS]              = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_STAT_PROGRESS_BARS"               ,  TRUE ); // HEADROCK HAM 3.6: Progress Bars
 		gGameSettings.fOptions[TOPTION_MERCENARY_FORMATIONS]            = iniReader.ReadBoolean("JA2 Game Settings","TOPTION_MERCENARY_FORMATIONS"             ,  TRUE ); // Flugente: mercenary formations
 		gGameSettings.fOptions[TOPTION_REPORT_MISS_MARGIN]				= iniReader.ReadBoolean("JA2 Game Settings","TOPTION_REPORT_MISS_MARGIN"			   ,  FALSE ); // HEADROCK HAM 4: Shot offset report
 		gGameSettings.fOptions[TOPTION_USE_LOGICAL_BODYTYPES]			= iniReader.ReadBoolean("JA2 Game Settings","TOPTION_USE_LOGICAL_BODYTYPES"			   ,  FALSE );
@@ -368,6 +441,76 @@ BOOLEAN LoadGameSettings()
 	}		
 }
 
+BOOLEAN LoadFeatureFlags()
+{
+	try
+	{
+		CIniReader iniReader(FEATURE_FLAGS_FILE, TRUE);	// force path even for non existing files	
+
+		if (is_networked)
+		{
+			for (int a = 0; a < NUM_FEATURE_FLAGS; ++a)
+				gGameSettings.fFeatures[a] = FALSE;
+		}
+		else
+		{
+			// don't show an error if we can't find the setting
+			gGameSettings.fFeatures[FF_FEATURES_SCREEN]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_FEATURES_SCREEN", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_NCTH]							= iniReader.ReadBoolean("JA2 Feature Flags", "FF_NCTH", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_DROP_ALL]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_DROP_ALL", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_DROP_ALL_DAMAGED]				= iniReader.ReadBoolean("JA2 Feature Flags", "FF_DROP_ALL_DAMAGED", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_SUPPRESSION]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_SUPPRESSION", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN]= iniReader.ReadBoolean("JA2 Feature Flags", "FF_TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_AGGRESSIVE_STRATEGIC_AI]			= iniReader.ReadBoolean("JA2 Feature Flags", "FF_AGGRESSIVE_STRATEGIC_AI", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_AGGRESSIVE_STRATEGIC_AI_2]		= iniReader.ReadBoolean("JA2 Feature Flags", "FF_AGGRESSIVE_STRATEGIC_AI_2", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_INTEL]							= iniReader.ReadBoolean("JA2 Feature Flags", "FF_INTEL", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_PRISONERS]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_PRISONERS", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_MINES_REQUIRE_WORKERS]			= iniReader.ReadBoolean("JA2 Feature Flags", "FF_MINES_REQUIRE_WORKERS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_AMBUSHES]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_AMBUSHES", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_ASSASSINS]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_ASSASSINS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_ROLES]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_ROLES", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_ROLE_MEDIC]				= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_ROLE_MEDIC", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_ROLE_OFFICER]				= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_ROLE_OFFICER", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_ROLE_GENERAL]				= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_ROLE_GENERAL", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_KERBERUS]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_KERBERUS", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_FOOD]							= iniReader.ReadBoolean("JA2 Feature Flags", "FF_FOOD", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_DISEASE]							= iniReader.ReadBoolean("JA2 Feature Flags", "FF_DISEASE", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_DYNAMIC_OPINIONS]				= iniReader.ReadBoolean("JA2 Feature Flags", "FF_DYNAMIC_OPINIONS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_DYNAMIC_DIALOGUE]				= iniReader.ReadBoolean("JA2 Feature Flags", "FF_DYNAMIC_DIALOGUE", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ASD]								= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ASD", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ASD_HELICOPTERS]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ASD_HELICOPTERS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ENEMY_VEHICLES_CAN_MOVE]			= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENEMY_VEHICLES_CAN_MOVE", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ZOMBIES]							= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ZOMBIES", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_BLOODCAT_RAIDS]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_BLOODCAT_RAIDS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_BANDIT_RAIDS]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_BANDIT_RAIDS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ZOMBIE_RAIDS]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ZOMBIE_RAIDS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_MILITIA_VOLUNTEER_POOL]			= iniReader.ReadBoolean("JA2 Feature Flags", "FF_MILITIA_VOLUNTEER_POOL", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ALLOW_TACTICAL_MILITIA_COMMAND]	= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ALLOW_TACTICAL_MILITIA_COMMAND", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ALLOW_STRATEGIC_MILITIA_COMMAND]	= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ALLOW_STRATEGIC_MILITIA_COMMAND", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_MILITIA_USE_SECTOR_EQUIPMENT]	= iniReader.ReadBoolean("JA2 Feature Flags", "FF_MILITIA_USE_SECTOR_EQUIPMENT", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_MILITIA_REQUIRE_RESOURCES]		= iniReader.ReadBoolean("JA2 Feature Flags", "FF_MILITIA_REQUIRE_RESOURCES", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ENHANCED_CLOSE_COMBAT_SYSTEM]	= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ENHANCED_CLOSE_COMBAT_SYSTEM", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_IMPROVED_INTERRUPT_SYSTEM]		= iniReader.ReadBoolean("JA2 Feature Flags", "FF_IMPROVED_INTERRUPT_SYSTEM", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_OVERHEATING]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_OVERHEATING", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_ALLOW_RAIN]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ALLOW_RAIN", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ALLOW_LIGHTNING]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ALLOW_LIGHTNING", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ALLOW_SANDSTORM]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ALLOW_SANDSTORM", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_ALLOW_SNOW]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_ALLOW_SNOW", TRUE, FALSE);
+			gGameSettings.fFeatures[FF_MINI_EVENTS]						= iniReader.ReadBoolean("JA2 Feature Flags", "FF_MINI_EVENTS", FALSE, FALSE);
+			gGameSettings.fFeatures[FF_REBEL_COMMAND]					= iniReader.ReadBoolean("JA2 Feature Flags", "FF_REBEL_COMMAND", FALSE, FALSE);
+		}
+	}
+	catch(vfs::Exception)
+	{
+		// file does not exist, InitGamesettings() and then return. 
+		// InitGamesettings() will also call SaveGameSettings().
+		InitFeatureFlags();
+	}
+
+	UpdateFeatureFlags();
+
+	return TRUE;
+}
 
 BOOLEAN	SaveGameSettings()
 {
@@ -436,6 +579,7 @@ BOOLEAN	SaveGameSettings()
 		settings << "TOPTION_SNAP_CURSOR_TO_DOOR              = " << (gGameSettings.fOptions[TOPTION_SNAP_CURSOR_TO_DOOR]				?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_GLOW_ITEMS                       = " << (gGameSettings.fOptions[TOPTION_GLOW_ITEMS]						?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_TOGGLE_TREE_TOPS                 = " << (gGameSettings.fOptions[TOPTION_TOGGLE_TREE_TOPS]					?    "TRUE" : "FALSE" ) << endl;
+		settings << "TOPTION_SMART_TREE_TOPS                  = " << (gGameSettings.fOptions[TOPTION_SMART_TREE_TOPS]					?	 "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_TOGGLE_WIREFRAME                 = " << (gGameSettings.fOptions[TOPTION_TOGGLE_WIREFRAME]					?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_3D_CURSOR                        = " << (gGameSettings.fOptions[TOPTION_3D_CURSOR]							?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_CTH_CURSOR                       = " << (gGameSettings.fOptions[TOPTION_CTH_CURSOR]						?    "TRUE" : "FALSE" ) << endl;
@@ -454,7 +598,6 @@ BOOLEAN	SaveGameSettings()
 		settings << "TOPTION_SILENT_SKYRIDER                  = " << (gGameSettings.fOptions[TOPTION_SILENT_SKYRIDER]					?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_ENHANCED_DESC_BOX                = " << (gGameSettings.fOptions[TOPTION_ENHANCED_DESC_BOX]					?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_TOGGLE_TURN_MODE                 = " << (gGameSettings.fOptions[TOPTION_TOGGLE_TURN_MODE]					?    "TRUE" : "FALSE" ) << endl;
-		settings << "TOPTION_STAT_PROGRESS_BARS               = " << (gGameSettings.fOptions[TOPTION_STAT_PROGRESS_BARS]				?    "TRUE" : "FALSE" ) << endl; // HEADROCK HAM 3.6: Progress Bars
 		settings << "TOPTION_ALT_MAP_COLOR					  = " << (gGameSettings.fOptions[TOPTION_ALT_MAP_COLOR]						?	 "TRUE" : "FALSE" ) << endl; // HEADROCK HAM 4: Alt Map Colors
 		settings << "TOPTION_ALTERNATE_BULLET_GRAPHICS        = " << (gGameSettings.fOptions[TOPTION_ALTERNATE_BULLET_GRAPHICS]			?    "TRUE" : "FALSE" ) << endl;
 		settings << "TOPTION_SHOW_MERC_RANKS				  = " << (gGameSettings.fOptions[TOPTION_SHOW_MERC_RANKS]					?	 "TRUE"	: "FALSE" ) << endl;
@@ -516,6 +659,95 @@ BOOLEAN	SaveGameSettings()
 	return( TRUE );
 }
 
+BOOLEAN SaveFeatureFlags()
+{
+	if (!is_networked)
+	{
+		std::stringstream settings;
+		const char endl[] = "\r\n";
+		settings << ";******************************************************************************************************************************" << endl;
+		settings << ";******************************************************************************************************************************" << endl;
+		settings << ";    Jagged Alliance 2 --Feature Flags File--                                                                                  " << endl;
+		settings << ";                                                                                                                              " << endl;
+		settings << ";    Please note that this file is automatically generated by the game.                                                        " << endl;
+		settings << ";                                                                                                                              " << endl;
+		settings << ";    While it is safe to change things from within this file, not all values are acceptable. Some may break the game,          " << endl;
+		settings << ";      some may be ignored, but most likely they will be acceptable or reset to a default value.                               " << endl;
+		settings << ";                                                                                                                              " << endl;
+		settings << ";    Please note, This file and its contents are in a beta phase. Expect changes, however they should be minimal and automated." << endl;
+		settings << ";                                                                                                                              " << endl;
+		settings << ";******************************************************************************************************************************" << endl;
+		settings << endl;
+		settings << ";******************************************************************************************************************************" << endl;
+		settings << endl;
+		settings << "[JA2 Feature Flags]" << endl;
+		settings << "FF_FEATURES_SCREEN						= " << (gGameSettings.fFeatures[FF_FEATURES_SCREEN] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_NCTH								= " << (gGameSettings.fFeatures[FF_NCTH] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_DROP_ALL							= " << (gGameSettings.fFeatures[FF_DROP_ALL] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_DROP_ALL_DAMAGED					= " << (gGameSettings.fFeatures[FF_DROP_ALL_DAMAGED] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_SUPPRESSION							= " << (gGameSettings.fFeatures[FF_SUPPRESSION] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN= " << (gGameSettings.fFeatures[FF_TRIGGER_MASSIVE_ENEMY_COUNTERATTACK_AT_DRASSEN] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_AGGRESSIVE_STRATEGIC_AI				= " << (gGameSettings.fFeatures[FF_AGGRESSIVE_STRATEGIC_AI] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_AGGRESSIVE_STRATEGIC_AI_2			= " << (gGameSettings.fFeatures[FF_AGGRESSIVE_STRATEGIC_AI_2] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_INTEL								= " << (gGameSettings.fFeatures[FF_INTEL] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_PRISONERS							= " << (gGameSettings.fFeatures[FF_PRISONERS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_MINES_REQUIRE_WORKERS				= " << (gGameSettings.fFeatures[FF_MINES_REQUIRE_WORKERS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_AMBUSHES						= " << (gGameSettings.fFeatures[FF_ENEMY_AMBUSHES] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_ASSASSINS						= " << (gGameSettings.fFeatures[FF_ENEMY_ASSASSINS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_ROLES							= " << (gGameSettings.fFeatures[FF_ENEMY_ROLES] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_ROLE_MEDIC					= " << (gGameSettings.fFeatures[FF_ENEMY_ROLE_MEDIC] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_ROLE_OFFICER					= " << (gGameSettings.fFeatures[FF_ENEMY_ROLE_OFFICER] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_ROLE_GENERAL					= " << (gGameSettings.fFeatures[FF_ENEMY_ROLE_GENERAL] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_KERBERUS							= " << (gGameSettings.fFeatures[FF_KERBERUS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_FOOD								= " << (gGameSettings.fFeatures[FF_FOOD] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_DISEASE								= " << (gGameSettings.fFeatures[FF_DISEASE] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_DYNAMIC_OPINIONS					= " << (gGameSettings.fFeatures[FF_DYNAMIC_OPINIONS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_DYNAMIC_DIALOGUE					= " << (gGameSettings.fFeatures[FF_DYNAMIC_DIALOGUE] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ASD									= " << (gGameSettings.fFeatures[FF_ASD] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ASD_HELICOPTERS						= " << (gGameSettings.fFeatures[FF_ASD_HELICOPTERS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENEMY_VEHICLES_CAN_MOVE				= " << (gGameSettings.fFeatures[FF_ENEMY_VEHICLES_CAN_MOVE] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ZOMBIES								= " << (gGameSettings.fFeatures[FF_ZOMBIES] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_BLOODCAT_RAIDS						= " << (gGameSettings.fFeatures[FF_BLOODCAT_RAIDS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_BANDIT_RAIDS						= " << (gGameSettings.fFeatures[FF_BANDIT_RAIDS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ZOMBIE_RAIDS						= " << (gGameSettings.fFeatures[FF_ZOMBIE_RAIDS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_MILITIA_VOLUNTEER_POOL				= " << (gGameSettings.fFeatures[FF_MILITIA_VOLUNTEER_POOL] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ALLOW_TACTICAL_MILITIA_COMMAND		= " << (gGameSettings.fFeatures[FF_ALLOW_TACTICAL_MILITIA_COMMAND] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ALLOW_STRATEGIC_MILITIA_COMMAND		= " << (gGameSettings.fFeatures[FF_ALLOW_STRATEGIC_MILITIA_COMMAND] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_MILITIA_USE_SECTOR_EQUIPMENT		= " << (gGameSettings.fFeatures[FF_MILITIA_USE_SECTOR_EQUIPMENT] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_MILITIA_REQUIRE_RESOURCES			= " << (gGameSettings.fFeatures[FF_MILITIA_REQUIRE_RESOURCES] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ENHANCED_CLOSE_COMBAT_SYSTEM		= " << (gGameSettings.fFeatures[FF_ENHANCED_CLOSE_COMBAT_SYSTEM] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_IMPROVED_INTERRUPT_SYSTEM			= " << (gGameSettings.fFeatures[FF_IMPROVED_INTERRUPT_SYSTEM] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_OVERHEATING							= " << (gGameSettings.fFeatures[FF_OVERHEATING] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ALLOW_RAIN							= " << (gGameSettings.fFeatures[FF_ALLOW_RAIN] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ALLOW_LIGHTNING						= " << (gGameSettings.fFeatures[FF_ALLOW_LIGHTNING] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ALLOW_SANDSTORM						= " << (gGameSettings.fFeatures[FF_ALLOW_SANDSTORM] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_ALLOW_SNOW							= " << (gGameSettings.fFeatures[FF_ALLOW_SNOW] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_MINI_EVENTS							= " << (gGameSettings.fFeatures[FF_MINI_EVENTS] ? "TRUE" : "FALSE") << endl;
+		settings << "FF_REBEL_COMMAND						= " << (gGameSettings.fFeatures[FF_REBEL_COMMAND] ? "TRUE" : "FALSE") << endl;
+
+		try
+		{
+			vfs::COpenWriteFile wfile(FEATURE_FLAGS_FILE,true,true);
+			wfile->write(settings.str().c_str(), settings.str().length());
+		}
+		catch(vfs::Exception& ex)
+		{
+			SGP_WARNING(ex.what());
+			vfs::CFile file(FEATURE_FLAGS_FILE);
+			if(file.openWrite(true,true))
+			{
+				vfs::COpenWriteFile wfile( vfs::tWritableFile::cast(&file));
+				SGP_TRYCATCH_RETHROW(file.write(settings.str().c_str(), settings.str().length()),L"");
+			}
+		}
+
+		UpdateFeatureFlags();
+	}
+
+	return( TRUE );
+}
+
+
 
 void InitGameSettings()
 {
@@ -551,6 +783,7 @@ void InitGameSettings()
 	gGameSettings.fOptions[ TOPTION_SNAP_CURSOR_TO_DOOR ]				= TRUE;
 	gGameSettings.fOptions[ TOPTION_GLOW_ITEMS ]						= TRUE;
 	gGameSettings.fOptions[ TOPTION_TOGGLE_TREE_TOPS ]					= TRUE;
+	gGameSettings.fOptions[ TOPTION_SMART_TREE_TOPS ]					= FALSE;
 	gGameSettings.fOptions[ TOPTION_TOGGLE_WIREFRAME ]					= TRUE;
 	gGameSettings.fOptions[ TOPTION_3D_CURSOR ]							= FALSE;
 	gGameSettings.fOptions[ TOPTION_CTH_CURSOR ]						= TRUE;
@@ -576,9 +809,6 @@ void InitGameSettings()
 
 	// arynn 
 	gGameSettings.fOptions[ TOPTION_TOGGLE_TURN_MODE ]					= FALSE;
-
-	// HEADROCK HAM 3.6:
-	gGameSettings.fOptions[ TOPTION_STAT_PROGRESS_BARS ]				= FALSE;
 
 	// HEADROCK HAM 4:
 	gGameSettings.fOptions[ TOPTION_ALT_MAP_COLOR ]						= FALSE;
@@ -650,6 +880,14 @@ void InitGameSettings()
 	//Since we just set the settings, save them
 	SaveGameSettings();
 
+}
+
+void InitFeatureFlags()
+{
+	for (int a = 0; a < NUM_FEATURE_FLAGS; ++a)
+		gGameSettings.fFeatures[a] = FALSE;
+
+	SaveFeatureFlags();
 }
 
 void InitGameOptions()
@@ -882,6 +1120,7 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.usWorkerTrainingPoints							= iniReader.ReadInteger( "Financial Settings", "WORKER_TRAINING_POINTS", 100, 1, 250 );
 	
 	//################# Troubleshooting Settings #################
+	gGameExternalOptions.gfCheatMode = iniReader.ReadBoolean("Troubleshooting Settings", "CHEAT_MODE", FALSE, false);
 
 	gGameExternalOptions.gubDeadLockDelay = (UINT8) iniReader.ReadInteger("Troubleshooting Settings","DEAD_LOCK_DELAY",15, 5, 50);
 	gGameExternalOptions.gfEnableEmergencyButton_SkipStrategicEvents = iniReader.ReadBoolean("Troubleshooting Settings","ENABLE_EMERGENCY_BUTTON_NUMLOCK_TO_SKIP_STRATEGIC_EVENTS",0);
@@ -932,6 +1171,9 @@ void LoadGameExternalOptions()
 	
 	// anv: hide stuff on roof in explored rooms at ground level view (sandbags and other crap)
 	gGameExternalOptions.fHideExploredRoomRoofStructures	= iniReader.ReadBoolean("Graphics Settings", "HIDE_EXPLORED_ROOM_ROOF_STRUCTURES", TRUE);
+
+	// Flugente: additional decals on objects (cracked walls, blood spatters etc.)
+	gGameExternalOptions.fAdditionalDecals					= iniReader.ReadBoolean( "Graphics Settings", "ADDITIONAL_DECALS", FALSE );
 
 	//################# Sound Settings #################
 	
@@ -1493,7 +1735,6 @@ void LoadGameExternalOptions()
 	// Flugente/sevenfm: player-controlled mercs won't die instantly from most damage, instead they fall into a coma
 	gGameExternalOptions.fReducedInstantDeath				= iniReader.ReadBoolean("Tactical Gameplay Settings", "REDUCED_INSTANT_DEATH", FALSE);
 
-
 	// enable schedules and decision making for any named npc regardless of their team
 	gGameExternalOptions.fAllNamedNpcsDecideAction			= iniReader.ReadBoolean("Tactical Gameplay Settings", "ALL_NAMED_NPCS_DECIDE_ACTION", FALSE);
 
@@ -1502,6 +1743,7 @@ void LoadGameExternalOptions()
 
 	gGameExternalOptions.fEnemyJams							= iniReader.ReadBoolean("Tactical Gameplay Settings", "ENEMY_JAMS", true, false);
 	gGameExternalOptions.fNewRandom							= iniReader.ReadBoolean("Tactical Gameplay Settings", "NEW_RANDOM", true, false);
+	gGameExternalOptions.ubDefeatMode						= iniReader.ReadInteger("Tactical Gameplay Settings", "DEFEAT_MODE", 0, 0, 4);
 
 	//################# Tactical Enemy Role Settings ##################
 	// Flugente: enemy roles
@@ -1621,6 +1863,7 @@ void LoadGameExternalOptions()
 	// HEADROCK HAM 3.3: Minimum distance (in METERS) at which character suffer from friendly suppression.
 	gGameExternalOptions.usMinDistanceFriendlySuppression		= iniReader.ReadInteger("Tactical Suppression Fire Settings","MIN_DISTANCE_FRIENDLY_SUPPRESSION", 30, 0, 65000);
 
+	gGameExternalOptions.fNewSuppressionCode					= iniReader.ReadBoolean("Tactical Suppression Fire Settings", "NEW_SUPPRESSION_CODE", FALSE);
 
 	//################# Tactical Weather Settings ##################
 	
@@ -1845,13 +2088,9 @@ void LoadGameExternalOptions()
 	//dnl ch68 090913 Don't allow permanent items removal from sector
 	gGameExternalOptions.fNoRemoveRandomSectorItems			= iniReader.ReadBoolean("Strategic GamePlay Settings", "NO_REMOVE_RANDOM_SECTOR_ITEMS", TRUE );
 
-	gGameExternalOptions.fArmyUsesTanksInAttacks			= iniReader.ReadBoolean("Strategic Gameplay Settings","ARMY_USES_TANKS_IN_ATTACKS", FALSE);
-	gGameExternalOptions.fArmyUsesTanksInPatrols			= iniReader.ReadBoolean("Strategic Gameplay Settings","ARMY_USES_TANKS_IN_PATROLS", FALSE);
-	gGameExternalOptions.usTankMinimumProgress				= iniReader.ReadInteger("Strategic Gameplay Settings","TANK_MINIMUM_PROGRESS", 60, 0, 100);
-
-	gGameExternalOptions.fArmyUsesJeepsInAttacks			= iniReader.ReadBoolean( "Strategic Gameplay Settings", "ARMY_USES_JEEPS_IN_ATTACKS", FALSE );
-	gGameExternalOptions.fArmyUsesJeepsInPatrols			= iniReader.ReadBoolean( "Strategic Gameplay Settings", "ARMY_USES_JEEPS_IN_PATROLS", FALSE );
+	gGameExternalOptions.usTankMinimumProgress				= iniReader.ReadInteger("Strategic Gameplay Settings", "TANK_MINIMUM_PROGRESS", 60, 0, 100);
 	gGameExternalOptions.usJeepMinimumProgress				= iniReader.ReadInteger( "Strategic Gameplay Settings", "JEEP_MINIMUM_PROGRESS", 30, 0, 100 );
+	gGameExternalOptions.usRobotMinimumProgress				= iniReader.ReadInteger( "Strategic Gameplay Settings", "ROBOT_MINIMUM_PROGRESS", 45, 0, 100 );
 
 	// Kaiden: Vehicle Inventory change - Added INI file Option VEHICLE_INVENTORY
 	gGameExternalOptions.fVehicleInventory					= iniReader.ReadBoolean("Strategic Gameplay Settings", "VEHICLE_INVENTORY", TRUE);
@@ -1978,16 +2217,14 @@ void LoadGameExternalOptions()
 
 	// HEADROCK HAM 3: If enabled, tooltipping over Bobby Ray's weapons will show a list of possible attachments to those weapons.
 	gGameExternalOptions.fBobbyRayTooltipsShowAttachments	= iniReader.ReadBoolean("Bobby Ray Settings","BOBBY_RAY_TOOLTIPS_SHOW_POSSIBLE_ATTACHMENTS", FALSE);
-
 	//JMich - Maximum Purchase Amount for Bobby Ray
 	gGameExternalOptions.ubBobbyRayMaxPurchaseAmount		= iniReader.ReadInteger("Bobby Ray Settings", "BOBBY_RAY_MAX_PURCHASE_AMOUNT", 10, 10, 100);
-
 	// WDS - Option to turn off stealing
 	gGameExternalOptions.fStealingDisabled					= iniReader.ReadBoolean("Bobby Ray Settings","STEALING_FROM_SHIPMENTS_DISABLED",FALSE);
-
 	// WANNE - Chance of shipment lost
 	gGameExternalOptions.gubChanceOfShipmentLost			= iniReader.ReadInteger("Bobby Ray Settings","CHANCE_OF_SHIPMENT_LOSS", 10, 0, 100);
-
+	// HEADROCK HAM 3: If enabled, tooltipping over Bobby Ray's weapons will show a list of possible attachments to those weapons.
+	gGameExternalOptions.fBobbyRayTooltipsShowLBEDetails	= iniReader.ReadBoolean("Bobby Ray Settings", "BOBBY_RAY_TOOLTIPS_SHOW_LBE_DETAILS", FALSE);
 
 	//################# Item Property Settings ##################
 
@@ -2037,18 +2274,22 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.gASDResource_Cost[ASD_HELI]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_COST_HELI", 30000, 1, 1000000 );
 	gGameExternalOptions.gASDResource_Cost[ASD_JEEP]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_COST_JEEP", 20000, 1, 1000000 );
 	gGameExternalOptions.gASDResource_Cost[ASD_TANK]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_COST_TANK", 50000, 1, 1000000 );
+	gGameExternalOptions.gASDResource_Cost[ASD_ROBOT]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_COST_ROBOT", 25000, 1, 1000000 );
 
 	gGameExternalOptions.gASDResource_BuyTime[ASD_MONEY]	= 0;
 	gGameExternalOptions.gASDResource_BuyTime[ASD_FUEL]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_TIME_FUEL", 60 * 8, 1, 60 * 48 );
 	gGameExternalOptions.gASDResource_BuyTime[ASD_HELI]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_TIME_HELI", 60 * 20, 1, 60 * 48 );
 	gGameExternalOptions.gASDResource_BuyTime[ASD_JEEP]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_TIME_JEEP", 60 * 12, 1, 60 * 48 );
 	gGameExternalOptions.gASDResource_BuyTime[ASD_TANK]		= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_TIME_TANK", 60 * 24, 1, 60 * 48 );
+	gGameExternalOptions.gASDResource_BuyTime[ASD_ROBOT]	= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_TIME_ROBOT", 60 * 12, 1, 60 * 48 );
 
 	gGameExternalOptions.fASDAssignsTanks					= iniReader.ReadBoolean( "Strategic Additional Enemy AI Settings", "ASD_ASSIGNS_TANKS", TRUE );
 	gGameExternalOptions.fASDAssignsJeeps					= iniReader.ReadBoolean( "Strategic Additional Enemy AI Settings", "ASD_ASSIGNS_JEEPS", TRUE );
+	gGameExternalOptions.fASDAssignsRobots					= iniReader.ReadBoolean( "Strategic Additional Enemy AI Settings", "ASD_ASSIGNS_ROBOTS", TRUE );
 
 	gGameExternalOptions.gASDResource_Fuel_Tank				= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_FUEL_REQUIRED_TANK", 100, 0, 10000 );
 	gGameExternalOptions.gASDResource_Fuel_Jeep				= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_FUEL_REQUIRED_JEEP", 20, 0, 10000 );
+	gGameExternalOptions.gASDResource_Fuel_Robot			= iniReader.ReadInteger( "Strategic Additional Enemy AI Settings", "ASD_FUEL_REQUIRED_ROBOT", 0, 0, 10000 );
 
 	// Flugente: enemy heli
 	//################# Enemy Helicopter Settings ##################
@@ -2078,9 +2319,9 @@ void LoadGameExternalOptions()
 	
 	gGameExternalOptions.gRaidReplenish_BaseValue			= iniReader.ReadInteger( "Raid Settings", "RAID_REPLENISH_BASEVALUE", 3, 1, 100 );
 
-	gGameExternalOptions.gRaidMaxSize_Bloodcats				= iniReader.ReadInteger( "Raid Settings", "RAID_MAXSIZE_BLOODCATS", 8, 1, 254 );
-	gGameExternalOptions.gRaidMaxSize_Zombies				= iniReader.ReadInteger( "Raid Settings", "RAID_MAXSIZE_ZOMBIES", 15, 1, 254 );
-	gGameExternalOptions.gRaidMaxSize_Bandits				= iniReader.ReadInteger( "Raid Settings", "RAID_MAXSIZE_BANDITS", 6, 1, 254 );
+	gGameExternalOptions.gRaidMaxSize_Bloodcats				= iniReader.ReadInteger( "Raid Settings", "RAID_MAXSIZE_BLOODCATS", 8, 1, gGameExternalOptions.ubGameMaximumNumberOfCreatures);
+	gGameExternalOptions.gRaidMaxSize_Zombies				= iniReader.ReadInteger( "Raid Settings", "RAID_MAXSIZE_ZOMBIES", 15, 1, gGameExternalOptions.ubGameMaximumNumberOfEnemies);
+	gGameExternalOptions.gRaidMaxSize_Bandits				= iniReader.ReadInteger( "Raid Settings", "RAID_MAXSIZE_BANDITS", 6, 1, gGameExternalOptions.ubGameMaximumNumberOfEnemies);
 	
 	gGameExternalOptions.gRaid_MaxAttackPerNight_Bloodcats	= iniReader.ReadInteger( "Raid Settings", "RAID_MAXATTACKSPERNIGHT_BLOODCATS", 3, 0, 100 );
 	gGameExternalOptions.gRaid_MaxAttackPerNight_Zombies	= iniReader.ReadInteger( "Raid Settings", "RAID_MAXATTACKSPERNIGHT_ZOMBIES", 3, 0, 100 );
@@ -2309,9 +2550,16 @@ void LoadGameExternalOptions()
 	gGameExternalOptions.fAITacticalRetreat = iniReader.ReadBoolean("Tactical AI Settings", "AI_TACTICAL_RETREAT", FALSE);
 	gGameExternalOptions.fAIMovementMode = iniReader.ReadBoolean("Tactical AI Settings", "AI_MOVEMENT_MODE", TRUE);
 	gGameExternalOptions.fAIPathTweaks = iniReader.ReadBoolean("Tactical AI Settings", "AI_PATH_TWEAKS", TRUE);
-	gGameExternalOptions.fAIDecisionInfo = iniReader.ReadBoolean("Tactical AI Settings", "AI_DECISION_INFO", FALSE);
 	gGameExternalOptions.fAIShootUnseen = iniReader.ReadBoolean("Tactical AI Settings", "AI_SHOOT_UNSEEN", FALSE);
 	gGameExternalOptions.fAISafeSuppression = iniReader.ReadBoolean("Tactical AI Settings", "AI_SAFE_SUPPRESSION", TRUE);
+
+	// Mini Events
+	gGameExternalOptions.fMiniEventsEnabled = iniReader.ReadBoolean("Mini Events Settings", "MINI_EVENTS_ENABLED", FALSE);
+	gGameExternalOptions.fMiniEventsMinHoursBetweenEvents = iniReader.ReadInteger("Mini Events Settings", "MINI_EVENTS_MIN_HOURS_BETWEEN_EVENTS", 120, 24, 24000);
+	gGameExternalOptions.fMiniEventsMaxHoursBetweenEvents = iniReader.ReadInteger("Mini Events Settings", "MINI_EVENTS_MAX_HOURS_BETWEEN_EVENTS", 240, 24, 24000);
+
+	// Rebel Command
+	gGameExternalOptions.fRebelCommandEnabled = iniReader.ReadBoolean("Rebel Command Settings", "REBEL_COMMAND_ENABLED", FALSE);
 }
 
 
@@ -2638,6 +2886,7 @@ void LoadSkillTraitsExternalSettings()
 	gSkillTraitValues.sSVFoodConsumption						= iniReader.ReadInteger( "Survival", "FOOD_CONSUMPTION", -20, -100, 100 );
 	gSkillTraitValues.sSVDrinkConsumption						= iniReader.ReadInteger( "Survival", "DRINK_CONSUMPTION", -10, -100, 100 );
 	gSkillTraitValues.usSVSnakeDefense							= iniReader.ReadInteger( "Survival", "SNAKE_EVADE_BONUS", 10, 0, 50 );
+	gSkillTraitValues.ubSVCamoEffectivenessBonus				= iniReader.ReadInteger( "Survival", "CAMO_EFFECTIVENESS_BONUS", 20, 0, 100);
 }
 
 //DBrot: Grids
@@ -2727,12 +2976,24 @@ void LoadModSettings(){
 	gModSettings.iInitialPOWItemGridNo[0] = iniReader.ReadInteger("Alma", "INITIAL_POW_ITEM_POSITION_1", 12246);
 	gModSettings.iInitialPOWItemGridNo[1] = iniReader.ReadInteger("Alma", "INITIAL_POW_ITEM_POSITION_2", 12406);
 	gModSettings.iInitialPOWItemGridNo[2] = iniReader.ReadInteger("Alma", "INITIAL_POW_ITEM_POSITION_3", 12086);
+	gModSettings.iInitialPOWGetFreeGridNo[0] = iniReader.ReadInteger("Alma", "INITIAL_POW_GETFREE_GRIDNO_1", 10492);
+	gModSettings.iInitialPOWGetFreeGridNo[1] = iniReader.ReadInteger("Alma", "INITIAL_POW_GETFREE_GRIDNO_2", 10482);
+	gModSettings.iInitialPOWGetFreeGridNo[2] = iniReader.ReadInteger("Alma", "INITIAL_POW_GETFREE_GRIDNO_3", 9381);
 
 	//[Grumm]
 
 	//[Tixa]
 	gModSettings.ubTixaPrisonSectorX = iniReader.ReadInteger("Tixa", "PRISON_SECTOR_X", 9);
 	gModSettings.ubTixaPrisonSectorY = iniReader.ReadInteger("Tixa", "PRISON_SECTOR_Y", 10);
+	gModSettings.iTixaPrisonPOWGridNo[0] = iniReader.ReadInteger("Tixa", "PRISON_POW_POSITION_1", 12691);
+	gModSettings.iTixaPrisonPOWGridNo[1] = iniReader.ReadInteger("Tixa", "PRISON_POW_POSITION_2", 15891);
+	gModSettings.iTixaPrisonPOWGridNo[2] = iniReader.ReadInteger("Tixa", "PRISON_POW_POSITION_3", 13980);
+	gModSettings.iTixaPrisonPOWItemGridNo[0] = iniReader.ReadInteger("Tixa", "PRISON_POW_ITEM_POSITION_1", 10619);
+	gModSettings.iTixaPrisonPOWItemGridNo[1] = iniReader.ReadInteger("Tixa", "PRISON_POW_ITEM_POSITION_2", 10619);
+	gModSettings.iTixaPrisonPOWItemGridNo[2] = iniReader.ReadInteger("Tixa", "PRISON_POW_ITEM_POSITION_3", 10619);
+	gModSettings.iTixaPrisonPOWGetFreeGridNo[0] = iniReader.ReadInteger("Tixa", "PRISON_POW_GETFREE_GRIDNO_1", 14145);
+	gModSettings.iTixaPrisonPOWGetFreeGridNo[1] = iniReader.ReadInteger("Tixa", "PRISON_POW_GETFREE_GRIDNO_2", 14135);
+	gModSettings.iTixaPrisonPOWGetFreeGridNo[2] = iniReader.ReadInteger("Tixa", "PRISON_POW_GETFREE_GRIDNO_3", 13646);
 
 	gModSettings.ubDyanmoCaptiveSectorX = iniReader.ReadInteger("Tixa", "DYNAMO_CAPTIVE_SECTOR_X", 9);
 	gModSettings.ubDyanmoCaptiveSectorY = iniReader.ReadInteger("Tixa", "DYNAMO_CAPTIVE_SECTOR_Y", 10);
@@ -3253,8 +3514,7 @@ void LoadGameAPBPConstants()
 	APBPConstants[AP_MIN_LIMIT] = DynamicAdjustAPConstants(iniReader.ReadInteger("APConstants","AP_MIN_LIMIT",-100),-100);
 	APBPConstants[AP_LOST_PER_MORALE_DROP] = DynamicAdjustAPConstants(iniReader.ReadInteger("APConstants","AP_LOST_PER_MORALE_DROP",12),12);
 	APBPConstants[AP_SUPPRESSION_MOD] = DynamicAdjustAPConstants(iniReader.ReadInteger("APConstants","AP_SUPPRESSION_MOD",24),24);
-	// HEADROCK HAM 3.5: Determines divisor for AP/Shock ratio. 100AP will have this set at 4, 25AP will have this set at 1.
-	APBPConstants[AP_SUPPRESSION_SHOCK_DIVISOR] = DynamicAdjustAPConstants(iniReader.ReadInteger("APConstants","AP_SUPPRESSION_SHOCK_DIVISOR",4),4);
+
 	// HEADROCK HAM 3.2: Modifier for legshot AP loss based on damage
 	APBPConstants[AP_LOSS_PER_LEGSHOT_DAMAGE] = DynamicAdjustAPConstants(iniReader.ReadInteger("APConstants","AP_LOSS_PER_LEGSHOT_DAMAGE",4),4);
 
@@ -3786,6 +4046,111 @@ void LoadCreaturesSettings()
 	gCreaturesSettings.ubCrepitusFeedingSectorZ					= iniReader.ReadInteger("Creatures Settings", "CREPITUS_FEEDING_SECTOR_Z", 2);
 }
 
+void LoadRebelCommandSettings()
+{
+	CIniReader iniReader(REBEL_COMMAND_SETTINGS_FILE);
+
+	gRebelCommandSettings.fIncomeModifier = iniReader.ReadFloat("Rebel Command Settings", "INCOME_MODIFIER", 1.5f, 1.0f, 100.0f);
+
+	gRebelCommandSettings.iMaxLoyaltyNovice = iniReader.ReadInteger("Rebel Command Settings", "MAX_LOYALTY_NOVICE", 80, 20, 100);
+	gRebelCommandSettings.iMaxLoyaltyExperienced = iniReader.ReadInteger("Rebel Command Settings", "MAX_LOYALTY_EXPERIENCED", 70, 20, 100);
+	gRebelCommandSettings.iMaxLoyaltyExpert = iniReader.ReadInteger("Rebel Command Settings", "MAX_LOYALTY_EXPERT", 60, 20, 100);
+	gRebelCommandSettings.iMaxLoyaltyInsane = iniReader.ReadInteger("Rebel Command Settings", "MAX_LOYALTY_INSANE", 50, 20, 100);
+
+	gRebelCommandSettings.iAdminActionCostIncreaseRegional = iniReader.ReadInteger("Rebel Command Settings", "ADMIN_ACTION_COST_INCREASE_REGIONAL", 13, 1, 100);
+	gRebelCommandSettings.iAdminActionCostIncreaseNational = iniReader.ReadInteger("Rebel Command Settings", "ADMIN_ACTION_COST_INCREASE_NATIONAL", 6, 1, 100);
+
+	gRebelCommandSettings.fLoyaltyGainModifier = iniReader.ReadFloat("Rebel Command Settings", "BASE_LOYALTY_GAIN_MODIFIER", 0.5f, 0.1f, 1.0f);
+
+	std::vector<FLOAT> vec;
+
+	// militia upgrades
+	iniReader.ReadINT32Array("Rebel Command Settings", "MILITIA_STATS_UPGRADE_COSTS", gRebelCommandSettings.iMilitiaUpgradeCosts);
+	gRebelCommandSettings.iMilitiaStatBonusPerLevel = iniReader.ReadInteger("Rebel Command Settings", "MILITIA_STAT_BONUS_PER_LEVEL", 2, 0, 5);
+	gRebelCommandSettings.iMilitiaMarksmanshipBonusPerLevel = iniReader.ReadInteger("Rebel Command Settings", "MILITIA_MARKSMANSHIP_BONUS_PER_LEVEL", 2, 0, 5);
+	
+	// directives
+	iniReader.ReadINT32Array("Rebel Command Settings", "GATHER_SUPPLIES_COSTS", gRebelCommandSettings.iGatherSuppliesCosts);
+	iniReader.ReadINT32Array("Rebel Command Settings", "GATHER_SUPPLIES_INCOME", gRebelCommandSettings.iGatherSuppliesIncome);
+
+	gRebelCommandSettings.uSupportMilitiaProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "SUPPORT_MILITIA_PROGRESS_REQUIREMENT", 25, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "SUPPORT_MILITIA_COSTS", gRebelCommandSettings.iSupportMilitiaCosts);
+	iniReader.ReadFloatArray("Rebel Command Settings", "SUPPORT_MILITIA_DISCOUNT", gRebelCommandSettings.fSupportMilitiaDiscounts);
+
+	gRebelCommandSettings.uTrainMilitiaProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "TRAIN_MILITIA_PROGRESS_REQUIREMENT", 10, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "TRAIN_MILITIA_COSTS", gRebelCommandSettings.iTrainMilitiaCosts);
+	iniReader.ReadFloatArray("Rebel Command Settings", "TRAIN_MILITIA_DISCOUNT", gRebelCommandSettings.fTrainMilitiaDiscount);
+	iniReader.ReadINT32Array("Rebel Command Settings", "TRAIN_MILITIA_SPEED_BONUS", gRebelCommandSettings.iTrainMilitiaSpeedBonus);
+
+	gRebelCommandSettings.uCreatePropagandaProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "CREATE_PROPAGANDA_PROGRESS_REQUIREMENT", 33, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "CREATE_PROPAGANDA_COSTS", gRebelCommandSettings.iCreatePropagandaCosts);
+	iniReader.ReadFloatArray("Rebel Command Settings", "CREATE_PROPAGANDA_MODIFIER", gRebelCommandSettings.fCreatePropagandaModifier);
+
+	gRebelCommandSettings.uEliteMilitiaProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "ELITE_MILITIA_PROGRESS_REQUIREMENT", 50, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "ELITE_MILITIA_COSTS", gRebelCommandSettings.iEliteMilitiaCosts);
+	iniReader.ReadINT32Array("Rebel Command Settings", "ELITE_MILITIA_PER_DAY", gRebelCommandSettings.iEliteMilitiaPerDay);
+
+	gRebelCommandSettings.uHvtStrikesProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "HVT_STRIKES_PROGRESS_REQUIREMENT", 33, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "HVT_STRIKES_COSTS", gRebelCommandSettings.iHvtStrikesCosts);
+	iniReader.ReadINT32Array("Rebel Command Settings", "HVT_STRIKES_CHANCE", gRebelCommandSettings.iHvtStrikesChance);
+
+	gRebelCommandSettings.uSpottersProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "SPOTTERS_PROGRESS_REQUIREMENT", 50, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "SPOTTERS_COSTS", gRebelCommandSettings.iSpottersCosts);
+	iniReader.ReadINT32Array("Rebel Command Settings", "SPOTTERS_MODIFIER", gRebelCommandSettings.iSpottersModifier);
+
+	gRebelCommandSettings.uRaidMinesProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "RAID_MINES_PROGRESS_REQUIREMENT", 0, 0, 100);
+	gRebelCommandSettings.iRaidMinesFailChance = iniReader.ReadInteger("Rebel Command Settings", "RAID_MINES_FAIL_CHANCE", 15, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "RAID_MINES_COSTS", gRebelCommandSettings.iRaidMinesCosts);
+	iniReader.ReadFloatArray("Rebel Command Settings", "RAID_MINES_PERCENTAGE", gRebelCommandSettings.fRaidMinesPercentage);
+
+	gRebelCommandSettings.uCreateTurncoatsProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "CREATE_TURNCOATS_PROGRESS_REQUIREMENT", 33, 0, 100);
+	gRebelCommandSettings.fCreateTurncoatsIntelCost = iniReader.ReadFloat("Rebel Command Settings", "CREATE_TURNCOATS_INTEL_COST", 20.f, 0.f, 1000.f);
+	iniReader.ReadINT32Array("Rebel Command Settings", "CREATE_TURNCOATS_COSTS", gRebelCommandSettings.iCreateTurncoatsCosts);
+	iniReader.ReadINT32Array("Rebel Command Settings", "CREATE_TURNCOATS_PER_DAY", gRebelCommandSettings.iCreateTurncoatsPerDay);
+
+	gRebelCommandSettings.uDraftProgressRequirement = iniReader.ReadUINT8("Rebel Command Settings", "DRAFT_PROGRESS_REQUIREMENT", 25, 0, 100);
+	iniReader.ReadINT32Array("Rebel Command Settings", "DRAFT_COSTS", gRebelCommandSettings.iDraftCosts);
+	iniReader.ReadINT32Array("Rebel Command Settings", "DRAFT_PER_DAY_MODIFIER", gRebelCommandSettings.iDraftPerDayModifier);
+	iniReader.ReadINT32Array("Rebel Command Settings", "DRAFT_LOYALTY_LOSS_PER_DAY", gRebelCommandSettings.iDraftLoyaltyLossPerDay);
+
+	// admin actions
+	gRebelCommandSettings.iSupplyLineMaxLoyaltyIncrease = iniReader.ReadInteger("Rebel Command Settings", "SUPPLY_LINE_MAX_LOYALTY_INCREASE", 10, 1, 100);
+
+	gRebelCommandSettings.iRebelRadioDailyLoyaltyGain = iniReader.ReadInteger("Rebel Command Settings", "REBEL_RADIO_DAILY_LOYALTY_GAIN", 400, 1, 10000);
+
+	gRebelCommandSettings.iSafehouseReinforceChance = iniReader.ReadUINT32("Rebel Command Settings", "SAFEHOUSE_REINFORCE_CHANCE", 75, 0, 100);
+	gRebelCommandSettings.iSafehouseMinimumSoldiers = iniReader.ReadInteger("Rebel Command Settings", "SAFEHOUSE_MINIMUM_SOLDIERS", 2, 0, 10);
+	gRebelCommandSettings.iSafehouseBonusSoldiers = iniReader.ReadInteger("Rebel Command Settings", "SAFEHOUSE_BONUS_SOLDIERS", 4, 0, 10);
+
+	gRebelCommandSettings.iSupplyDisruptionEnemyStatLoss = iniReader.ReadInteger("Rebel Command Settings", "SUPPLY_DISRUPTION_ENEMY_STAT_LOSS", 5, 0, 100);
+
+	// SCOUTS - no variable effect, but included here for completeness
+
+	gRebelCommandSettings.iDeadDropsDailyIntel = iniReader.ReadInteger("Rebel Command Settings", "DEAD_DROPS_DAILY_INTEL", 25, 0, 100);
+
+	gRebelCommandSettings.iSmugglersDailySupplies = iniReader.ReadInteger("Rebel Command Settings", "SMUGGLERS_DAILY_SUPPLIES", 25, 0, 100);
+
+	gRebelCommandSettings.iWarehousesDailyMilitiaGuns = iniReader.ReadInteger("Rebel Command Settings", "WAREHOUSES_DAILY_MILITIA_RESOURCE_GUNS", 2, 0, 100);
+	gRebelCommandSettings.iWarehousesDailyMilitiaArmour = iniReader.ReadInteger("Rebel Command Settings", "WAREHOUSES_DAILY_MILITIA_RESOURCE_ARMOUR", 2, 0, 100);
+	gRebelCommandSettings.iWarehousesDailyMilitiaMisc = iniReader.ReadInteger("Rebel Command Settings", "WAREHOUSES_DAILY_MILITIA_RESOURCE_MISC", 2, 0, 100);
+
+	gRebelCommandSettings.iTaxesDailyIncome = iniReader.ReadInteger("Rebel Command Settings", "TAXES_DAILY_INCOME", 500, 0, 10000);
+	gRebelCommandSettings.iTaxesDailyLoyaltyLoss = iniReader.ReadInteger("Rebel Command Settings", "TAXES_DAILY_LOYALTY_LOSS", 250, 0, 10000);
+
+	gRebelCommandSettings.iAssistCiviliansDailyVolunteers = iniReader.ReadInteger("Rebel Command Settings", "ASSIST_CIVILIANS_DAILY_VOLUNTEERS", 10, 0, 100);
+
+	gRebelCommandSettings.iMercSupportBonus = iniReader.ReadInteger("Rebel Command Settings", "MERC_SUPPORT_BONUS", 25, 0, 100);
+
+	gRebelCommandSettings.iMiningPolicyBonus = iniReader.ReadInteger("Rebel Command Settings", "MINING_POLICY_BONUS", 10, 0, 100);
+
+	gRebelCommandSettings.uPathfindersSpeedBonus = iniReader.ReadUINT8("Rebel Command Settings", "PATHFINDERS_SPEED_BONUS", 20, 0, 100);
+
+	gRebelCommandSettings.uHarriersSpeedPenalty = iniReader.ReadUINT8("Rebel Command Settings", "HARRIERS_SPEED_PENALTY", 50, 0, 100);
+
+	gRebelCommandSettings.iFortificationsBonus = iniReader.ReadInteger("Rebel Command Settings", "FORTIFICATIONS_BONUS", 10, 0, 100);
+
+}
+
 void FreeGameExternalOptions()
 {
 }
@@ -4048,7 +4413,7 @@ void CDromEjectionErrorMessageBoxCallBack( UINT8 bExitValue )
 {
 	if( bExitValue == MSG_BOX_RETURN_OK )
 	{
-		guiPreviousOptionScreen = GAME_SCREEN;
+		SetOptionsPreviousScreen(GAME_SCREEN);
 
 		//if we are in a game, save the game
 		if( gTacticalStatus.fHasAGameBeenStarted )

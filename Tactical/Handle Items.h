@@ -131,6 +131,7 @@ typedef enum
 	INTERACTIVE_STRUCTURE_WATERTAP,
 	INTERACTIVE_STRUCTURE_SODAMACHINE,
 	INTERACTIVE_STRUCTURE_MINIGAME,
+	INTERACTIVE_STRUCTURE_VARIOUS,
 
 	INTERACTIVE_STRUCTURE_TYPE_MAX,
 } INTERACTIVE_STRUCTURE_TYPE;
@@ -220,7 +221,7 @@ void RemoveItemPool( INT32 sGridNo, UINT8 ubLevel );
 void RenderTopmostFlashingItems( );
 
 void RemoveAllUnburiedItems( INT32 sGridNo, UINT8 ubLevel );
-
+void RevealAllUnburiedItems( INT32 sGridNo, UINT8 ubLevel );
 
 BOOLEAN DoesItemPoolContainAnyHiddenItems( ITEM_POOL *pItemPool );
 BOOLEAN DoesItemPoolContainAllHiddenItems( ITEM_POOL *pItemPool );
@@ -287,12 +288,15 @@ BOOLEAN RemoveFortification( INT32 sGridNo, SOLDIERTYPE *pSoldier, OBJECTTYPE *p
 UINT8	CheckBuildFortification( INT32 sGridNo, INT8 sLevel, UINT8 usIndex, UINT32 usStructureconstructindex );
 BOOLEAN	BuildFortification( INT32 sGridNo, INT8 sLevel, UINT8 usIndex, UINT32 usStructureconstructindex );
 
+BOOLEAN	BuildStructFromName( INT32 sGridNo, INT8 sLevel, const char* aStr, UINT8 usIndex );
+
 BOOLEAN	CanRemoveFortification( INT32 sGridNo, INT8 sLevel, UINT32 usStructureconstructindex );
 BOOLEAN	RemoveFortification( INT32 sGridNo, INT8 sLevel, UINT32 usStructureconstructindex );
 
-BOOLEAN	IsDragStructurePresent( INT32 sGridNo, INT8 sLevel, UINT32& arusTileType, UINT16& arusStructureNumber );
+BOOLEAN	IsDragStructurePresent( INT32 sGridNo, INT8 sLevel, UINT32& arusTileType, UINT16& arusStructureNumber, UINT8& arusHitpoints, UINT8& arusDecalFlags );
 void	GetDragStructureXmlEntry( UINT32 ausTileType, UINT16 ausStructureNumber, int& arXmlVectorEntry );
 BOOLEAN	RemoveStructDrag( INT32 sGridNo, INT8 sLevel, UINT32 uiTileType );
+void	CorrectDragStructData( INT32 sGridNo, INT8 sLevel, UINT8 ausHitpoints, UINT8 ausDecalFlags );
 BOOLEAN	BuildStructDrag( INT32 sGridNo, INT8 sLevel, UINT32 uiTileType, UINT8 usIndex, UINT16 usSoldierID );
 
 void UpdateFortificationPossibleAmount();

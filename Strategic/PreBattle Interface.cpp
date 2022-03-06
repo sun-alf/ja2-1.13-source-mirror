@@ -61,6 +61,7 @@
 extern void InitializeTacticalStatusAtBattleStart();
 extern BOOLEAN gfDelayAutoResolveStart;
 extern BOOLEAN gfTransitionMapscreenToAutoResolve;
+extern UILayout_Map UI_MAP;
 
 #ifdef JA2BETAVERSION
 extern BOOLEAN gfExitViewer;
@@ -91,7 +92,9 @@ enum //GraphicIDs for the panel
 	TITLE_BAR_PIECE,
 	TOP_COLUMN,
 	BOTTOM_COLUMN,
-	UNINVOLVED_HEADER
+	UNINVOLVED_HEADER,
+	BOTTOM_LINE,
+	BOTTOM_END
 };
 
 // WDS - make number of mercenaries, etc. be configurable
@@ -100,12 +103,12 @@ enum //GraphicIDs for the panel
 //The start of the black space
 #define TOP_Y							113
 //The end of the black space
-#define BOTTOM_Y					(349+(OUR_TEAM_SIZE_NO_VEHICLE-18)*ROW_HEIGHT)
-//#define BOTTOM_Y					349
+//#define BOTTOM_Y					(349+(OUR_TEAM_SIZE_NO_VEHICLE-18)*ROW_HEIGHT)
+#define BOTTOM_Y					349
 //The internal height of the uninvolved panel
 #define INTERNAL_HEIGHT		27
 //The actual height of the uninvolved panel
-#define ACTUAL_HEIGHT			34
+#define ACTUAL_HEIGHT			24
 
 BOOLEAN gfDisplayPotentialRetreatPaths = FALSE;
 UINT16 gusRetreatButtonLeft, gusRetreatButtonTop, gusRetreatButtonRight, gusRetreatButtonBottom;
@@ -233,7 +236,7 @@ void ValidateAndCorrectInBattleCounters( GROUP *pLocGroup )
 			{
 				if( pGroup->ubSectorX == pLocGroup->ubSectorX && pGroup->ubSectorY == pLocGroup->ubSectorY )
 				{
-					if ( pGroup->pEnemyGroup->ubAdminsInBattle || pGroup->pEnemyGroup->ubTroopsInBattle || pGroup->pEnemyGroup->ubElitesInBattle || pGroup->pEnemyGroup->ubTanksInBattle || pGroup->pEnemyGroup->ubJeepsInBattle )
+					if ( pGroup->pEnemyGroup->ubAdminsInBattle || pGroup->pEnemyGroup->ubTroopsInBattle || pGroup->pEnemyGroup->ubElitesInBattle || pGroup->pEnemyGroup->ubTanksInBattle || pGroup->pEnemyGroup->ubJeepsInBattle || pGroup->pEnemyGroup->ubRobotsInBattle )
 					{
 						++ubInvalidGroups;
 						pGroup->pEnemyGroup->ubAdminsInBattle = 0;
@@ -241,6 +244,7 @@ void ValidateAndCorrectInBattleCounters( GROUP *pLocGroup )
 						pGroup->pEnemyGroup->ubElitesInBattle = 0;
 						pGroup->pEnemyGroup->ubTanksInBattle = 0;
 						pGroup->pEnemyGroup->ubJeepsInBattle = 0;
+						pGroup->pEnemyGroup->ubRobotsInBattle = 0;
 					}
 				}
 			}
@@ -258,14 +262,15 @@ void ValidateAndCorrectInBattleCounters( GROUP *pLocGroup )
 									L"If you can provide information on how a previous battle was resolved here or nearby patrol "
 									L"(auto resolve, tactical battle, cheat keys, or retreat),"
 									L"please forward that info (no data files necessary) as well as the following code (very important):	"
-									L"G(%02d:%c%d_b%d) A(%02d:%02d) T(%02d:%02d) E(%02d:%02d) C(%02d:%02d) Ta(%02d:%02d) J(%02d:%02d)",
+									L"G(%02d:%c%d_b%d) A(%02d:%02d) T(%02d:%02d) E(%02d:%02d) C(%02d:%02d) Ta(%02d:%02d) J(%02d:%02d) R(%02d:%02d)",
 									ubInvalidGroups, pLocGroup->ubSectorY + 'A' - 1, pLocGroup->ubSectorX, pLocGroup->ubSectorZ,
 									pSector->ubNumAdmins, pSector->ubAdminsInBattle,
 									pSector->ubNumTroops, pSector->ubTroopsInBattle,
 									pSector->ubNumElites, pSector->ubElitesInBattle,
 									pSector->ubNumCreatures, pSector->ubCreaturesInBattle,
 									pSector->ubNumTanks, pSector->ubTanksInBattle,
-									pSector->ubNumJeeps, pSector->ubJeepsInBattle );
+									pSector->ubNumJeeps, pSector->ubJeepsInBattle,
+									pSector->ubNumRobots, pSector->ubRobotsInBattle );
 		DoScreenIndependantMessageBox( str, MSG_BOX_FLAG_OK, NULL );
 		pSector->ubAdminsInBattle = 0;
 		pSector->ubTroopsInBattle = 0;
@@ -273,6 +278,7 @@ void ValidateAndCorrectInBattleCounters( GROUP *pLocGroup )
 		pSector->ubCreaturesInBattle = 0;
 		pSector->ubTanksInBattle = 0;
 		pSector->ubJeepsInBattle = 0;
+		pSector->ubRobotsInBattle = 0;
 	}
 }
 #endif
@@ -1047,8 +1053,8 @@ void DoTransitionFromMapscreenToPreBattleInterface()
 	uiStartTime = GetJA2Clock();
 
 	GetScreenXYFromMapXY( gubPBSectorX, gubPBSectorY, &sStartLeft, &sStartTop );
-	sStartLeft += MAP_GRID_X / 2;
-	sStartTop += MAP_GRID_Y / 2;
+	sStartLeft += UI_MAP.GridSize.iX / 2;
+	sStartTop += UI_MAP.GridSize.iY / 2;
 	sEndLeft = 131 + xResOffset;
 	sEndTop = 180 + yResOffset;
 
@@ -1327,8 +1333,18 @@ void RenderPreBattleInterface()
 			BltVideoObject( guiSAVEBUFFER, hVObject, TITLE_BAR_PIECE, i + xResOffset, 6 + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL );
 		}
 
-		y = BOTTOM_Y - ACTUAL_HEIGHT - ROW_HEIGHT * max( guiNumUninvolved, 1 );
-		BltVideoObject( guiSAVEBUFFER, hVObject, UNINVOLVED_HEADER, 8 + xResOffset, y + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL );
+		BltVideoObject(guiSAVEBUFFER, hVObject, BOTTOM_LINE, 0 + xResOffset, BOTTOM_Y + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL);
+		BltVideoObject(guiSAVEBUFFER, hVObject, BOTTOM_LINE, 0 + xResOffset, BOTTOM_Y + yResOffset + 10, VO_BLT_SRCTRANSPARENCY, NULL);
+		BltVideoObject(guiSAVEBUFFER, hVObject, BOTTOM_LINE, 0 + xResOffset, BOTTOM_Y + yResOffset + 20, VO_BLT_SRCTRANSPARENCY, NULL);
+		BltVideoObject(guiSAVEBUFFER, hVObject, BOTTOM_LINE, 0 + xResOffset, BOTTOM_Y + yResOffset + 30, VO_BLT_SRCTRANSPARENCY, NULL);
+		//Draw the bottom edges
+		for (i = 0; i < max(guiNumUninvolved, 1); i++)
+		{
+			y = BOTTOM_Y + ROW_HEIGHT * (i + 1) + 30;
+			BltVideoObject(guiSAVEBUFFER, hVObject, BOTTOM_LINE, 0 + xResOffset, y + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL);
+		}
+		BltVideoObject(guiSAVEBUFFER, hVObject, UNINVOLVED_HEADER, 8 + xResOffset, BOTTOM_Y + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL);
+		BltVideoObject(guiSAVEBUFFER, hVObject, BOTTOM_END, 0 + xResOffset, BOTTOM_Y + yResOffset + 35 + ROW_HEIGHT * max(guiNumUninvolved, 1), VO_BLT_SRCTRANSPARENCY, NULL);
 
 		SetFont( BLOCKFONT );
 		SetFontForeground( FONT_BEIGE );
@@ -1396,12 +1412,12 @@ void RenderPreBattleInterface()
 		//Draw the bottom columns
 		for( i = 0; i < (INT32)max( guiNumUninvolved, 1 ); i++ )
 		{
-			y = BOTTOM_Y - ROW_HEIGHT * (i+1) + 1;
+			y = BOTTOM_Y + ROW_HEIGHT * (i+1) + 1 + ACTUAL_HEIGHT;
 			BltVideoObject( guiSAVEBUFFER, hVObject, BOTTOM_COLUMN, 161 + xResOffset, y + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL );
 		}
 
         // WDS - make number of mercenaries, etc. be configurable
-		for( i = 0; i < (INT32)(/*21*/3+ OUR_TEAM_SIZE_NO_VEHICLE - max( guiNumUninvolved, 1 )); i++ )
+		for( i = 0; i < (INT32)(25/*3+ OUR_TEAM_SIZE_NO_VEHICLE - max( guiNumUninvolved, 1 )*/); i++ )
 		{
 			y = TOP_Y + ROW_HEIGHT * i;
 			BltVideoObject( guiSAVEBUFFER, hVObject, TOP_COLUMN, 186 + xResOffset, y + yResOffset, VO_BLT_SRCTRANSPARENCY, NULL );
@@ -1502,13 +1518,13 @@ void RenderPreBattleInterface()
 			SetFontForeground( FONT_YELLOW );
 			wcscpy( str, gpStrategicString[ STR_PB_NONE ] );
 			x = 17 + (52-StringPixLength( str, BLOCKFONT2)) / 2;
-			y = BOTTOM_Y - ROW_HEIGHT + 2;
+			y = BOTTOM_Y + ROW_HEIGHT + 2 + ACTUAL_HEIGHT;
 			mprintf( x + xResOffset, y + yResOffset, str );
 		}
 		else
 		{			
 			pGroup = gpGroupList;
-			y = BOTTOM_Y - ROW_HEIGHT * guiNumUninvolved + 2;
+			y = BOTTOM_Y + ROW_HEIGHT + 2 + ACTUAL_HEIGHT;
 			for( i = gTacticalStatus.Team[ OUR_TEAM ].bFirstID; i <= gTacticalStatus.Team[ OUR_TEAM ].bLastID; i++ )
 			{
 				if( MercPtrs[ i ]->bActive && MercPtrs[ i ]->stats.bLife && !(MercPtrs[ i ]->flags.uiStatusFlags & SOLDIER_VEHICLE) )
@@ -1553,10 +1569,12 @@ void RenderPreBattleInterface()
 		// mark any and ALL pop up boxes as altered
 		MarkAllBoxesAsAltered( );
 
-		if( !guiNumUninvolved || gfZoomDone == FALSE )		
-			RestoreExternBackgroundRect( 0 + xResOffset, 0 + yResOffset, 261 + xResOffset, 359 + yResOffset );				
-		else		
-			RestoreExternBackgroundRect( 0 + xResOffset, 0 + yResOffset, 261 + xResOffset, y + yResOffset );				
+		if(!gfZoomDone)
+			RestoreExternBackgroundRect( 0 + xResOffset, 0 + yResOffset, 261 + xResOffset, 359 + yResOffset );
+		else if(!guiNumUninvolved)		
+			RestoreExternBackgroundRect( 0 + xResOffset, 0 + yResOffset, 261 + xResOffset, 389 + yResOffset );
+		else
+			RestoreExternBackgroundRect( 0 + xResOffset, 0 + yResOffset, 261 + xResOffset, y + yResOffset );
 
 		// restore font destinanation buffer to the frame buffer
 		SetFontDestBuffer( FRAME_BUFFER, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FALSE );
@@ -2007,7 +2025,7 @@ void CalculateNonPersistantPBIInfo()
 			{
 				SetExplicitEnemyEncounterCode( FIGHTING_CREATURES_CODE );
 			}
-			else if( pSector->ubAdminsInBattle || pSector->ubTroopsInBattle || pSector->ubElitesInBattle || pSector->ubTanksInBattle || pSector->ubJeepsInBattle )
+			else if( pSector->ubAdminsInBattle || pSector->ubTroopsInBattle || pSector->ubElitesInBattle || pSector->ubTanksInBattle || pSector->ubJeepsInBattle || pSector->ubRobotsInBattle )
 			{
 				SetExplicitEnemyEncounterCode( ENTERING_ENEMY_SECTOR_CODE );
 				SetEnemyEncounterCode( ENTERING_ENEMY_SECTOR_CODE );
@@ -2022,7 +2040,7 @@ void CalculateNonPersistantPBIInfo()
 			{
 				SetExplicitEnemyEncounterCode( FIGHTING_CREATURES_CODE );
 			}
-			else if( pSector->ubAdminsInBattle || pSector->ubTroopsInBattle || pSector->ubElitesInBattle || pSector->ubTanksInBattle || pSector->ubJeepsInBattle )
+			else if( pSector->ubAdminsInBattle || pSector->ubTroopsInBattle || pSector->ubElitesInBattle || pSector->ubTanksInBattle || pSector->ubJeepsInBattle || pSector->ubRobotsInBattle )
 			{
 				SetExplicitEnemyEncounterCode( ENTERING_ENEMY_SECTOR_CODE );
 				SetEnemyEncounterCode( ENTERING_ENEMY_SECTOR_CODE );
@@ -2357,6 +2375,7 @@ BOOLEAN PlayerMercInvolvedInThisCombat( SOLDIERTYPE *pSoldier )
 			pSoldier->bAssignment != IN_TRANSIT &&
 			pSoldier->bAssignment != ASSIGNMENT_POW &&
 			pSoldier->bAssignment != ASSIGNMENT_DEAD &&
+			pSoldier->bAssignment != ASSIGNMENT_MINIEVENT &&
 			!(pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE) &&
 			// Robot is involved if it has a valid controller with it, uninvolved otherwise
 			( !AM_A_ROBOT( pSoldier ) || ( pSoldier->ubRobotRemoteHolderID != NOBODY ) ) &&

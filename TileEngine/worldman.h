@@ -85,6 +85,8 @@ LEVELNODE *ForceStructToTail( INT32 iMapIndex, UINT16 usIndex );
 BOOLEAN AddStructToHead( INT32 iMapIndex, UINT16 usIndex );
 BOOLEAN TypeExistsInStructLayer( INT32 iMapIndex, UINT32 fType, UINT16 *pusStructIndex );
 BOOLEAN RemoveAllStructsOfTypeRange( INT32 iMapIndex, UINT32 fStartType, UINT32 fEndType );
+STRUCTURE* GetStructForLevelNodeOfTypeRange( INT32 iMapIndex, UINT32 fStartType, UINT32 fEndType );
+bool GetTypeRegionIndexForLevelNodeOfTypeRange( INT32 iMapIndex, UINT32 fStartType, UINT32 fEndType, UINT32& arTileType, UINT16& arRegionIndex );
 
 // Flugente: permanently remove structures
 BOOLEAN RemoveAllRoofsOfTypeRangeAdjustSaveFile( INT32 iMapIndex, UINT32 fStartType, UINT32 fEndType );
@@ -158,7 +160,7 @@ LEVELNODE * FindShadow( INT32 sGridNo, UINT16 usStructIndex );
 
 void WorldHideTrees( );
 void WorldShowTrees( );
-
+void UpdateTreeVisibility();
 
 BOOLEAN IsTileRedundent( UINT32 uiDestPitchBYTES, UINT16 *pZBuffer, UINT16 usZValue, HVOBJECT hSrcVObject, INT32 iX, INT32 iY, UINT16 usIndex );
 

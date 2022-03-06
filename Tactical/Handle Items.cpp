@@ -101,6 +101,7 @@ extern BOOL GetBetterObject_InventoryPool( UINT16 usItem, INT16 status, UINT32& 
 extern BOOL GetFittingAmmo_InventoryPool( UINT8 usCalibre, UINT8 usAmmoType, UINT32& arLoop );
 
 extern BOOLEAN HandleNailsVestFetish( SOLDIERTYPE *pSoldier, UINT32 uiHandPos, UINT16 usReplaceItem );
+extern void PlaySplashSound(INT32 sGridNo);
 
 extern std::vector<WORLDITEM> pInventoryPoolList;
 extern INT32 GetAttachmentInfoIndex( UINT16 usItem );
@@ -257,6 +258,11 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 	UINT16						usRaiseGunCost = 0;
 	UINT16						usTurningCost = 0;
 
+	//shadooow: automatically close EDB when opened and trying to use any weapon or action
+	if (gfInItemDescBox)
+	{
+		DeleteItemDescriptionBox();
+	}
 
 	// Remove any previous actions
 	pSoldier->aiData.ubPendingAction		= NO_PENDING_ACTION;
@@ -299,12 +305,6 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		DebugMsg( TOPIC_JA2, DBG_LEVEL_3, String("Setting attack busy count to 0 due to no combat" ) );
 		gTacticalStatus.ubAttackBusyCount = 0;
 	}
-
-//	if ( pTargetSoldier )
-//	{
-//	pTargetSoldier->bBeingAttackedCount = 0;
-//	}
-
 
 	// Check our soldier's life for unconscious!
 	if ( pSoldier->stats.bLife < OKLIFE )
@@ -865,57 +865,16 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 	//TRY PUNCHING
 	if ( Item[ usHandItem ].usItemClass == IC_PUNCH )
 	{
-		//INT16	sCnt;
-		INT32	sSpot;
-		UINT8	ubGuyThere;
-		INT32	sGotLocation = NOWHERE;
-		BOOLEAN	fGotAdjacent = FALSE;
+		// See if we can get there to stab
+		sActionGridNo = FindAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
 
-		for ( INT8 sCnt = 0; sCnt < NUM_WORLD_DIRECTIONS; sCnt++ )
-		{
-			sSpot = NewGridNo( pSoldier->sGridNo, DirectionInc( sCnt ) );
-
-			// Make sure movement costs are OK....
-			if ( gubWorldMovementCosts[ sSpot ][ sCnt ][ bLevel ] >= TRAVELCOST_BLOCKED )
-			{
-				continue;
-			}
-
-			// Check for who is there...
-			ubGuyThere = WhoIsThere2( sSpot, pSoldier->pathing.bLevel );
-
-			if ( pTargetSoldier != NULL && ubGuyThere == pTargetSoldier->ubID )
-			{
-				// We've got a guy here....
-				// Who is the one we want......
-				sGotLocation = sSpot;
-				sAdjustedGridNo = pTargetSoldier->sGridNo;
-				ubDirection = ( UINT8 )sCnt;
-				break;
-			}
-		}
-
-		if (TileIsOutOfBounds(sGotLocation))
-		{
-			// See if we can get there to punch
-			sActionGridNo =	FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-			if ( sActionGridNo != -1 )
-			{
-				// OK, we've got somebody...
-				sGotLocation = sActionGridNo;
-
-				fGotAdjacent = TRUE;
-			}
-		}
-
-		// Did we get a loaction?		
-		if (!TileIsOutOfBounds(sGotLocation))
+		if (sActionGridNo != NOWHERE)
 		{
 			pSoldier->sTargetGridNo = sGridNo;
 
 			pSoldier->aiData.usActionData	= sGridNo;
 			// CHECK IF WE ARE AT THIS GRIDNO NOW
-			if ( pSoldier->sGridNo != sGotLocation && fGotAdjacent )
+			if ( pSoldier->sGridNo != sActionGridNo )
 			{
 				// SEND PENDING ACTION
 				pSoldier->aiData.ubPendingAction = MERC_PUNCH;
@@ -924,7 +883,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 				pSoldier->aiData.ubPendingActionAnimCount = 0;
 
 				// WALK UP TO DEST FIRST
-				pSoldier->EVENT_InternalGetNewSoldierPath( sGotLocation, pSoldier->usUIMovementMode, FALSE, TRUE );
+				pSoldier->EVENT_InternalGetNewSoldierPath(sActionGridNo, pSoldier->usUIMovementMode, FALSE, TRUE );
 			}
 			else
 			{
@@ -948,35 +907,11 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 	//USING THE MEDKIT
 	if ( Item[ usHandItem ].usItemClass == IC_MEDKIT )
 	{
-		// ATE: AI CANNOT GO THROUGH HERE!
-		INT32 usMapPos;
-		BOOLEAN	fHadToUseCursorPos = FALSE;
-
-		if (gTacticalStatus.fAutoBandageMode)
-		{
-			usMapPos = sGridNo;
-		}
-		else
-		{
-			GetMouseMapPos( &usMapPos );
-		}
-
 		// See if we can get there to stab
 		sActionGridNo =	FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
 		if ( sActionGridNo == -1 )
 		{
-			// Try another location...
-			sActionGridNo =	FindAdjacentGridEx( pSoldier, usMapPos, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-
-			if ( sActionGridNo == -1 )
-			{
-				return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
-			}
-
-			if ( !gTacticalStatus.fAutoBandageMode )
-			{
-				fHadToUseCursorPos = TRUE;
-			}
+			return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
 		}
 
 		// Calculate AP costs...
@@ -994,20 +929,13 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 				// SEND PENDING ACTION
 				pSoldier->aiData.ubPendingAction = MERC_GIVEAID;
 
-				if ( fHadToUseCursorPos )
+				if ( pTargetSoldier != NULL )
 				{
-					pSoldier->aiData.sPendingActionData2	= usMapPos;
+					pSoldier->aiData.sPendingActionData2	= pTargetSoldier->sGridNo;
 				}
 				else
 				{
-					if ( pTargetSoldier != NULL )
-					{
-						pSoldier->aiData.sPendingActionData2	= pTargetSoldier->sGridNo;
-					}
-					else
-					{
-						pSoldier->aiData.sPendingActionData2	= sGridNo;
-					}
+					pSoldier->aiData.sPendingActionData2	= sGridNo;
 				}
 				pSoldier->aiData.bPendingActionData3	= ubDirection;
 				pSoldier->aiData.ubPendingActionAnimCount = 0;
@@ -1128,19 +1056,16 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 
 			if ( EnoughPoints( pSoldier, sAPCost, 0, fFromUI ) )
 			{
+				// OK, set UI
+				SetUIBusy(pSoldier->ubID);
+
 				// CHECK IF WE ARE AT THIS GRIDNO NOW
 				if ( pSoldier->sGridNo != sActionGridNo )
 				{
 					// SEND PENDING ACTION
 					pSoldier->aiData.ubPendingAction = MERC_REPAIR;
-					pSoldier->aiData.sPendingActionData2	= sAdjustedGridNo;
-
-					if ( fVehicle )
-					{
-						pSoldier->aiData.sPendingActionData2	= sVehicleGridNo;
-					}
-
-					pSoldier->aiData.bPendingActionData3	= ubDirection;
+					pSoldier->aiData.sPendingActionData2 = fVehicle ? sVehicleGridNo : sAdjustedGridNo;
+					pSoldier->aiData.bPendingActionData3 = ubDirection;
 					pSoldier->aiData.ubPendingActionAnimCount = 0;
 
 					// WALK UP TO DEST FIRST
@@ -1148,11 +1073,8 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 				}
 				else
 				{
-					pSoldier->EVENT_SoldierBeginRepair( sAdjustedGridNo, ubDirection );
+					pSoldier->EVENT_SoldierBeginRepair(fVehicle ? sVehicleGridNo : sAdjustedGridNo, ubDirection );					
 				}
-
-				// OK, set UI
-				SetUIBusy( pSoldier->ubID );
 
 				if ( fFromUI )
 				{
@@ -1210,8 +1132,6 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 				{
 					// SEND PENDING ACTION
 					pSoldier->aiData.ubPendingAction = MERC_FUEL_VEHICLE;
-					pSoldier->aiData.sPendingActionData2	= sAdjustedGridNo;
-
 					pSoldier->aiData.sPendingActionData2	= sVehicleGridNo;
 					pSoldier->aiData.bPendingActionData3	= ubDirection;
 					pSoldier->aiData.ubPendingActionAnimCount = 0;
@@ -1221,7 +1141,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 				}
 				else
 				{
-					pSoldier->EVENT_SoldierBeginRefuel( sAdjustedGridNo, ubDirection );
+					pSoldier->EVENT_SoldierBeginRefuel(sVehicleGridNo, ubDirection );
 				}
 
 				// OK, set UI
@@ -1370,7 +1290,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 	}
 
 	// Flugente: handcuffing people
-	if (gGameExternalOptions.fAllowPrisonerSystem && HasItemFlag(usHandItem, HANDCUFFS) && pTargetSoldier)
+	if (gGameExternalOptions.fAllowPrisonerSystem && HasItemFlag(usHandItem, HANDCUFFS) && pTargetSoldier && pTargetSoldier->bVisible >= 0)
 	{
 		if (!pTargetSoldier->CanBeCaptured())
 			return ITEM_HANDLE_REFUSAL;
@@ -1382,13 +1302,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		sActionGridNo =	FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
 		if ( sActionGridNo == -1 )
 		{
-			// Try another location...
-			sActionGridNo =	FindAdjacentGridEx( pSoldier, usMapPos, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-
-			if ( sActionGridNo == -1 )
-			{
-				return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
-			}
+			return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
 
 			/*if ( !gTacticalStatus.fAutoBandageMode )
 			{
@@ -1476,8 +1390,11 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		}
 	}
 
+	UINT8 ubPerson = WhoIsThere2(usMapPos, pSoldier->pathing.bLevel);
+
 	// Flugente: apply misc items to other soldiers
-	if ( ItemCanBeAppliedToOthers( usHandItem ) )
+	// sevenfm: check that target soldier is visible
+	if (ItemCanBeAppliedToOthers(usHandItem) && ubPerson != NOBODY && MercPtrs[ubPerson] && MercPtrs[ubPerson]->bVisible != 0)
 	{
 		// ATE: AI CANNOT GO THROUGH HERE!
 		BOOLEAN	fHadToUseCursorPos = FALSE;
@@ -1486,25 +1403,14 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		sActionGridNo =	FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
 		if ( sActionGridNo == -1 )
 		{
-			// Try another location...
-			sActionGridNo =	FindAdjacentGridEx( pSoldier, usMapPos, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-
-			if ( sActionGridNo == -1 )
-			{
-				return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
-			}
+			return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
 		}
 
 		// Calculate AP costs...
 		sAPCost = GetAPsToApplyItem( pSoldier, sActionGridNo );
 		sAPCost += PlotPath( pSoldier, sActionGridNo, NO_COPYROUTE, FALSE, TEMPORARY, (UINT16)pSoldier->usUIMovementMode, NOT_STEALTH, FORWARD, pSoldier->bActionPoints);
 
-		// if we are at the action gridno, the item is a bomb, but nobody is at the gridno, do not apply and do not return - we will plant the bomb instead (handlded later in this function)
-		if ( Item[ usHandItem ].usItemClass == IC_BOMB && WhoIsThere2( usMapPos, pSoldier->pathing.bLevel ) == NOBODY )
-		{
-			;
-		}
-		else if ( EnoughPoints( pSoldier, sAPCost, 0, fFromUI ) )
+		if ( EnoughPoints( pSoldier, sAPCost, 0, fFromUI ) )
 		{
 			// OK, set UI
 			SetUIBusy( pSoldier->ubID );
@@ -1566,13 +1472,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		sActionGridNo = FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
 		if ( sActionGridNo == -1 )
 		{
-			// Try another location...
-			sActionGridNo = FindAdjacentGridEx( pSoldier, usMapPos, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-
-			if ( sActionGridNo == -1 )
-			{
-				return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
-			}
+			return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
 		}
 
 		// Calculate AP costs...
@@ -1646,13 +1546,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		sActionGridNo = FindAdjacentGridEx( pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
 		if ( sActionGridNo == -1 )
 		{
-			// Try another location...
-			sActionGridNo = FindAdjacentGridEx( pSoldier, usMapPos, &ubDirection, &sAdjustedGridNo, TRUE, FALSE );
-
-			if ( sActionGridNo == -1 )
-			{
-				return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
-			}
+			return( ITEM_HANDLE_CANNOT_GETTO_LOCATION );
 		}
 
 		// Calculate AP costs...
@@ -1751,7 +1645,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 					}
 					else
 					{
-						pSoldier->EVENT_SoldierBeginTakeBlood( sGridNo, ubDirection );
+						pSoldier->EVENT_SoldierBeginAttachCan( sGridNo, ubDirection );
 					}
 
 					// OK, set UI
@@ -1867,7 +1761,6 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 	//USING THE BLADE
 	if ( Item[ usHandItem ].usItemClass == IC_BLADE )
 	{
-		BOOLEAN fGotAdjacent = TRUE;//dnl ch73 290913
 		// See if we can get there to stab
 		if ( pSoldier->ubBodyType == BLOODCAT )
 		{
@@ -1883,29 +1776,8 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 		}
 		else
 		{
-			//dnl ch73 290913
-			fGotAdjacent = FALSE;
-			sActionGridNo = NOWHERE;
-			if(pTargetSoldier)
-				for(INT8 sCnt=0; sCnt<NUM_WORLD_DIRECTIONS; sCnt++)
-				{
-					INT32 sSpot = NewGridNo(pSoldier->sGridNo, DirectionInc(sCnt));
-					if(gubWorldMovementCosts[sSpot][sCnt][bLevel] >= TRAVELCOST_BLOCKED)
-						continue;
-					if(WhoIsThere2(sSpot, pSoldier->pathing.bLevel) == pTargetSoldier->ubID)
-					{
-						sActionGridNo = sSpot;
-						sAdjustedGridNo = pTargetSoldier->sGridNo;
-						ubDirection = (UINT8)sCnt;
-						break;
-					}
-				}
-			if(TileIsOutOfBounds(sActionGridNo))
-			{
-				sActionGridNo =	FindAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE);
-				if(sActionGridNo != NOWHERE)
-					fGotAdjacent = TRUE;
-			}
+			// See if we can get there to stab
+			sActionGridNo = FindAdjacentGridEx(pSoldier, sGridNo, &ubDirection, &sAdjustedGridNo, TRUE, FALSE, true);
 		}
 
 		if ( sActionGridNo != NOWHERE )
@@ -1913,7 +1785,7 @@ INT32 HandleItem( SOLDIERTYPE *pSoldier, INT32 sGridNo, INT8 bLevel, UINT16 usHa
 			pSoldier->aiData.usActionData = sActionGridNo;
 
 			// CHECK IF WE ARE AT THIS GRIDNO NOW
-			if ( pSoldier->sGridNo != sActionGridNo && fGotAdjacent )//dnl ch73 290913
+			if ( pSoldier->sGridNo != sActionGridNo )
 			{
 				// SEND PENDING ACTION
 				pSoldier->aiData.ubPendingAction = MERC_KNIFEATTACK;
@@ -2243,7 +2115,22 @@ void SoldierHandleDropItem( SOLDIERTYPE *pSoldier )
 	{
 		if ( pSoldier->bVisible != -1 )
 		{
-			PlayJA2Sample( THROW_IMPACT_2, RATE_11025, SoundVolume( MIDVOLUME, pSoldier->sGridNo ), 1, SoundDir( pSoldier->sGridNo ) );
+			if (Water(pSoldier->sGridNo, pSoldier->pathing.bLevel))
+			{
+				UINT16 usItem = pSoldier->pTempObject->usItem;
+				INT32 sGridNo = pSoldier->sGridNo;
+
+				if (HasItemFlag(usItem, CORPSE))
+					PlayJA2Sample(ENTER_DEEP_WATER_1, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+				else if (Item[usItem].ubWeight > 10)
+					PlayJA2Sample(ENTER_WATER_1, RATE_11025, SoundVolume(MIDVOLUME, sGridNo), 1, SoundDir(sGridNo));
+				else
+					PlaySplashSound(sGridNo);
+			}
+			else
+			{
+				PlayJA2Sample(THROW_IMPACT_2, RATE_11025, SoundVolume(MIDVOLUME, pSoldier->sGridNo), 1, SoundDir(pSoldier->sGridNo));
+			}
 		}
 
 		AddItemToPool( pSoldier->sGridNo, pSoldier->pTempObject, 1, pSoldier->pathing.bLevel, 0 , -1 );
@@ -2262,10 +2149,15 @@ void HandleSoldierThrowItem( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 	// Set attacker to NOBODY, since it's not a combat attack
 	pSoldier->ubTargetID = NOBODY;
 
+	INT16 sXTest, sYTest;
+	ConvertGridNoToCenterCellXY(pSoldier->sGridNo, &sXTest, &sYTest);
+	//shadooow: if the grenade isn't thrown from soldier gridno, it should mean it is thrown using my grenade rolling feature
+	BOOLEAN gbGrenadeRolling = pSoldier->pThrowParams->dX != sXTest || pSoldier->pThrowParams->dY != sYTest;
+
 	// Alrighty, switch based on stance!
 	switch( gAnimControl[ pSoldier->usAnimState ].ubHeight )
 	{
-	case ANIM_STAND:
+		case ANIM_STAND:
 
 		// CHECK IF WE ARE NOT ON THE SAME GRIDNO
 		if ( sGridNo == pSoldier->sGridNo )
@@ -2282,33 +2174,37 @@ void HandleSoldierThrowItem( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 			pSoldier->EVENT_SetSoldierDesiredDirection( ubDirection );
 			pSoldier->flags.fTurningUntilDone = TRUE;
 
-			// Draw item depending on distance from buddy
-			if ( GetRangeFromGridNoDiff( sGridNo, pSoldier->sGridNo ) < MIN_LOB_RANGE )
+			if (gbGrenadeRolling)
 			{
-				
+				if ((pSoldier->pThrowParams->ubActionCode == THROW_ARM_ITEM) &&
+					((pSoldier->ubBodyType == BIGMALE) || (pSoldier->ubBodyType == REGMALE)))
+					pSoldier->usPendingAnimation = LOB_GRENADE_STANCE;
+				else
+					pSoldier->usPendingAnimation = LOB_ITEM;
+			}
+			// Draw item depending on distance from buddy
+			else if ( GetRangeFromGridNoDiff( sGridNo, pSoldier->sGridNo ) < MIN_LOB_RANGE )
+			{
 				//ddd maybe need to add check for throwing item class - grenade
 				if( (pSoldier->pThrowParams->ubActionCode == THROW_ARM_ITEM) && 
 					( (pSoldier->ubBodyType == BIGMALE) || (pSoldier->ubBodyType == REGMALE) ) )
 					pSoldier->usPendingAnimation = LOB_GRENADE_STANCE;
 				else
 					pSoldier->usPendingAnimation = LOB_ITEM;
-				
 			}
 			else			
 			{
-
 				if( (pSoldier->pThrowParams->ubActionCode == THROW_ARM_ITEM) && 
 					( (pSoldier->ubBodyType == BIGMALE) || (pSoldier->ubBodyType == REGMALE) ) )
 					pSoldier->usPendingAnimation = THROW_GRENADE_STANCE;
 				else
 					pSoldier->usPendingAnimation = THROW_ITEM;
 			}
-
 		}
 		break;
 
 		//<SB> crouch throwing
-	case ANIM_PRONE:
+		case ANIM_PRONE:
 			if ( sGridNo == pSoldier->sGridNo )
 			{
 				// OK, JUST DROP ITEM!
@@ -2338,20 +2234,26 @@ void HandleSoldierThrowItem( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 		}
 		else
 		{
-				// CHANGE DIRECTION AT LEAST
+			// CHANGE DIRECTION AT LEAST
 			ubDirection = (UINT8)GetDirectionFromGridNo( sGridNo, pSoldier );
 
-				pSoldier->SoldierGotoStationaryStance( );
+			pSoldier->SoldierGotoStationaryStance( );
 
 			pSoldier->EVENT_SetSoldierDesiredDirection( ubDirection );
-				pSoldier->flags.fTurningUntilDone = TRUE;
+			pSoldier->flags.fTurningUntilDone = TRUE;
 
+			if (gbGrenadeRolling)
+			{
 				pSoldier->usPendingAnimation = THROW_ITEM_CROUCHED;
+			}
+			else
+			{
+				pSoldier->usPendingAnimation = THROW_ITEM_CROUCHED;
+			}
 		}
-			break;
-//</SB>
+		break;
+		//</SB>
 	}
-
 }
 
 
@@ -3635,6 +3537,28 @@ void RemoveAllUnburiedItems( INT32 sGridNo, UINT8 ubLevel )
 	}
 }
 
+void RevealAllUnburiedItems( INT32 sGridNo, UINT8 ubLevel )
+{
+	ITEM_POOL		*pItemPool;
+
+	// Check for and existing pool on the object layer
+	GetItemPool( sGridNo, &pItemPool, ubLevel );
+
+	while ( pItemPool )
+	{
+		if ( gWorldItems[pItemPool->iItemIndex].bVisible != BURIED )
+		{
+			gWorldItems[pItemPool->iItemIndex].bVisible = VISIBLE;
+			gWorldItems[pItemPool->iItemIndex].bRenderZHeightAboveLevel = 0;
+			gWorldItems[pItemPool->iItemIndex].ubNonExistChance = 0;
+			gWorldItems[pItemPool->iItemIndex].usFlags &= ( ~WORLD_ITEM_DONTRENDER );
+		}
+
+		pItemPool = pItemPool->pNext;
+	}
+		
+	NotifySoldiersToLookforItems();
+}
 
 void LoopLevelNodeForShowThroughFlag( LEVELNODE *pNode, INT32 sGridNo, UINT8 ubLevel )
 {
@@ -7792,6 +7716,86 @@ UINT8	CheckBuildFortification( INT32 sGridNo, INT8 sLevel, UINT8 usIndex, UINT32
 	return 1;
 }
 
+BOOLEAN	BuildStructFromName( INT32 sGridNo, INT8 sLevel, const char* aStr, UINT8 usIndex )
+{
+	INT16				sUseObjIndex = -1;
+
+	// needs to be a valid location
+	if ( TileIsOutOfBounds( sGridNo ) )
+		return FALSE;
+
+	// if we want to build on a roof, a roof is required
+	if ( sLevel && !FlatRoofAboveGridNo( sGridNo ) )
+		return FALSE;
+
+	// don't build in water
+	if ( TERRAIN_IS_WATER( GetTerrainType( sGridNo ) ) )
+		return FALSE;
+
+	// do not build into people
+	if ( NOBODY != WhoIsThere2( sGridNo, sLevel ) )
+		return FALSE;
+
+	// search wether structure exists in the current tilesets. If not, well, too bad
+	for ( INT32 iType = 0; iType < giNumberOfTileTypes; ++iType )
+	{
+		// if tileset is from the current tileset, check that
+		if ( gTilesets[giCurrentTilesetID].TileSurfaceFilenames[iType][0] )
+		{
+			if ( !_strnicmp( gTilesets[giCurrentTilesetID].TileSurfaceFilenames[iType], aStr, 10 ) )
+			{
+				sUseObjIndex = iType;
+				break;
+			}
+		}
+		// otherwise, check first tileset (GENERIC 1)
+		else if ( gTilesets[0].TileSurfaceFilenames[iType][0] )
+		{
+			if ( !_strnicmp( gTilesets[0].TileSurfaceFilenames[iType], aStr, 10 ) )
+			{
+				sUseObjIndex = iType;
+				break;
+			}
+		}
+	}
+
+	if ( sUseObjIndex < 0 )
+		return FALSE;
+
+	// Check with Structure Database (aka ODB) if we can put the object here!
+	BOOLEAN fOkayToAdd = OkayToAddStructureToWorld( sGridNo, sLevel, gTileDatabase[( gTileTypeStartIndex[sUseObjIndex] + usIndex )].pDBStructureRef, INVALID_STRUCTURE_ID );
+	if ( fOkayToAdd || ( gTileDatabase[( gTileTypeStartIndex[sUseObjIndex] + usIndex )].pDBStructureRef == NULL ) )
+	{
+		// Remove old graphic
+		ApplyMapChangesToMapTempFile( TRUE );
+
+		//dnl Remove existing structure before adding the same, seems to solve problem with stacking but still need test to be sure that is not removed something what should stay
+		// Actual structure info is added by the functions below
+		if ( sLevel )
+		{
+			RemoveOnRoofStruct( sGridNo, (UINT16)( gTileTypeStartIndex[sUseObjIndex] + usIndex ) );
+
+			AddOnRoofToTail( sGridNo, (UINT16)( gTileTypeStartIndex[sUseObjIndex] + usIndex ) );
+		}
+		else
+		{
+			RemoveStruct( sGridNo, (UINT16)( gTileTypeStartIndex[sUseObjIndex] + usIndex ) );
+
+			AddStructToHead( sGridNo, (UINT16)( gTileTypeStartIndex[sUseObjIndex] + usIndex ) );
+		}
+
+		RecompileLocalMovementCosts( sGridNo );
+
+		// Turn off permanent changes....
+		ApplyMapChangesToMapTempFile( FALSE );
+		SetRenderFlags( RENDER_FLAG_FULL );
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 UINT16 gusTempDragBuildSoldierID = NOBODY;
 
 BOOLEAN	BuildStructDrag( INT32 sGridNo, INT8 sLevel, UINT32 uiTileType, UINT8 usIndex, UINT16 usSoldierID )
@@ -7997,7 +8001,7 @@ BOOLEAN	CanRemoveFortification( INT32 sGridNo, INT8 sLevel, UINT32 usStructureco
 	return FALSE;
 }
 
-BOOLEAN	IsDragStructurePresent( INT32 sGridNo, INT8 sLevel, UINT32& arusTileType, UINT16& arusStructureNumber )
+BOOLEAN	IsDragStructurePresent( INT32 sGridNo, INT8 sLevel, UINT32& arusTileType, UINT16& arusStructureNumber, UINT8& arusHitpoints, UINT8& arusDecalFlags )
 {
 	// needs to be a valid location
 	if ( TileIsOutOfBounds( sGridNo ) )
@@ -8015,6 +8019,8 @@ BOOLEAN	IsDragStructurePresent( INT32 sGridNo, INT8 sLevel, UINT32& arusTileType
 			if ( GetTileType( pNode->usIndex, &arusTileType ) )
 			{
 				arusStructureNumber = pStruct->pDBStructureRef->pDBStructure->usStructureNumber;
+				arusHitpoints = pStruct->ubHitPoints;
+				arusDecalFlags = pStruct->ubDecalFlag;
 
 				// if tileset is from the current tileset, check that
 				for ( int i = 0; i < STRUCTURE_MOVEPOSSIBLE_MAX; ++i )
@@ -8138,6 +8144,29 @@ BOOLEAN	RemoveStructDrag( INT32 sGridNo, INT8 sLevel, UINT32 uiTileType )
 	}
 
 	return FALSE;
+}
+
+void CorrectDragStructData( INT32 sGridNo, INT8 sLevel, UINT8 ausHitpoints, UINT8 ausDecalFlags )
+{
+	// needs to be a valid location
+	if ( TileIsOutOfBounds( sGridNo ) )
+		return;
+
+	STRUCTURE* pStruct = GetTallestStructureOnGridnoDrag( sGridNo, sLevel );
+
+	if ( pStruct != NULL )
+	{
+		pStruct->ubHitPoints = ausHitpoints;
+		pStruct->ubDecalFlag = ausDecalFlags;
+
+		if ( pStruct->ubHitPoints < pStruct->pDBStructureRef->pDBStructure->ubHitPoints
+			|| pStruct->ubDecalFlag & STRUCTURE_DECALFLAG_BLOOD )
+		{
+			gpWorldLevelData[sGridNo].uiFlags & MAPELEMENT_STRUCTURE_DAMAGED;
+
+			//SetRenderFlags( RENDER_FLAG_FULL );
+		}
+	}
 }
 
 BOOLEAN	RemoveFortification( INT32 sGridNo, INT8 sLevel, UINT32 usStructureconstructindex )
@@ -9487,6 +9516,9 @@ void DoInteractiveActionDefaultResult( INT32 sGridNo, UINT8 ubID, BOOLEAN aSucce
 		}
 		break;
 
+		case INTERACTIVE_STRUCTURE_VARIOUS:
+			break;
+
 	default:
 		break;
 	}
@@ -10393,6 +10425,16 @@ void TakePhoto(SOLDIERTYPE* pSoldier, INT32 sGridNo, INT8 bLevel )
 	// to make this simple, check only tiles in a radius around the gridno we targetted
 	INT16 sBaseX, sBaseY;
 	ConvertGridNoToXY( sGridNo, &sBaseX, &sBaseY );
+
+	UINT8 ubDirection = GetDirectionFromGridNo(sGridNo, pSoldier);
+
+	// CHANGE DIRECTION AND GOTO ANIMATION NOW
+	if (pSoldier->ubDirection != ubDirection)
+	{
+		pSoldier->flags.uiStatusFlags |= SOLDIER_LOOK_NEXT_TURNSOLDIER;//shadooow: fix for vision not updating
+		pSoldier->EVENT_SetSoldierDesiredDirection(ubDirection);
+		pSoldier->EVENT_SetSoldierDirection(ubDirection);
+	}
 
 	int radius = 3;
 

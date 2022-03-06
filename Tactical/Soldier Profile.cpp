@@ -77,6 +77,8 @@
 	extern BOOLEAN gfProfileDataLoaded;
 #endif
 
+extern INT32 GetTheStateOfDepartedMerc(INT32 iId);
+
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
@@ -648,20 +650,8 @@ BOOLEAN LoadMercProfiles(void)
 		// WANNE: For the new WF merc, there is no entry in prof.dat, so we have to reset some flags manually!		
 		if (uiLoop >= 170)
 		{
-			gMercProfiles[uiLoop].ubMiscFlags = 0;
-			gMercProfiles[uiLoop].ubMiscFlags2 = 0;
-			gMercProfiles[uiLoop].ubMiscFlags3 = 0;
-
-			gMercProfiles[uiLoop].uiTotalCostToDate = 0;
-			gMercProfiles[uiLoop].iMercMercContractLength = 0;
-
-			gMercProfiles[uiLoop].usBackground = 0;
-			gMercProfiles[uiLoop].Type = PROFILETYPE_NONE;
-
-			memset( &gMercProfiles[uiLoop].usDynamicOpinionFlagmask, 0, sizeof(gMercProfiles[uiLoop].usDynamicOpinionFlagmask) );
-
-			memset( &gMercProfiles[uiLoop].sDynamicOpinionLongTerm, 0, sizeof(gMercProfiles[uiLoop].sDynamicOpinionLongTerm) );
-
+			gMercProfiles[uiLoop].initialize();
+			
 			// Flugente: as this data is not in the xml, we set dummy values
 			if ( gMercProfiles[uiLoop].ubApproachVal[0] == 0 &&
 				gMercProfiles[uiLoop].ubApproachVal[1] == 0 &&
@@ -1744,6 +1734,8 @@ BOOLEAN RecruitRPC( UINT8 ubCharNum )
 		return( FALSE );
 	}
 
+	bool first_time_recruited = GetTheStateOfDepartedMerc(ubCharNum) == -1;
+
 	// OK, set recruit flag..
 	gMercProfiles[ ubCharNum ].ubMiscFlags |= PROFILE_MISC_FLAG_RECRUITED;
 
@@ -1772,12 +1764,12 @@ BOOLEAN RecruitRPC( UINT8 ubCharNum )
 
 		KickOutWheelchair( pNewSoldier );
 	}
-	else if ( ubCharNum == DYNAMO && gubQuest[ QUEST_FREE_DYNAMO ] == QUESTINPROGRESS )
+	else if ( ubCharNum == DYNAMO && gubQuest[ QUEST_FREE_DYNAMO ] == QUESTINPROGRESS && first_time_recruited)
 	{
 		EndQuest( QUEST_FREE_DYNAMO, pSoldier->sSectorX, pSoldier->sSectorY );
 	}
 	// SANDRO - give exp and records quest point, if finally recruiting Miguel
-	else if ( ubCharNum == MIGUEL )
+	else if ( ubCharNum == MIGUEL && first_time_recruited)
 	{
 		GiveQuestRewardPoint( pSoldier->sSectorX, pSoldier->sSectorY, 6, MIGUEL );
 	}
@@ -1796,7 +1788,8 @@ BOOLEAN RecruitRPC( UINT8 ubCharNum )
 	}
 
 	// handle town loyalty adjustment
-	HandleTownLoyaltyForNPCRecruitment( pNewSoldier );
+	if(first_time_recruited)
+		HandleTownLoyaltyForNPCRecruitment( pNewSoldier );
 
 	// Try putting them into the current squad
 	if ( AddCharacterToSquad( pNewSoldier, (INT8)CurrentSquad( ) ) == FALSE )
@@ -1832,7 +1825,7 @@ BOOLEAN RecruitRPC( UINT8 ubCharNum )
 #ifdef JA2UB
 // no Ja25 UB
 #else
-	if ( ubCharNum == IRA )
+	if ( ubCharNum == IRA && first_time_recruited)
 	{
 		// trigger 0th PCscript line
 		TriggerNPCRecord( IRA, 0 );
@@ -1864,7 +1857,8 @@ BOOLEAN RecruitRPC( UINT8 ubCharNum )
 	AdditionalTacticalCharacterDialogue_AllInSectorRadiusCall( ubCharNum, ADE_DIALOGUE_RPC_RECRUIT_SUCCESS, ubCharNum );
 	
 	// Flugente: external scripts might have extra functionality on recruiting someone
-	LuaRecruitRPCAdditionalHandling( ubCharNum );
+	if (first_time_recruited)
+		LuaRecruitRPCAdditionalHandling( ubCharNum );
 
 	return( TRUE );
 }

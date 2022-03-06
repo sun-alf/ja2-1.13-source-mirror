@@ -333,6 +333,7 @@ typedef struct FACILITYTYPE
 	std::vector<PRODUCTION_LINE> ProductionData;
 
 } FACILITYTYPE;
+#define FACILITYTYPE_SIZEOF_POD offsetof(FACILITYTYPE, ProductionData)
 
 // HEADROCK HAM 3.5: Maximum number of different facility types
 #define MAX_NUM_FACILITY_TYPES 255
@@ -576,7 +577,9 @@ typedef struct SECTORINFO
 	UINT8	ubNumElites_Turncoat;	
 	UINT8	usExplorationProgress;
 
-	INT8	bPadding[ 8 ];
+	UINT8	ubNumRobots;
+	UINT8	ubRobotsInBattle;
+	INT8	bPadding[ 6 ];
 
 }SECTORINFO;
 
@@ -625,8 +628,10 @@ typedef struct UNDERGROUND_SECTORINFO
 	UINT8	ubNumJeeps;
 	UINT8	ubJeepsInBattle;
 	UINT8	usExplorationProgress;
+	UINT8	ubNumRobots;
+	UINT8	ubRobotsInBattle;
 
-	INT8	bPadding[12];
+	INT8	bPadding[10];
 	//no padding left!
 }UNDERGROUND_SECTORINFO;
 

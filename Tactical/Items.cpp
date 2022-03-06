@@ -2294,8 +2294,15 @@ BOOLEAN ValidAttachment( UINT16 usAttachment, OBJECTTYPE * pObj, UINT8 * pubAPCo
 	if ( !pObj->exists() )
 		return FALSE;
 
+	// shadooow: efficiency check, we are passing all kinds of items into this function that are not necessary attachments at all
+	if (!Item[usAttachment].attachment && !Item[usAttachment].attachmentclass && !Item[usAttachment].nasAttachmentClass &&
+		!Item[usAttachment].hiddenaddon && !((Item[usAttachment].usItemClass & IC_GUN) && Item[pObj->usItem].tripwire))
+		return FALSE;
+
 	if( UsingNewAttachmentSystem() )
 	{
+		BOOLEAN foundValidAttachment = FALSE;
+
 		//It's possible we've entered this function without being passed the usAttachmentSlotIndexVector parameter
 		if(usAttachmentSlotIndexVector.empty())
 			usAttachmentSlotIndexVector = GetItemSlots(pObj);
@@ -2305,7 +2312,7 @@ BOOLEAN ValidAttachment( UINT16 usAttachment, OBJECTTYPE * pObj, UINT8 * pubAPCo
 			return FALSE;
 		
 		//Madd: Common Attachment Framework
-		if ( pubAPCost && IsAttachmentPointAvailable( pObj, subObject, usAttachment ) )
+		if (pubAPCost && IsAttachmentPointAvailable(pObj, subObject, usAttachment))
 		{
 			*pubAPCost = Item[usAttachment].ubAttachToPointAPCost;
 
@@ -2314,21 +2321,39 @@ BOOLEAN ValidAttachment( UINT16 usAttachment, OBJECTTYPE * pObj, UINT8 * pubAPCo
 		else
 		{
 			//Check if the attachment is valid with the main item
-			if ( ValidAttachment(usAttachment, pObj->usItem, pubAPCost) || ValidLaunchable(usAttachment, pObj->usItem) )
-				return TRUE;
+			foundValidAttachment = (ValidAttachment(usAttachment, pObj->usItem, pubAPCost) || ValidLaunchable(usAttachment, pObj->usItem));
 
 			//Loop through all attachment points on the main item
-			for(attachmentList::iterator iter = (*pObj)[subObject]->attachments.begin(); iter != (*pObj)[subObject]->attachments.end(); ++iter)
+			for (attachmentList::iterator iter = (*pObj)[subObject]->attachments.begin(); iter != (*pObj)[subObject]->attachments.end() && !foundValidAttachment; ++iter)
 			{
-				if ( iter->exists() )
+				if (iter->exists())
 				{
-					if ( ValidAttachment(usAttachment, iter->usItem, pubAPCost) || ValidLaunchable(usAttachment, iter->usItem) )
-						return TRUE;
+					foundValidAttachment = (ValidAttachment(usAttachment, iter->usItem, pubAPCost) || ValidLaunchable(usAttachment, iter->usItem));
+				}
+			}
+
+			// sevenfm: determine if we attach launchable to launcher
+			if (foundValidAttachment && pubAPCost)
+			{
+				if (Item[pObj->usItem].usItemClass == IC_LAUNCHER && ValidLaunchable(usAttachment, pObj->usItem))
+				{
+					*pubAPCost = GetAPsToReload(pObj);
+				}
+				else if (Item[pObj->usItem].usItemClass & IC_WEAPON && Item[usAttachment].usItemClass & IC_EXPLOSV)
+				{
+					for (attachmentList::iterator iter_launcher = (*pObj)[0]->attachments.begin(); iter_launcher != (*pObj)[0]->attachments.end(); ++iter_launcher)
+					{
+						if (iter_launcher->exists() && ValidLaunchable(usAttachment, iter_launcher->usItem))
+						{
+							*pubAPCost = GetAPsToReload(&(*iter_launcher));
+							break;
+						}
+					}
 				}
 			}
 		}
 
-		return FALSE;
+		return foundValidAttachment;
 	}
 
 	return( ValidAttachment(usAttachment, pObj->usItem, pubAPCost) );
@@ -2359,8 +2384,27 @@ UINT8 AttachmentAPCost( UINT16 usAttachment, OBJECTTYPE * pObj, SOLDIERTYPE * pS
 
 	ValidAttachment(usAttachment, pObj, &ubAPCost, subObject, usAttachmentSlotIndexVector);
 
+	BOOLEAN fLaunchable = FALSE;
+	if (Item[pObj->usItem].usItemClass == IC_LAUNCHER && ValidLaunchable(usAttachment, pObj->usItem))
+	{
+		fLaunchable = TRUE;
+	}
+	// sevenfm: different cost when attaching grenade to attached launcher
+	else if (Item[pObj->usItem].usItemClass & IC_WEAPON && Item[usAttachment].usItemClass & IC_EXPLOSV)
+	{
+		OBJECTTYPE *pLauncher;
+		for (attachmentList::iterator iter = (*pObj)[0]->attachments.begin(); iter != (*pObj)[0]->attachments.end(); ++iter)
+		{
+			if (iter->exists() && ValidLaunchable(usAttachment, iter->usItem))
+			{
+				fLaunchable = TRUE;
+			}
+		}
+	}
+
 	// SANDRO - STOMP traits - Ambidextrous attaching objects speed bonus
-	if ( pSoldier != NULL )
+	// sevenfm: don't apply when attaching launchable to launcher
+	if (pSoldier != NULL && !fLaunchable)
 	{
 		if ( gGameOptions.fNewTraitSystem && HAS_SKILL_TRAIT( pSoldier, AMBIDEXTROUS_NT ) )
 		{
@@ -2386,6 +2430,10 @@ BOOLEAN ValidItemAttachmentSlot( OBJECTTYPE * pObj, UINT16 usAttachment, BOOLEAN
 
 	if (pObj->exists() == false)
 		return FALSE;
+
+	// shadooow: efficiency check, we are passing all kinds of items into this function that are not neccessary attachments at all
+	//if (!Item[usAttachment].attachment && !Item[usAttachment].hiddenaddon)
+		//return FALSE;
 
 	//It's possible we could get here without being sent the usAttachmentSlotIndexVector parameter
 	if(usAttachmentSlotIndexVector.empty())
@@ -2679,6 +2727,10 @@ BOOLEAN TwoHandedItem( UINT16 usItem )
 
 BOOLEAN ValidLaunchable( UINT16 usLaunchable, UINT16 usItem )
 {
+	// shadooow: efficiency check, we are passing all kinds of items into this function that are not neccessary attachments at all
+	//if (!Item[usLaunchable].attachment && !Item[usLaunchable].hiddenaddon)
+		//return FALSE;
+
 	INT32 iLoop = 0;
 	// Flugente: as this would cause launchers to happily launch attachments around the landscape, we really have to check the list of launchables
 	// if a modder decides to define launchables via attachment points, slap him and tell him not to do that
@@ -3243,7 +3295,7 @@ void SwapObjs(SOLDIERTYPE* pSoldier, int leftSlot, int rightSlot, BOOLEAN fPerma
 {
 	SwapObjs(&pSoldier->inv[ leftSlot ], &pSoldier->inv[ rightSlot ]);
 
-	if ( fPermanent && !ARMED_VEHICLE( pSoldier ) )//dnl ch64 290813 for current tank don't go further as it lead to invalid animation
+	if ( fPermanent && !ARMED_VEHICLE( pSoldier ) && !ENEMYROBOT( pSoldier ) )//dnl ch64 290813 for current tank don't go further as it lead to invalid animation
 	{
 		//old usItem for the left slot is now stored in the right slot, and vice versa
 		HandleTacticalEffectsOfEquipmentChange(pSoldier, leftSlot, pSoldier->inv[ rightSlot ].usItem, pSoldier->inv[ leftSlot ].usItem);
@@ -3424,7 +3476,8 @@ BOOLEAN ReloadGun( SOLDIERTYPE * pSoldier, OBJECTTYPE * pGun, OBJECTTYPE * pAmmo
 			CreateAmmo((*pGun)[subObject]->data.gun.usGunAmmoItem, &gTempObject, (*pGun)[subObject]->data.gun.ubGunShotsLeft);
 
 			// Flugente: safety check: if object is broken, wipe it
-			if ( gTempObject.usItem == NOTHING )
+			// sevenfm: also check for incorrect ammo item
+			if (gTempObject.usItem == NOTHING || !(Item[gTempObject.usItem].usItemClass & IC_AMMO))
 				gTempObject.initialize( );
 
 			if (fSameMagazineSize)
@@ -3533,7 +3586,7 @@ BOOLEAN ReloadGun( SOLDIERTYPE * pSoldier, OBJECTTYPE * pGun, OBJECTTYPE * pAmmo
 			}
 		}
 
-		//CHRIS: This should reset the number of bullest moved to what we can actually afford when loading loose rounds
+		//CHRIS: This should reset the number of bullets moved to what we can actually afford when loading loose rounds
 		if(Weapon[pGun->usItem].swapClips == 0 && (gTacticalStatus.uiFlags & TURNBASED) && (gTacticalStatus.uiFlags & INCOMBAT))
 		{
 			if(fEnoughAPs)
@@ -3655,7 +3708,11 @@ BOOLEAN ReloadGun( SOLDIERTYPE * pSoldier, OBJECTTYPE * pGun, OBJECTTYPE * pAmmo
 
 		if ( usReloadSound != 0 && !IsAutoResolveActive() )
 		{
-			PlayJA2Sample( usReloadSound, RATE_11025, HIGHVOLUME, 1, MIDDLEPAN );
+			// sevenfm: set volume and pan based on soldier's gridno when reloading
+			if (!TileIsOutOfBounds(pSoldier->sGridNo))
+				PlayJA2Sample(usReloadSound, RATE_11025, SoundVolume((INT8)HIGHVOLUME, pSoldier->sGridNo), 1, SoundDir(pSoldier->sGridNo));
+			else
+				PlayJA2Sample( usReloadSound, RATE_11025, HIGHVOLUME, 1, MIDDLEPAN );
 		}
 	}
 
@@ -3875,12 +3932,12 @@ INT8 FindAmmoToReload( SOLDIERTYPE * pSoldier, INT8 bWeaponIn, INT8 bExcludeSlot
 	}
 }
 
-BOOLEAN AutoReload( SOLDIERTYPE * pSoldier )
+BOOLEAN AutoReload( SOLDIERTYPE * pSoldier, bool aReloadEvenIfNotEmpty )
 {
 	OBJECTTYPE *pObj, *pObj2;
 	INT8		bSlot;
 	INT16 bAPCost;
-	BOOLEAN		fRet;
+	BOOLEAN		fRet = FALSE;
 
 	CHECKF( pSoldier );
 
@@ -3982,38 +4039,45 @@ BOOLEAN AutoReload( SOLDIERTYPE * pSoldier )
 
 	if (Item[pObj->usItem].usItemClass == IC_GUN || Item[pObj->usItem].usItemClass == IC_LAUNCHER)
 	{
-		bSlot = FindAmmoToReload( pSoldier, HANDPOS, NO_SLOT );
-		if (bSlot != NO_SLOT)
+		// Flugente: only reload if it's empty, or we really want to
+		if ( aReloadEvenIfNotEmpty || !EnoughAmmo( pSoldier, FALSE, HANDPOS ) )
 		{
-			// reload using this ammo!
-			fRet = ReloadGun( pSoldier, pObj, &(pSoldier->inv[bSlot]) );
-			// if we are valid for two-pistol shooting (reloading) and we have enough APs still
-			// then do a reload of both guns!
-			if ( (fRet == TRUE) && pSoldier->IsValidSecondHandShotForReloadingPurposes( ) )
+			bSlot = FindAmmoToReload( pSoldier, HANDPOS, NO_SLOT );
+			if ( bSlot != NO_SLOT )
 			{
-				// Flugente: check for underbarrel weapons and use that object if necessary
-				pObj = pSoldier->GetUsedWeapon( &(pSoldier->inv[SECONDHANDPOS]) );
+				// reload using this ammo!
+				fRet = ReloadGun( pSoldier, pObj, &( pSoldier->inv[bSlot] ) );
+			}
+		}
 
-				bSlot = FindAmmoToReload( pSoldier, SECONDHANDPOS, NO_SLOT );
-				if (bSlot != NO_SLOT)
+		// if we are valid for two-pistol shooting (reloading) and we have enough APs still
+		// then do a reload of both guns!
+		// Flugente: only reload if it's empty, or we really want to
+		if ( pSoldier->IsValidSecondHandShotForReloadingPurposes()
+			&& ( aReloadEvenIfNotEmpty || !EnoughAmmo( pSoldier, FALSE, SECONDHANDPOS ) ) )
+		{
+			// Flugente: check for underbarrel weapons and use that object if necessary
+			pObj = pSoldier->GetUsedWeapon( &( pSoldier->inv[SECONDHANDPOS] ) );
+
+			bSlot = FindAmmoToReload( pSoldier, SECONDHANDPOS, NO_SLOT );
+			if ( bSlot != NO_SLOT )
+			{
+				// ce would reload using this ammo!
+				bAPCost = GetAPsToReloadGunWithAmmo( pSoldier, pObj, &( pSoldier->inv[bSlot] ) );
+				if ( EnoughPoints( pSoldier, (INT16)bAPCost, 0, FALSE ) )
 				{
-					// ce would reload using this ammo!
-					bAPCost = GetAPsToReloadGunWithAmmo( pSoldier, pObj, &(pSoldier->inv[bSlot] ) );
-					if ( EnoughPoints( pSoldier, (INT16) bAPCost, 0, FALSE ) )
-					{
-						// reload the 2nd gun too
-						fRet = ReloadGun( pSoldier, pObj, &(pSoldier->inv[bSlot]) );
-					}
-					else
-					{
-						ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, Message[ STR_RELOAD_ONLY_ONE_GUN ], pSoldier->GetName() );
-					}
+					// reload the 2nd gun too
+					fRet = ReloadGun( pSoldier, pObj, &( pSoldier->inv[bSlot] ) );
+				}
+				else
+				{
+					ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, Message[STR_RELOAD_ONLY_ONE_GUN], pSoldier->GetName() );
 				}
 			}
-
-			DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
-			return( fRet );
 		}
+
+		DirtyMercPanelInterface( pSoldier, DIRTYLEVEL2 );
+		return( fRet );
 	}
 
 	// couldn't reload
@@ -5637,51 +5701,43 @@ BOOLEAN OBJECTTYPE::AttachObjectNAS( SOLDIERTYPE * pSoldier, OBJECTTYPE * pAttac
 }
 
 //CHRISL: Use this function to sort through Attachments.xml and Launchables.xml
-UINT64 SetAttachmentSlotsFlag(OBJECTTYPE* pObj){
+UINT64 SetAttachmentSlotsFlag(OBJECTTYPE* pObj)
+{
 	UINT64		uiSlotFlag = 0;
 	UINT32		uiLoop = 0;
 	UINT32		fItem;
 
-	if(pObj->exists()==false)
+	if (pObj->exists() == false)
 		return 0;
 
-	//Madd: Common Attachment Framework
 	UINT64 point = GetAvailableAttachmentPoint(pObj, 0);
 
-	while(1)
+	while (uiLoop < gMAXITEMS_READ && Item[uiLoop].usItemClass != 0 ||
+			uiLoop < MAXATTACHMENTS && Attachment[uiLoop][0] != 0 ||
+			uiLoop < MAXITEMS + 1 && Launchable[uiLoop][0] != 0)
 	{
-		fItem = 0;
-		//Madd: Common Attachment Framework
-		if (IsAttachmentPointAvailable(point, uiLoop, TRUE))
+		if (uiLoop > 0 && uiLoop < gMAXITEMS_READ && IsAttachmentPointAvailable(point, uiLoop, TRUE))
 		{
 			fItem = uiLoop;
-			if(fItem && ItemIsLegal(fItem, TRUE))	// We've found a valid attachment.  Set the nasAttachmentSlots flag appropriately
+			if (fItem && ItemIsLegal(fItem, TRUE))
 				uiSlotFlag |= Item[fItem].nasAttachmentClass;
 		}
 
-		if (Attachment[uiLoop][1] == pObj->usItem)
+		if (uiLoop < MAXATTACHMENTS && Attachment[uiLoop][1] == pObj->usItem)
 		{
 			fItem = Attachment[uiLoop][0];
-
-			if(fItem && ItemIsLegal(fItem, TRUE))	
+			if (fItem && ItemIsLegal(fItem, TRUE))
 				uiSlotFlag |= Item[fItem].nasAttachmentClass;
 		}
 
-		if (Launchable[uiLoop][1] == pObj->usItem )
+		if (uiLoop < MAXITEMS + 1 && Launchable[uiLoop][1] == pObj->usItem)
 		{
 			fItem = Launchable[uiLoop][0];
-
-			if(fItem && ItemIsLegal(fItem, TRUE))	
+			if (fItem && ItemIsLegal(fItem, TRUE))
 				uiSlotFlag |= Item[fItem].nasAttachmentClass;
 		}
 
-		++uiLoop;
-
-		if (Attachment[uiLoop][0] == 0 && Launchable[uiLoop][0] == 0 && Item[uiLoop].usItemClass == 0 )
-		{
-			// No more attachments to search
-			break;
-		}
+		uiLoop++;
 	}
 
 	return uiSlotFlag;
@@ -6100,7 +6156,7 @@ attachmentList ReInitMergedItem(SOLDIERTYPE* pSoldier, OBJECTTYPE* pObj, UINT16 
 		if(Item[Item[pObj->usItem].defaultattachments[cnt]].inseparable == 1){
 			OBJECTTYPE defaultAttachment;
 			CreateItem(Item [ pObj->usItem ].defaultattachments[cnt],(*pObj)[ubStatusIndex]->data.objectStatus,&defaultAttachment);
-			AssertMsg(pObj->AttachObject(NULL,&defaultAttachment, FALSE, ubStatusIndex, -1, FALSE), "A default attachment could not be attached after merging, this should not be possible.");
+			AssertMsg(pObj->AttachObject(NULL, &defaultAttachment, FALSE, ubStatusIndex, -1, FALSE), String("A default attachment could not be attached after merging, this should not be possible. item %d attachment %d", pObj->usItem, defaultAttachment.usItem));
 		}
 	}
 
@@ -6541,6 +6597,10 @@ INT32 PickPocket(SOLDIERTYPE *pSoldier, UINT8 ppStart, UINT8 ppStop, UINT16 usIt
 		}
 		else {
 			pIndex=LoadBearingEquipment[Item[pSoldier->inv[icLBE[uiPos]].usItem].ubClassIndex].lbePocketIndex[icPocket[uiPos]];
+			if (pIndex == 0 && LoadBearingEquipment[Item[pSoldier->inv[icLBE[uiPos]].usItem].ubClassIndex].lbePocketsAvailable & (UINT16)pow((double)2, icPocket[uiPos]))
+			{
+				pIndex = GetPocketFromAttachment(&pSoldier->inv[icLBE[uiPos]], icPocket[uiPos]);
+			}
 		}
 		// Here's were we get complicated.  We should look for the smallest pocket all items can fit in
 		if(LBEPocketType[pIndex].ItemCapacityPerSize[Item[usItem].ItemSize] >= iNumber &&
@@ -6600,10 +6660,13 @@ BOOLEAN PlaceObject( SOLDIERTYPE * pSoldier, INT8 bPos, OBJECTTYPE * pObj )
 	{
 		if ( !CompatibleFaceItem( pObj->usItem, pSoldier->inv[ HEAD2POS ].usItem ) )
 		{
-			CHAR16	zTemp[ 150 ];
-
-			swprintf( zTemp, Message[ STR_CANT_USE_TWO_ITEMS ], ItemNames[ pObj->usItem ], ItemNames[ pSoldier->inv[ HEAD2POS ].usItem ] );
-			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, zTemp );
+			if (gpItemPointer)
+			{
+				CHAR16	zTemp[150];
+				swprintf(zTemp, Message[STR_CANT_USE_TWO_ITEMS], ItemNames[pObj->usItem], ItemNames[pSoldier->inv[HEAD2POS].usItem]);
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, zTemp);
+			}
+			
 			return( FALSE );
 		}
 	}
@@ -6611,10 +6674,13 @@ BOOLEAN PlaceObject( SOLDIERTYPE * pSoldier, INT8 bPos, OBJECTTYPE * pObj )
 	{
 		if ( !CompatibleFaceItem( pObj->usItem, pSoldier->inv[ HEAD1POS ].usItem ) )
 		{
-			CHAR16	zTemp[ 150 ];
-
-			swprintf( zTemp, Message[ STR_CANT_USE_TWO_ITEMS ], ItemNames[ pObj->usItem ], ItemNames[ pSoldier->inv[ HEAD1POS ].usItem ] );
-			ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, zTemp );
+			if (gpItemPointer)
+			{
+				CHAR16	zTemp[150];
+				swprintf(zTemp, Message[STR_CANT_USE_TWO_ITEMS], ItemNames[pObj->usItem], ItemNames[pSoldier->inv[HEAD1POS].usItem]);
+				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_UI_FEEDBACK, zTemp);
+			}
+			
 			return( FALSE );
 		}
 	}
@@ -9085,7 +9151,7 @@ void CheckEquipmentForDamage( SOLDIERTYPE *pSoldier, INT32 iDamage )
 	BOOLEAN			fBlowsUp;
 	UINT8				ubNumberOfObjects;
 
-	if ( ARMED_VEHICLE( pSoldier ) )
+	if ( ARMED_VEHICLE( pSoldier ) || ENEMYROBOT( pSoldier ) )
 	{
 		return;
 	}
@@ -11783,7 +11849,7 @@ UINT8 GetPercentTunnelVision( SOLDIERTYPE * pSoldier )
 		IS_MERC_BODY_TYPE(pSoldier) && (pSoldier->bTeam == ENEMY_TEAM || pSoldier->bTeam == MILITIA_TEAM || pSoldier->bTeam == gbPlayerNum) )
 	{
 		// Make sure character is cowering.
-		if ( CoweringShockLevel(pSoldier) && gGameExternalOptions.ubMaxSuppressionShock > 0 && 
+		if ( pSoldier->IsCowering() && gGameExternalOptions.ubMaxSuppressionShock > 0 && 
 			bonus < 100 )
 		{
 			// Calculates a "Flat" tunnel vision percentage
@@ -12810,6 +12876,55 @@ UINT16 GetFirstExplosiveOfType(UINT16 expType)
 	return 0;
 }
 
+// sevenfm: same as GetFirstExplosiveOfType, but check only hand grenades
+UINT16 GetFirstHandGrenadeOfType(UINT16 expType)
+{
+	for (UINT16 i = 0; i < gMAXITEMS_READ; i++)
+	{
+		if (ItemIsHandGrenade(i) &&
+			Item[i].ubCoolness > 0 &&
+			Explosive[Item[i].ubClassIndex].ubType == expType)
+			return i;
+	}
+
+	return 0;
+}
+
+// sevenfm: use to substitute default item with first matching if needed
+UINT16 GetHandGrenadeOfType(UINT16 usDefaultItem, UINT16 usType)
+{
+	UINT16 usSmokeItem = usDefaultItem;
+
+	if (usSmokeItem > 0 &&
+		ItemIsHandGrenade(usSmokeItem) &&
+		Item[usSmokeItem].ubCoolness > 0 &&
+		Explosive[Item[usSmokeItem].ubClassIndex].ubType == usType)
+		return usSmokeItem;
+
+	usSmokeItem = GetFirstHandGrenadeOfType(EXPLOSV_SMOKE);
+
+	if (usSmokeItem > 0 &&
+		ItemIsHandGrenade(usSmokeItem) &&
+		Item[usSmokeItem].ubCoolness > 0 &&
+		Explosive[Item[usSmokeItem].ubClassIndex].ubType == usType)
+		return usSmokeItem;
+
+	return 0;
+}
+
+// sevenfm: check if item is valid hand grenade
+BOOLEAN ItemIsHandGrenade(UINT16 usItem)
+{
+	if (usItem > 0 &&
+		Item[usItem].usItemClass == IC_GRENADE &&
+		Item[usItem].ubCursor == TOSSCURS)
+	{
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 // WDS - Smart goggle switching
 OBJECTTYPE* FindSunGogglesInInv( SOLDIERTYPE * pSoldier, INT8 * bSlot, BOOLEAN * isAttach, BOOLEAN searchAllInventory )
 {
@@ -13767,7 +13882,8 @@ INT16 GetReliability( OBJECTTYPE * pObj )
 	
 	for (attachmentList::iterator iter = (*pObj)[0]->attachments.begin(); iter != (*pObj)[0]->attachments.end(); ++iter)
 	{
-		if(iter->exists())
+		// sevenfm: attached weapons should not add reliability
+		if(iter->exists() && !(Item[iter->usItem].usItemClass & IC_WEAPON))
 			bonus += Item[iter->usItem].bReliability;
 	}
 
@@ -14993,7 +15109,7 @@ BOOLEAN OBJECTTYPE::TransformObject( SOLDIERTYPE * pSoldier, UINT8 ubStatusIndex
 	pSoldier->HandleFlashLights();
 
 	// sevenfm: handle sight change
-	HandleSight(pSoldier, SIGHT_LOOK | SIGHT_INTERRUPT);
+	HandleSight(pSoldier, SIGHT_LOOK);
 
 	// Signal a successful transformation.
 	return TRUE;
@@ -15765,4 +15881,34 @@ BOOLEAN CanDelayGrenadeExplosion( UINT16 usItem )
 	}
 
 	return TRUE;
+}
+
+FLOAT GetBestScopeMagFactorForGun(UINT16 ausItemGun)
+{
+	FLOAT bestscopemagfactor = 1.0f;
+
+	for ( UINT16 usItem = 1; usItem < gMAXITEMS_READ; ++usItem )
+	{
+		if ( ValidAttachment( usItem, ausItemGun )  )
+		{
+			if ( bestscopemagfactor < Item[usItem].scopemagfactor )
+				bestscopemagfactor = Item[usItem].scopemagfactor;
+		}
+	}
+
+	return bestscopemagfactor;
+}
+
+bool HasScopeMagFactorForGun( UINT16 ausItemGun, FLOAT aFactor )
+{
+	for ( UINT16 usItem = 1; usItem < gMAXITEMS_READ; ++usItem )
+	{
+		if ( ValidAttachment( usItem, ausItemGun ) )
+		{
+			if ( std::fabs( Item[usItem].scopemagfactor - aFactor ) < 0.1 )
+				return true;
+		}
+	}
+
+	return false;
 }

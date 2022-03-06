@@ -3,44 +3,36 @@
 #ifdef PRECOMPILEDHEADERS
 	#include "TileEngine All.h"
 #else
-	#include <stdio.h>
-	#include <time.h>
 	#include "sgp.h"
 	#include "Radar Screen.h"
+	#include "sysutil.h"
 	#include "line.h"
 	#include "renderworld.h"
-	#include "Isometric Utils.h"
-	#include "Interface.h"
-	#include "overhead.h"
-	#include "Soldier Control.h"
 	#include "lighting.h"
 	#include "wcheck.h"
-	#include "sysutil.h"
 	#include "render dirty.h"
 	#include "overhead map.h"
 	#include "Squads.h"
-	#include "mousesystem.h"
 	#include "Text.h"
-	#include "Font Control.h"
-	#include "vobject.h"
 	#include "Utilities.h"
 	#include "Interface Control.h"
 	#include "Game Clock.h"
 	#include "Map Screen Interface Map Inventory.h"
-	#include "meanwhile.h"
-	#include "strategicmap.h"
 	#include "Animation Data.h"
-	#include "GameSettings.h"
-	#include "Map Screen Interface.h"	// added by Flugente
 #endif
 
 //forward declarations of common classes to eliminate includes
 class OBJECTTYPE;
 class SOLDIERTYPE;
+extern std::vector<std::wstring> gSquadNameVector;
+extern INT8	gbWorldSectorZ;
+extern BOOLEAN AreInMeanwhile();
 #include "connect.h"
 
+extern BOOLEAN gfTacticalPlacementGUIActive;
 extern INT32 iCurrentMapSectorZ;
-
+extern UINT16 UI_BOTTOM_X;
+extern UINT16 UI_BOTTOM_Y;
 void AdjustWorldCenterFromRadarCoords( INT16 sRadarX, INT16 sRadarY );
 
 
@@ -90,10 +82,18 @@ MOUSE_REGION gRadarRegionSquadList[ NUMBER_OF_SQUADS ];
 
 void InitRadarScreenCoords( )
 {
+	if (isWidescreenUI())
+	{
+		RADAR_WINDOW_STRAT_X = UI_BOTTOM_X + 1182;
+		RADAR_WINDOW_STRAT_Y = UI_BOTTOM_Y + 9;
+	}
+	else
+	{
+		RADAR_WINDOW_STRAT_X 	= xResOffset + (xResSize - 97);
+		RADAR_WINDOW_STRAT_Y 	= (SCREEN_HEIGHT - 107);
+	}
 	RADAR_WINDOW_TM_X 		= xResOffset + (xResSize - 97);
 	RADAR_WINDOW_SM_X 		= xResOffset + (xResSize - 97);
-	RADAR_WINDOW_STRAT_X 	= xResOffset + (xResSize - 97);
-	RADAR_WINDOW_STRAT_Y 	= (SCREEN_HEIGHT - 107);
 
 	RADAR_WINDOW_TM_Y = (INTERFACE_START_Y + 13);
 	RADAR_WINDOW_SM_Y = ((UsingNewInventorySystem() == false)) ? (INV_INTERFACE_START_Y + 33) : (INV_INTERFACE_START_Y + 116);
@@ -280,7 +280,7 @@ void RadarRegionButtonCallback( MOUSE_REGION * pRegion, INT32 iReason )
 	INT16 sRadarX, sRadarY;
 
 	// check if we are allowed to do anything?
-	if( fRenderRadarScreen == FALSE )
+	if( fRenderRadarScreen == FALSE || gfTacticalPlacementGUIActive)
 	{
 		return;
 	}

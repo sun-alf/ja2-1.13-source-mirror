@@ -99,6 +99,7 @@ enum
 	BURIAL,							// merc removes corpses in this sector
 	ADMINISTRATION,					// merc boosts the effectiveness of other mercs
 	EXPLORATION,					// merc searches the sector for undiscovered items
+	ASSIGNMENT_MINIEVENT,
 	NUM_ASSIGNMENTS,
 };
 
@@ -583,7 +584,7 @@ void HandleGatheringInformationBySoldier( SOLDIERTYPE* pSoldier );
 
 BOOLEAN MercStaffsMilitaryHQ();
 
-BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier );
+BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier, bool bAllow1stAidKit = false);
 
 UINT8 CalcSoldierNeedForSleep( SOLDIERTYPE *pSoldier );
 
