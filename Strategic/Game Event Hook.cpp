@@ -672,6 +672,13 @@ BOOLEAN ExecuteStrategicEvent( STRATEGICEVENT *pEvent )
 		case EVENT_ARMY_FINISH_TRAINING:
 			giReinforcementPool += (INT32)pEvent->uiParam;
 			giTotalRecruitsInTraining -= (INT32)pEvent->uiParam;
+
+			{  //TEMP:
+				#include "Debug Control.h"
+				CHAR tmpMPDbgString[512];
+				sprintf( tmpMPDbgString, "Day %d %02d:%02d : ReinforcementsPool %d (+%d), RecruitsInTraining %d (-%d)\n", GetWorldDay(), guiHour, guiMin, giReinforcementPool, (INT32)pEvent->uiParam, giTotalRecruitsInTraining, (INT32)pEvent->uiParam );
+				MPDebugMsg( tmpMPDbgString );
+			}
 			break;
 
 		case EVENT_MINIEVENT:

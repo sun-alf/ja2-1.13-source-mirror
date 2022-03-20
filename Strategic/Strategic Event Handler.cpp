@@ -953,6 +953,37 @@ void HandleEarlyMorningEvents( void )
 					UINT32 endTimeMin = GetWorldTotalMin() + poolIncDays * NUM_MIN_IN_DAY - 1;  // -1 minute: training should end right before a new recruiting session, otherwise we may ignore some training space at moment of EarlyMorningEvent
 					AddStrategicEvent( EVENT_ARMY_FINISH_TRAINING, endTimeMin, (UINT32)newRecruitsTaken );
 					giTotalRecruitsInTraining += newRecruitsTaken;
+
+					{  //TEMP:
+						#include "Debug Control.h"
+						CHAR tmpMPDbgString[512];
+						sprintf( tmpMPDbgString, "Day %d %02d:%02d : ReinforcementsPool %d (+0), RecruitsInTraining %d (+%d)\n", GetWorldDay(), guiHour, guiMin, giReinforcementPool, giTotalRecruitsInTraining, newRecruitsTaken );
+						MPDebugMsg( tmpMPDbgString );
+
+						if ( GetWorldDay() == 1 )
+						{
+							extern INT32 giGarrisonArraySize;
+							extern GARRISON_GROUP* gGarrisonGroup;
+							int totalAllocatedMen = 0;
+							for ( int i = 0; i < giGarrisonArraySize; i++ )
+							{
+								SECTORINFO* pSector = &SectorInfo[gGarrisonGroup[i].ubSectorID];
+								int totalInSector = pSector->ubNumAdmins + pSector->ubNumTroops + pSector->ubNumElites;
+
+								int x = SECTORX( gGarrisonGroup[i].ubSectorID );
+								int y = SECTORY( gGarrisonGroup[i].ubSectorID );
+								CHAR16 wName[128];
+								GetSectorIDString( x, y, 0, wName, FALSE );
+
+								sprintf( tmpMPDbgString, "Sector ID %u (%s%s)  = %d : admins %d, troops %d, elites %d",
+									gGarrisonGroup[i].ubSectorID, wName, &wName[1], totalInSector, pSector->ubNumAdmins, pSector->ubNumTroops, pSector->ubNumElites );
+								MPDebugMsg( tmpMPDbgString );
+								totalAllocatedMen += totalInSector;
+							}
+							sprintf( tmpMPDbgString, "TOTAL ALLOCATED : %d\n", totalAllocatedMen );
+							MPDebugMsg( tmpMPDbgString );
+						}
+					}
 				}
 			}
 		}
