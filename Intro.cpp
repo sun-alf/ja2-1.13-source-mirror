@@ -24,7 +24,9 @@
 	#include "soldier profile type.h"
 	#include "MessageBoxScreen.h"
 	#include "sgp_logger.h"
-#include "INIReader.h"
+	#include "Soldier Profile.h"
+	#include "Game Init.h"
+	#include "INIReader.h"
 #endif
 
 #include <vfs/Core/vfs.h>
@@ -356,7 +358,7 @@ UINT32	IntroScreenHandle( void )
 		InvalidateRegion( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT );
 	}
 
-	RestoreBackgroundRects();
+	//RestoreBackgroundRects();//shadooow: fixes graphical artefacts visible around end game videos
 
 
 	GetIntroScreenUserInput();
@@ -391,7 +393,7 @@ Test = 0;
 	SetMusicMode( MUSIC_NONE );
 
 	// WANNE: No we have an INI option for the choise if the intro should be played
-	if (!iPlayIntro)
+	if (!iPlayIntro && gbIntroScreenMode != INTRO_ENDING)
 	{
 		PrepareToExitIntroScreen();
 		return( TRUE );
