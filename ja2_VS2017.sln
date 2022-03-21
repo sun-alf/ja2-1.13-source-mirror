@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26228.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VFS", "ext\VFS\build\VFS_VS2017.vcxproj", "{463CB476-2798-493F-9CE8-CEAC5ECE5664}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -82,6 +82,7 @@ Global
 		{463CB476-2798-493F-9CE8-CEAC5ECE5664}.MapEditorD|Win32.Build.0 = MapEditorD|Win32
 		{463CB476-2798-493F-9CE8-CEAC5ECE5664}.Release_WithDebugInfo|Win32.ActiveCfg = Release_WithDebugInfo|Win32
 		{463CB476-2798-493F-9CE8-CEAC5ECE5664}.Release_WithDebugInfo|Win32.Build.0 = Release_WithDebugInfo|Win32
+		{463CB476-2798-493F-9CE8-CEAC5ECE5664}.Release_WithDebugInfo|Win32.Deploy.0 = Release_WithDebugInfo|Win32
 		{463CB476-2798-493F-9CE8-CEAC5ECE5664}.Release|Win32.ActiveCfg = Release|Win32
 		{463CB476-2798-493F-9CE8-CEAC5ECE5664}.Release|Win32.Build.0 = Release|Win32
 		{D027A0E1-C661-4B8C-8159-4E0BF3D163AA}.Debug|Win32.ActiveCfg = Debug|Win32

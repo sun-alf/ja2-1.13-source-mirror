@@ -975,8 +975,10 @@ void HandleEarlyMorningEvents( void )
 								CHAR16 wName[128];
 								GetSectorIDString( x, y, 0, wName, FALSE );
 
-								sprintf( tmpMPDbgString, "Sector ID %u (%s%s)  = %d : admins %d, troops %d, elites %d",
-									gGarrisonGroup[i].ubSectorID, wName, &wName[1], totalInSector, pSector->ubNumAdmins, pSector->ubNumTroops, pSector->ubNumElites );
+								sprintf( tmpMPDbgString, "Sector ID %u (%s%s%s)  = %d : admins %d, troops %d, elites %d",
+									gGarrisonGroup[i].ubSectorID,
+									wName, &wName[1], (wName[2] >= '0' && wName[2] <= '9') ? (char*) &wName[2] : "",
+									totalInSector, pSector->ubNumAdmins, pSector->ubNumTroops, pSector->ubNumElites );
 								MPDebugMsg( tmpMPDbgString );
 								totalAllocatedMen += totalInSector;
 							}
