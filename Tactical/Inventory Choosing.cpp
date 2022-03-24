@@ -98,8 +98,8 @@ void ChooseBombsForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bBombClas
 void ChooseLBEsForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bLBEClass );
 
 UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass);
-UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 maxCoolness);
-UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 maxCoolness, BOOLEAN getMatchingCoolness);
+UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness);
+UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness, BOOLEAN getMatchingCoolness);
 UINT16 PickARandomAttachment(UINT8 typeIndex, INT8 bSoldierClass, UINT16 usBaseItem, UINT8 maxCoolness, BOOLEAN getMatchingCoolness);
 
 void InitArmyGunTypes(void)
@@ -833,8 +833,7 @@ void GenerateRandomEquipment( SOLDIERCREATE_STRUCT *pp, INT8 bSoldierClass, INT8
 //selection for that particular type of item, and 1-11 means to choose an item if possible.  1 is
 //the worst class of item, while 11 is the best.
 
-void ChooseWeaponForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bWeaponClass,
-																				 INT8 bAmmoClips, INT8 bAttachClass, BOOLEAN fAttachment )
+void ChooseWeaponForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bWeaponClass, INT8 bAmmoClips, INT8 bAttachClass, BOOLEAN fAttachment )
 {
 	//INVTYPE *pItem;
 	UINT16 i;
@@ -1454,8 +1453,12 @@ void ChooseGrenadesForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bGrena
 void ChooseArmourForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bHelmetClass, INT8 bVestClass, INT8 bLeggingsClass )
 {
 	DebugMsg (TOPIC_JA2,DBG_LEVEL_3,"ChooseArmourForSoldierCreateStruct");
-
+	//UINT16 i;
+	//INVTYPE *pItem;
+	//UINT16 usRandom;
 	UINT16 usItem = 0, usHelmetItem = 0, usVestItem = 0, usLeggingsItem = 0;
+	//UINT16 usNumMatches;
+	//INT8 bOrigVestClass = bVestClass;
 
 	// This option wants us to dress soldier up surely. But unfortunately it cannot be guaranteed due to:
 	// * item choises XML can be empty
@@ -1471,7 +1474,7 @@ void ChooseArmourForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bHelmetC
 		usHelmetItem = PickARandomItem(HELMET, pp->ubSoldierClass, bHelmetClass, TRUE);
 		usVestItem = PickARandomItem(VEST, pp->ubSoldierClass, bVestClass, TRUE);
 		usLeggingsItem = PickARandomItem(LEGS, pp->ubSoldierClass, bLeggingsClass, TRUE);
-		
+
 		// PickARandomItem(getMatchingCoolness = TRUE) must have a strong reason to return 0 disregarding wantedCoolness
 		// we pass, e.g. itemChoices is empty or filled with improper items. So let's make another attempt to ensure we did
 		// all what we can. Unlikely it will help, though.
@@ -1482,6 +1485,8 @@ void ChooseArmourForSoldierCreateStruct( SOLDIERCREATE_STRUCT *pp, INT8 bHelmetC
 		if (usLeggingsItem == 0)
 			usLeggingsItem = PickARandomItem(LEGS, pp->ubSoldierClass, bLeggingsClass, TRUE);
 	}
+
+	//Madd: added minimum protection of 10 for armours to be used by enemies
 
 	//Choose helmet
 	if( bHelmetClass )
@@ -3291,9 +3296,9 @@ UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass)
 {
 	return PickARandomItem(typeIndex, bSoldierClass, 100,FALSE);
 }
-UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 maxCoolness)
+UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness)
 {
-	return PickARandomItem(typeIndex, bSoldierClass, maxCoolness,TRUE);
+	return PickARandomItem(typeIndex, bSoldierClass, wantedCoolness,TRUE);
 }
 UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness, BOOLEAN getMatchingCoolness)
 {
@@ -3320,8 +3325,8 @@ UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness
 		if ( i > gArmyItemChoices[bSoldierClass][ typeIndex ].ubChoices )
 			break;
 
-		if ( getMatchingCoolness == TRUE )
-			uiChoice = Random(gArmyItemChoices[bSoldierClass][ typeIndex ].ubChoices);
+		if (getMatchingCoolness == TRUE)
+			uiChoice = Random(gArmyItemChoices[bSoldierClass][typeIndex].ubChoices);
 		else  // otherwise there is a chance to pick nothing!
 			uiChoice = Random(gArmyItemChoices[bSoldierClass][typeIndex].ubChoices + (int)(gArmyItemChoices[bSoldierClass][typeIndex].ubChoices / 3));
 
@@ -3352,7 +3357,7 @@ UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness
 			{
 				// Only pick items, that have not a negative day vision bonus range
 				// So we only pick normal items and day items (sun googles, ...)
-				if (Item[usItem].dayvisionrangebonus >= 0)
+				if (Item[usItem].dayvisionrangebonus >= 0 )
 				{
 					pickItem = TRUE;
 				}
@@ -3362,18 +3367,22 @@ UINT16 PickARandomItem(UINT8 typeIndex, INT8 bSoldierClass, UINT8 wantedCoolness
 			{
 				// Only pick items, that have not a negative night vision bonus range
 				// So we only pick normal items and night items (NVG, ...)
-				if (Item[usItem].nightvisionrangebonus >= 0)
+				if (Item[usItem].nightvisionrangebonus >= 0 )
 				{
 					pickItem = TRUE;
 				}
 			}
 		}
 
+
+		//Madd: quickfix: don't use NVGs during the day, and no sungoggles at night either
+		//if ( usItem >= 0 && Item[usItem].ubCoolness <= maxCoolness && ItemIsLegal(usItem) && (( DayTime() && Item[usItem].nightvisionrangebonus == 0 ) || ( NightTime() && Item[usItem].dayvisionrangebonus == 0 )))
+
 		if (pickItem == TRUE)
 		{
 			// pick a default item in case we don't find anything with a matching coolness, but pick the most matching (by coolness) item
-			if (defaultItem == 0 ||
-				abs((int)wantedCoolness - (int)Item[usItem].ubCoolness) < abs((int)wantedCoolness - (int)Item[defaultItem].ubCoolness) )
+			if ( defaultItem == 0 ||
+				abs((int)wantedCoolness - (int)Item[usItem].ubCoolness) < abs((int)wantedCoolness - (int)Item[defaultItem].ubCoolness))
 			{
 				defaultItem = usItem;
 			}
