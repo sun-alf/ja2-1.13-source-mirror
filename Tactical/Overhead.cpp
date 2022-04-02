@@ -11931,6 +11931,10 @@ BOOLEAN GetPossibleVIPSector( UINT16& aSector)
 		if ( town == SAN_MONA )
 			continue;
 
+		// Omerta is ruined and uninhabited
+		if ( town == OMERTA )
+			continue;
+
 		// no tiny towns
 		if ( GetTownSectorSize( town ) < 2 )
 			continue;

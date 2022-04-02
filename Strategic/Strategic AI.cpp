@@ -1453,15 +1453,15 @@ void InitStrategicAI()
 				case ALMA_MINE:
 				case GRUMM_MINE:
 					//Fill up extra start slots with troops
-					pSector->ubNumTroops = (UINT8)(iStartPop -= pSector->ubNumAdmins);
+					//pSector->ubNumTroops = (UINT8)(iStartPop -= pSector->ubNumAdmins);
 					break;
 				case DRASSEN_AIRPORT:
 				case DRASSEN_DEFENCE:
 				case DRASSEN_MINE:
-					pSector->ubNumAdmins = (UINT8)max( 5, pSector->ubNumAdmins );
+					//pSector->ubNumAdmins = (UINT8)max( 5, pSector->ubNumAdmins );
 					break;
 				case TIXA_PRISON:
-					pSector->ubNumAdmins = (UINT8)max( 8, pSector->ubNumAdmins );
+					//pSector->ubNumAdmins = (UINT8)max( 8, pSector->ubNumAdmins );
 					if (gGameExternalOptions.fASDActive && gGameExternalOptions.fASDAssignsRobots)
 						pSector->ubNumRobots = (UINT8)max( Random(gGameOptions.ubDifficultyLevel - 1), pSector->ubNumRobots );
 					break;
