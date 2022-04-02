@@ -1283,7 +1283,7 @@ BOOLEAN ItemIsLegal( UINT16 usItemIndex, BOOLEAN fIgnoreCoolness )
 	}
 
 	//shadooow: exclude also any item that is limited to specific system and this system isn't enabled
-	if (((Item[usItemIndex].usLimitedToSystem & 1) && !UsingFoodSystem()) || ((Item[usItemIndex].usLimitedToSystem & 2) && !gGameExternalOptions.fDisease))
+	if (((Item[usItemIndex].usLimitedToSystem & FOOD_SYSTEM_FLAG) && !UsingFoodSystem()) || ((Item[usItemIndex].usLimitedToSystem & DISEASE_SYSTEM_FLAG) && !gGameExternalOptions.fDisease))
 	{
 		return FALSE;
 	}
@@ -8117,7 +8117,7 @@ UINT16 RandomMagazine( UINT16 usItem, UINT8 ubPercentStandard, UINT8 maxCoolness
 	while ( Magazine[ usLoop ].ubCalibre != NOAMMO )
 	{
 		// make sure we have space for additional possible mag
-		if ( usPossibleMagCnt >= MAX_AMMO_TYPES_PER_GUN )
+		if (usPossibleMagCnt >= MAX_AMMO_TYPES_PER_GUN)
 			break;
 
 		loopItem = MagazineClassIndexToItemType(usLoop);
