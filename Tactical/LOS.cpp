@@ -3997,10 +3997,8 @@ UINT8 CalcChanceToGetThrough( BULLET * pBullet )
 						// in actually moving the bullet, we consider only count friends as targets if the bullet is unaimed
 						// (buckshot), if they are the intended target, or beyond the range of automatic friendly fire hits
 						// OR a 1 in 30 chance occurs
-						if ( PositionAllowsHit( pBullet, pStructure ) &&
-							 (	(pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS) ||
-								(!pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS_UNAIMED)
-							 ) )
+						if (PositionAllowsHit(pBullet, pStructure) &&
+							(pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS || !pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS_UNAIMED))
 						{
 							// could hit this person!
 							gpLocalStructure[iNumLocalStructures] = pStructure;
@@ -7273,12 +7271,11 @@ void MoveBullet( INT32 iBullet )
 							iNumLocalStructures++;
 						}
 					}
-					else if ( MercPtrs[ pStructure->usStructureID ]->bVisible == TRUE &&
-							  PositionAllowsHit( pBullet, pStructure ) &&
-							  ( (pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS) ||
-								(!pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS_UNAIMED) ||
-								PreRandom( 100 ) < MIN_CHANCE_TO_ACCIDENTALLY_HIT_SOMEONE
-							  ) )
+					else if (MercPtrs[pStructure->usStructureID]->bVisible == TRUE &&
+							PositionAllowsHit(pBullet, pStructure) &&
+							(pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS || 
+							!pBullet->fAimed && pBullet->iLoop > MIN_DIST_FOR_HIT_FRIENDS_UNAIMED ||
+							PreRandom( 100 ) < MIN_CHANCE_TO_ACCIDENTALLY_HIT_SOMEONE))
 					{
 						// could hit this person!
 						gpLocalStructure[iNumLocalStructures] = pStructure;
