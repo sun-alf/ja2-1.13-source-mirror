@@ -387,4 +387,8 @@ INT16 GetBPsToJumpWall( SOLDIERTYPE *pSoldier, BOOLEAN fClimbDown );
 INT32 GetBPCostPer10APsForGunHolding( SOLDIERTYPE * pSoldier, BOOLEAN fEstimate = FALSE );
 INT32 GetBPCostForRecoilkick( SOLDIERTYPE * pSoldier );
 
+// sevenfm
+INT16 GetAPsToBreakWindow(SOLDIERTYPE *pSoldier, BOOLEAN fStance);
+INT16 GetAPsToStartDrag(SOLDIERTYPE *pSoldier, BOOLEAN fStance);
+
 #endif

@@ -9332,7 +9332,7 @@ void CalculateSoldierAniSpeed( SOLDIERTYPE *pSoldier, SOLDIERTYPE *pStatsSoldier
 	}
 
 	// Flugente: drag people
-	if ( pSoldier->IsDraggingSomeone( false ) )
+	if ( pSoldier->IsDragging( false ) )
 	{
 		pSoldier->sAniDelay = gItemSettings.fDragAPCostModifier * pSoldier->sAniDelay;
 	}
@@ -10286,7 +10286,7 @@ UINT8 SOLDIERTYPE::SoldierTakeDamage( INT8 bHeight, INT16 sLifeDeduct, INT16 sBr
 		{
 			this->usSoldierFlagMask2 &= ~SOLDIER_TURNCOAT;
 
-			RemoveOneTurncoat( this->sSectorX, this->sSectorY, this->ubSoldierClass );
+			RemoveOneTurncoat( this->sSectorX, this->sSectorY, this->ubSoldierClass, FALSE );
 		}
 	}
 
@@ -11775,7 +11775,7 @@ void SOLDIERTYPE::MoveMerc( FLOAT dMovementChange, FLOAT dAngle, BOOLEAN fCheckR
 
 	// Flugente: as we move a tile, we would now be too far away to drag someone.
 	// So remember whether we were dragging (we have to set our position now, otherwise the person we drag woul soon occupy our gridno).
-	BOOLEAN currentlydragging = this->IsDraggingSomeone();
+	BOOLEAN currentlydragging = this->IsDragging();
 	INT32 sOldGridNo = this->sGridNo;
 
 	// OK, set new position
@@ -16169,6 +16169,10 @@ BOOLEAN		SOLDIERTYPE::SeemsLegit( UINT8 ubObserverID )
 	if ( !pSoldier )
 		return TRUE;
 
+	// rftr: turncoats ignore suspicious people/behaviour
+	if (gSkillTraitValues.fCOTurncoats && (pSoldier->usSoldierFlagMask2 & SOLDIER_TURNCOAT))
+		return TRUE;
+
 	// if we don't have the Flag: not covert
 	// important: no messages up to this point. the function will get called a lot, up to this point there is nothing unusual
 	if ( !(this->usSoldierFlagMask & (SOLDIER_COVERT_CIV | SOLDIER_COVERT_SOLDIER)) )
@@ -18322,7 +18326,8 @@ BOOLEAN	SOLDIERTYPE::CanUseSkill( INT8 iSkill, BOOLEAN fAPCheck, INT32 sGridNo )
 	case SKILLS_DRAG:
 
 		// TODO: a better check would be whether we can drag anything at the moment - CanDrag is more used for a specific person
-		if ( CanDragInPrinciple() )
+		// sevenfm: added AP check to crouch before starting to drag
+		if ((!fAPCheck || EnoughPoints(this, GetAPsToStartDrag(this, sGridNo), 0, FALSE)) && CanDragInPrinciple())
 			canuse = TRUE;
 		break;
 
@@ -18467,6 +18472,11 @@ BOOLEAN SOLDIERTYPE::UseSkill( UINT8 iSkill, INT32 usMapPos, UINT32 ID )
 		break;
 
 	case SKILLS_DRAG:
+		// sevenfm: change to crouch before dragging
+		if (gAnimControl[this->usAnimState].ubEndHeight != ANIM_CROUCH)
+		{
+			HandleStanceChangeFromUIKeys(ANIM_CROUCH);
+		}
 		if ( usMapPos != NOWHERE )
 			SetDragOrderStructure( usMapPos );
 		else if ( ID < NOBODY )
@@ -18650,8 +18660,9 @@ STR16	SOLDIERTYPE::PrintSkillDesc( INT8 iSkill, INT32 sGridNo )
 			swprintf( atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_PRONEPERSONORCORPSE] );
 			wcscat( skilldescarray, atStr );
 
-			swprintf( atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_CROUCH] );
-			wcscat( skilldescarray, atStr );
+			// sevenfm: allow to start dragging from any stance, will crouch automatically
+			//swprintf( atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_CROUCH] );
+			//wcscat( skilldescarray, atStr );
 
 			swprintf( atStr, pTraitSkillsDenialStrings[TEXT_SKILL_DENIAL_FREEHANDS] );
 			wcscat( skilldescarray, atStr );
@@ -20736,10 +20747,10 @@ void	SOLDIERTYPE::RiotShieldTakeDamage( INT32 sDamage )
 }
 
 // Flugente: drag people
-BOOLEAN		SOLDIERTYPE::CanDragInPrinciple()
+BOOLEAN		SOLDIERTYPE::CanDragInPrinciple(BOOLEAN fCheckStance)
 {
-	// only prone while crouched
-	if ( gAnimControl[this->usAnimState].ubEndHeight != ANIM_CROUCH )
+	// only allow while crouched
+	if (fCheckStance && gAnimControl[this->usAnimState].ubEndHeight != ANIM_CROUCH)
 		return FALSE;
 
 	// not in water
@@ -20753,9 +20764,9 @@ BOOLEAN		SOLDIERTYPE::CanDragInPrinciple()
 	return TRUE;
 }
 
-BOOLEAN		SOLDIERTYPE::CanDragPerson( UINT16 usID )
+BOOLEAN		SOLDIERTYPE::CanDragPerson(UINT16 usID, BOOLEAN fCheckStance)
 {
-	if ( !CanDragInPrinciple() )
+	if (!CanDragInPrinciple(fCheckStance))
 		return FALSE;
 		
 	// check whether this guy exists etc.
@@ -20794,9 +20805,9 @@ BOOLEAN		SOLDIERTYPE::CanDragPerson( UINT16 usID )
 	return FALSE;
 }
 
-BOOLEAN		SOLDIERTYPE::CanDragCorpse( UINT16 usCorpseNum )
+BOOLEAN		SOLDIERTYPE::CanDragCorpse(UINT16 usCorpseNum, BOOLEAN fCheckStance)
 {
-	if ( !CanDragInPrinciple( ) )
+	if (!CanDragInPrinciple(fCheckStance))
 		return FALSE;
 
 	ROTTING_CORPSE* pCorpse = GetRottingCorpse( usCorpseNum );
@@ -20826,9 +20837,9 @@ BOOLEAN		SOLDIERTYPE::CanDragCorpse( UINT16 usCorpseNum )
 	return FALSE;
 }
 
-BOOLEAN		SOLDIERTYPE::CanDragStructure( INT32 sGridNo )
+BOOLEAN		SOLDIERTYPE::CanDragStructure(INT32 sGridNo, BOOLEAN fCheckStance)
 {
-	if ( !CanDragInPrinciple() )
+	if (!CanDragInPrinciple(fCheckStance))
 		return FALSE;
 	
 	if ( sGridNo == NOWHERE )
@@ -21013,27 +21024,27 @@ BOOLEAN		SOLDIERTYPE::CanDragStructure( INT32 sGridNo )
 	return TRUE;
 }
 
-BOOLEAN		SOLDIERTYPE::IsDraggingSomeone( bool aStopIfConditionNotSatisfied )
+BOOLEAN		SOLDIERTYPE::IsDragging( bool aStopIfConditionNotSatisfied )
 {
-	if ( this->sDragCorpseID >= 0 )
+	if (this->sDragCorpseID >= 0)
 	{
-		if ( this->CanDragCorpse(this->sDragCorpseID) )
+		if (this->CanDragCorpse(this->sDragCorpseID, TRUE))
 			return TRUE;
-		else if ( aStopIfConditionNotSatisfied )
+		else if (aStopIfConditionNotSatisfied)
 			CancelDrag();
 	}
-	else if ( this->usDragPersonID != NOBODY )
+	else if (this->usDragPersonID != NOBODY)
 	{
-		if ( this->CanDragPerson(this->usDragPersonID) )
+		if (this->CanDragPerson(this->usDragPersonID, TRUE))
 			return TRUE;
-		else if ( aStopIfConditionNotSatisfied )
+		else if (aStopIfConditionNotSatisfied)
 			CancelDrag();
 	}
-	else if ( this->sDragGridNo != NOWHERE )
+	else if (this->sDragGridNo != NOWHERE)
 	{
-		if ( this->CanDragStructure( this->sDragGridNo ) )
+		if (this->CanDragStructure(this->sDragGridNo, TRUE))
 			return TRUE;
-		else if ( aStopIfConditionNotSatisfied )
+		else if (aStopIfConditionNotSatisfied)
 			CancelDrag();
 	}
 
@@ -21105,6 +21116,12 @@ void	SOLDIERTYPE::SetDragOrderStructure( INT32 sGridNo )
 
 void	SOLDIERTYPE::CancelDrag()
 {
+	// sevenfm: update face icon
+	if (this->usDragPersonID != NOBODY || this->sDragCorpseID != -1 || this->sDragGridNo != NOWHERE)
+	{
+		fInterfacePanelDirty = DIRTYLEVEL2;
+	}
+
 	// if we are dragging a person, set them to the center of their gridno, otherwise their position might be off
 	if (this->usDragPersonID != NOBODY)
 	{
@@ -21804,7 +21821,7 @@ BOOLEAN		SOLDIERTYPE::OrderTurnCoatToSwitchSides( UINT16 usID )
 	{
 		// remove turncoat property
 		pSoldier->usSoldierFlagMask2 &= ~SOLDIER_TURNCOAT;
-		RemoveOneTurncoat( pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->ubSoldierClass );
+		RemoveOneTurncoat( pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->ubSoldierClass, TRUE );
 
 		MakeCivHostile( pSoldier );
 
@@ -21834,7 +21851,7 @@ void		SOLDIERTYPE::OrderAllTurnCoatToSwitchSides()
 				{
 					// remove turncoat property
 					pSoldier->usSoldierFlagMask2 &= ~SOLDIER_TURNCOAT;
-					RemoveOneTurncoat( pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->ubSoldierClass );
+					RemoveOneTurncoat( pSoldier->sSectorX, pSoldier->sSectorY, pSoldier->ubSoldierClass, TRUE );
 
 					MakeCivHostile( pSoldier );
 				}
@@ -24401,6 +24418,182 @@ void BeginSoldierClimbWallUp( SOLDIERTYPE *pSoldier )
 
 }
 //------------------------------------------------------------------------------------------
+
+void SOLDIERTYPE::BreakWindow(void)
+{
+	if (this->inv[HANDPOS].exists() &&
+		this->inv[HANDPOS][0]->data.objectStatus >= USABLE &&
+		(Item[this->inv[HANDPOS].usItem].crowbar &&	Item[this->inv[HANDPOS].usItem].usItemClass & (IC_PUNCH) ||
+		Item[this->inv[HANDPOS].usItem].usItemClass & IC_GUN && Item[this->inv[HANDPOS].usItem].twohanded && Item[this->inv[HANDPOS].usItem].metal))
+	{
+		this->usAttackingWeapon = this->inv[HANDPOS].usItem;
+		this->aiData.bAction = AI_ACTION_KNIFE_STAB;
+		this->aiData.usActionData = this->sGridNo;
+		this->aiData.ubPendingAction = NO_PENDING_ACTION;
+		this->sTargetGridNo = this->sGridNo;
+		this->bTargetLevel = this->pathing.bLevel;
+		//this->sLastTarget		= sGridNo;	//dnl ch73 021013
+		this->ubTargetID = NOBODY; //WhoIsThere2(this->sTargetGridNo, this->bTargetLevel);
+		this->EVENT_InitNewSoldierAnim(CROWBAR_ATTACK, 0, FALSE);
+		SetUIBusy(this->ubID);
+
+		DeductPoints(this, GetAPsToBreakWindow(this, FALSE), BP_USE_CROWBAR);
+	}
+}
+
+BOOLEAN SOLDIERTYPE::CanBreakWindow(void)
+{
+	if (this->stats.bLife >= OKLIFE &&
+		!this->IsUnconscious() &&
+		IS_MERC_BODY_TYPE(this) &&
+		this->inv[HANDPOS].exists() &&
+		this->inv[HANDPOS][0]->data.objectStatus >= USABLE &&
+		(Item[this->inv[HANDPOS].usItem].crowbar &&	Item[this->inv[HANDPOS].usItem].usItemClass & (IC_PUNCH) ||
+		Item[this->inv[HANDPOS].usItem].usItemClass & IC_GUN && Item[this->inv[HANDPOS].usItem].twohanded && Item[this->inv[HANDPOS].usItem].metal))
+	{
+		//INT32 sWindowGridNo = this->sTargetGridNo;
+		INT32 sWindowGridNo = this->sGridNo;
+		if (this->ubDirection == NORTH || this->ubDirection == WEST)
+			sWindowGridNo = NewGridNo(this->sGridNo, (UINT16)DirectionInc((UINT8)this->ubDirection));
+
+		// is there really an intact window that we jump through?
+		if (IsJumpableWindowPresentAtGridNo(sWindowGridNo, this->ubDirection, TRUE) && !IsJumpableWindowPresentAtGridNo(sWindowGridNo, this->ubDirection, FALSE))
+		{
+			STRUCTURE * pStructure = FindStructure(sWindowGridNo, STRUCTURE_WALLNWINDOW);
+			if (pStructure && !(pStructure->fFlags & STRUCTURE_OPEN))
+			{
+				// intact window found
+				return TRUE;
+			}
+		}
+	}
+
+	return FALSE;
+}
+
+BOOLEAN SOLDIERTYPE::CanStartDrag(void)
+{
+	if (!this->IsDragging(false) && this->CanDragInPrinciple())
+	{
+		INT32 sNewGridNo = NewGridNo(this->sGridNo, DirectionInc(this->ubDirection));
+
+		if (!TileIsOutOfBounds(sNewGridNo) && sNewGridNo != this->sGridNo)
+		{
+			// soldiers
+			for (UINT32 cnt = gTacticalStatus.Team[OUR_TEAM].bFirstID; cnt <= gTacticalStatus.Team[CIV_TEAM].bLastID; ++cnt)
+			{
+				if (cnt != this->ubID &&
+					MercPtrs[cnt] &&
+					MercPtrs[cnt]->sGridNo == sNewGridNo &&
+					this->CanDragPerson(cnt))
+				{
+					return TRUE;
+				}
+			}
+
+			// corpses
+			ROTTING_CORPSE* pCorpse;
+			for (INT32 cnt = 0; cnt < giNumRottingCorpse; ++cnt)
+			{
+				pCorpse = &(gRottingCorpse[cnt]);
+
+				if (pCorpse &&
+					pCorpse->fActivated &&
+					pCorpse->def.bLevel == this->pathing.bLevel &&
+					sNewGridNo == pCorpse->def.sGridNo &&
+					this->CanDragCorpse(pCorpse->iID))
+				{
+					return TRUE;
+				}
+			}
+
+			// gridno
+			UINT32 tiletype;
+			UINT16 structurenumber;
+			UINT8 hitpoints;
+			UINT8 decalflag;
+
+			if (this->CanDragStructure(sNewGridNo) &&
+				IsDragStructurePresent(sNewGridNo, this->pathing.bLevel, tiletype, structurenumber, hitpoints, decalflag))
+			{
+				int xmlentry;
+				GetDragStructureXmlEntry(tiletype, structurenumber, xmlentry);
+
+				if (xmlentry >= 0)
+				{
+					return TRUE;
+				}
+			}
+		}
+	}
+
+	return FALSE;
+}
+
+void SOLDIERTYPE::StartDrag(void)
+{
+	if (this->CanDragInPrinciple())
+	{
+		if (gAnimControl[this->usAnimState].ubEndHeight != ANIM_CROUCH)
+		{
+			HandleStanceChangeFromUIKeys(ANIM_CROUCH);
+		}
+
+		INT32 sNewGridNo = NewGridNo(this->sGridNo, DirectionInc(this->ubDirection));
+
+		if (!TileIsOutOfBounds(sNewGridNo) && sNewGridNo != this->sGridNo)
+		{
+			// soldiers
+			for (UINT32 cnt = gTacticalStatus.Team[OUR_TEAM].bFirstID; cnt <= gTacticalStatus.Team[CIV_TEAM].bLastID; ++cnt)
+			{
+				if (cnt != this->ubID &&
+					MercPtrs[cnt] &&
+					MercPtrs[cnt]->sGridNo == sNewGridNo &&
+					this->CanDragPerson(cnt))
+				{
+					SetDragOrderPerson(cnt);
+					fInterfacePanelDirty = DIRTYLEVEL2;
+				}
+			}
+
+			// corpses
+			ROTTING_CORPSE* pCorpse;
+			for (INT32 cnt = 0; cnt < giNumRottingCorpse; ++cnt)
+			{
+				pCorpse = &(gRottingCorpse[cnt]);
+
+				if (pCorpse &&
+					pCorpse->fActivated &&
+					pCorpse->def.bLevel == this->pathing.bLevel &&
+					sNewGridNo == pCorpse->def.sGridNo &&
+					this->CanDragCorpse(pCorpse->iID))
+				{
+					SetDragOrderCorpse(pCorpse->iID);
+					fInterfacePanelDirty = DIRTYLEVEL2;
+				}
+			}
+
+			// gridno
+			UINT32 tiletype;
+			UINT16 structurenumber;
+			UINT8 hitpoints;
+			UINT8 decalflag;
+
+			if (this->CanDragStructure(sNewGridNo) &&
+				IsDragStructurePresent(sNewGridNo, this->pathing.bLevel, tiletype, structurenumber, hitpoints, decalflag))
+			{
+				int xmlentry;
+				GetDragStructureXmlEntry(tiletype, structurenumber, xmlentry);
+
+				if (xmlentry >= 0)
+				{
+					SetDragOrderStructure(sNewGridNo);
+					fInterfacePanelDirty = DIRTYLEVEL2;
+				}
+			}
+		}
+	}
+}
 
 BOOLEAN DoesSoldierWearGasMask( SOLDIERTYPE *pSoldier )//dnl ch40 200909
 {

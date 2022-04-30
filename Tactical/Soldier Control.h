@@ -1789,6 +1789,11 @@ public:
 	void ChangeToFlybackAnimation( UINT8 flyBackDirection );
 	void ChangeToFallbackAnimation( UINT8 fallBackDirection );
 
+	// sevenfm
+	void BreakWindow(void);
+	BOOLEAN CanBreakWindow(void);
+	BOOLEAN CanStartDrag(void);
+	void StartDrag(void);
 
 	void UpdateRobotControllerGivenController( void );
 	void UpdateRobotControllerGivenRobot( void );
@@ -2046,11 +2051,11 @@ public:
 	void		RiotShieldTakeDamage(INT32 sDamage);
 
 	// Flugente: drag people
-	BOOLEAN		CanDragInPrinciple();
-	BOOLEAN		CanDragPerson( UINT16 usID );
-	BOOLEAN		CanDragCorpse( UINT16 usCorpseNum );
-	BOOLEAN		CanDragStructure( INT32 sGridNo );
-	BOOLEAN		IsDraggingSomeone(bool aStopIfConditionNotSatisfied = true);
+	BOOLEAN		CanDragInPrinciple(BOOLEAN fCheckStance = FALSE);
+	BOOLEAN		CanDragPerson(UINT16 usID, BOOLEAN fCheckStance = FALSE);
+	BOOLEAN		CanDragCorpse(UINT16 usCorpseNum, BOOLEAN fCheckStance = FALSE);
+	BOOLEAN		CanDragStructure(INT32 sGridNo, BOOLEAN fCheckStance = FALSE);
+	BOOLEAN		IsDragging(bool aStopIfConditionNotSatisfied = true);
 	void		SetDragOrderPerson( UINT16 usID );
 	void		SetDragOrderCorpse( UINT32 usID );
 	void		SetDragOrderStructure( INT32 sGridNo );
