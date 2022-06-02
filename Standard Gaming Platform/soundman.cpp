@@ -25,6 +25,10 @@
 	// sevenfm
 	#include "message.h"
 	#include "Sound Control.h"
+	//#include "english.h"
+	//#include "input.h"
+	#include <ctime>
+	#include <chrono>
 #endif
 
 // Uncomment this to disable the startup of sound hardware
@@ -288,6 +292,14 @@ void ShutdownSoundManager(void)
 //
 //*******************************************************************************
 
+std::map<std::string, uint64_t, std::less<>> gSoundMap;
+
+uint64_t TimeMS()
+{
+	using namespace std::chrono;
+	return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
+
 UINT32 SoundPlay(STR pFilename, SOUNDPARMS *pParms)
 {
 	UINT32 uiSample, uiChannel;
@@ -296,6 +308,22 @@ UINT32 SoundPlay(STR pFilename, SOUNDPARMS *pParms)
 	{
 		if (!SoundPlayStreamed(pFilename))
 		{
+			// sevenfm: limit simultaneous sound playing
+			if (gGameExternalOptions.fLimitSimultaneousSound)
+				//!_KeyDown(SHIFT))
+			{
+				uint64_t curtime = TimeMS();
+				std::string filename(pFilename);
+
+				if (gSoundMap[filename] > curtime)
+				{
+					return 0;
+				}
+
+				// set delay for this sound type
+				gSoundMap[filename] = curtime + 50;
+			}
+
 			if ((uiSample = SoundLoadSample(pFilename)) != NO_SAMPLE)
 			{
 				if ((uiChannel = SoundGetFreeChannel()) != SOUND_ERROR)
@@ -328,6 +356,10 @@ UINT32 SoundPlay(STR pFilename, SOUNDPARMS *pParms)
 	return(SOUND_ERROR);
 }
 
+void ResetSoundMap(void)
+{
+	gSoundMap.clear();
+}
 
 //*******************************************************************************
 // SoundPlayStreamedFile

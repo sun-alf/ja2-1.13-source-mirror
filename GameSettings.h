@@ -101,6 +101,9 @@ enum
 	// Flugente: mercenary formations
 	TOPTION_MERCENARY_FORMATIONS,
 
+	// sevenfm: new settings
+	TOPTION_SHOW_ENEMY_LOCATION,
+
 	// arynn: Debug/Cheat
 	TOPTION_CHEAT_MODE_OPTIONS_HEADER,
 	TOPTION_FORCE_BOBBY_RAY_SHIPMENTS,			// force all pending Bobby Ray shipments
@@ -529,6 +532,7 @@ typedef struct
 	BOOLEAN fDebugSSA;
 	UINT8	ubVolumeSSA;
 	BOOLEAN fNWSS;
+	BOOLEAN fLimitSimultaneousSound;
 
 	// WDS - Option to turn off stealing
 	BOOLEAN fStealingDisabled;
@@ -1408,6 +1412,9 @@ typedef struct
 	BOOLEAN ubShowSuppressionScaleAsterisk;
 
 	FLOAT gMercLevelUpSalaryIncreasePercentage;
+	UINT32 uMaxMercSalaryIncreaseDaily;
+	UINT32 uMaxMercSalaryIncreaseWeekly;
+	UINT32 uMaxMercSalaryIncreaseBiweekly;
 
 	// Flugente: mine income can depend on the number or workers we have
 	BOOLEAN fMineRequiresWorkers;

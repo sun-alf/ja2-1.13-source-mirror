@@ -3635,7 +3635,8 @@ INT32 HandleBulletStructureInteraction( BULLET * pBullet, STRUCTURE * pStructure
 		{
 			DebugMsg( TOPIC_JA2, DBG_LEVEL_3, String("Door info: damage = %d, pick difficulty = %d, smash difficulty = %d, lockbuster power = %d",pDoor->bLockDamage,LockTable[ pDoor->ubLockID ].ubPickDifficulty,LockTable[ pDoor->ubLockID ].ubSmashDifficulty,lockBustingPower) );
 
-			if ( pDoor && (( LockTable[ pDoor->ubLockID ].ubPickDifficulty < 50 && LockTable[ pDoor->ubLockID ].ubSmashDifficulty < 70 ) || lockBustingPower*2 >= LockTable[ pDoor->ubLockID ].ubSmashDifficulty ) )
+			if (pDoor && (LockTable[pDoor->ubLockID].ubPickDifficulty < 50 && LockTable[pDoor->ubLockID].ubSmashDifficulty < 70 ||
+				LockTable[pDoor->ubLockID].ubSmashDifficulty <= lockBustingPower + pBullet->iImpact))
 			{
 				// Yup.....
 
@@ -3649,10 +3650,8 @@ INT32 HandleBulletStructureInteraction( BULLET * pBullet, STRUCTURE * pStructure
 				if ( PreRandom( ubRandomChanceHitLock ) == 0 || lockBustingPower > 0 )
 				{
 					// Adjust damage-- CC adjust this based on gun type, etc.....
-					//sLockDamage = (INT16)( 35 + Random( 35 ) );
-					sLockDamage = (INT16) (pBullet->iImpact - pBullet->iImpactReduction );
-					sLockDamage += (INT16) PreRandom( sLockDamage );
-					sLockDamage += lockBustingPower;
+					INT16 sBaseDamage = (INT16)(pBullet->iImpact - pBullet->iImpactReduction);
+					sLockDamage = sBaseDamage + (INT16)Random(sBaseDamage) + sBaseDamage * lockBustingPower / 100;
 
 					sLockDamage = min(sLockDamage,127);
 
@@ -3665,7 +3664,8 @@ INT32 HandleBulletStructureInteraction( BULLET * pBullet, STRUCTURE * pStructure
 						pDoor->bLockDamage+= sLockDamage;
 
 					// Check if it has been shot!
-					if ( pDoor->bLockDamage > LockTable[ pDoor->ubLockID ].ubSmashDifficulty || sLockDamage > LockTable[ pDoor->ubLockID ].ubSmashDifficulty )
+					if (LockTable[pDoor->ubLockID].ubSmashDifficulty != OPENING_NOT_POSSIBLE && 
+						max(pDoor->bLockDamage, sLockDamage) > LockTable[pDoor->ubLockID].ubSmashDifficulty)
 					{
 						// Display message!
 						ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, TacticalStr[ LOCK_HAS_BEEN_DESTROYED ] );
@@ -9676,7 +9676,7 @@ void LimitImpactPointByFacing( SOLDIERTYPE *pShooter, SOLDIERTYPE *pTarget, FLOA
 	// splitting a tile into 125 "cubes", stacked 5 x 5 x 5.  Each "cube" is 2 units wide, 2 units deep and about
 	// 6 units tall.  A standing merc in the JSD files is represented by a "plus sign" shaped construct that is
 	// 3 "cubes" tall, 3 "cubes" wide and 1 "cube" deep.  A crouching soldier is 2 x 3 x 2 and a prone soldier is
-	// 1 x 3 x 5.  This means if we're shooting at a standind target from the side, we effectively have 1/3 the
+	// 1 x 3 x 5.  This means if we're shooting at a standing target from the side, we effectively have 1/3 the
 	// chance to hit as we would a target that was facing us.  Unfortunately, the graphical cursor can't display
 	// this information so it will appear as though you have the same chance of hitting regardless of the targets
 	// facing.
@@ -9692,61 +9692,81 @@ void LimitImpactPointByFacing( SOLDIERTYPE *pShooter, SOLDIERTYPE *pTarget, FLOA
 	// 
 	////////////////////////////////////////////////////////////////////////////////////////////
 
+	// sevenfm: only allow this mechanics for standing human bodytype, as in other cases it may result in balance issues
+	if(!pShooter ||
+		!pTarget ||
+		gGameCTHConstants.SIDE_FACING_DIVISOR <= 1.0f ||
+		!IS_MERC_BODY_TYPE(pTarget) && !IS_CIV_BODY_TYPE(pTarget) ||
+		gAnimControl[pTarget->usAnimState].ubEndHeight < ANIM_CROUCH ||
+		pShooter->bAimShotLocation == AIM_SHOT_HEAD)
+	{
+		return;
+	}
+	
 	UINT8	iShooterFacing = pShooter->ubDirection;
-	UINT8	iTargetFacing = pShooter->ubDirection;
+	UINT8	iTargetFacing = pTarget->ubDirection;
 	FLOAT	iDivisor = gGameCTHConstants.SIDE_FACING_DIVISOR;
 
-	if(pTarget)
-		iTargetFacing = pTarget->ubDirection;
+	// sevenfm: lower modifier for crouched
+	if (gAnimControl[pTarget->usAnimState].ubEndHeight == ANIM_CROUCH)
+		iDivisor = 1.0f + (iDivisor - 1.0f) / 2.0f;
 
 	switch (iTargetFacing)
 	{
 		case 0:
-			if(iShooterFacing == 2 || iShooterFacing == 6){
+			if(iShooterFacing == 2 || iShooterFacing == 6)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 1:
-			if(iShooterFacing == 3 || iShooterFacing == 7){
+			if(iShooterFacing == 3 || iShooterFacing == 7)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 2:
-			if(iShooterFacing == 0 || iShooterFacing == 4){
+			if(iShooterFacing == 0 || iShooterFacing == 4)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 3:
-			if(iShooterFacing == 1 || iShooterFacing == 5){
+			if(iShooterFacing == 1 || iShooterFacing == 5)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 4:
-			if(iShooterFacing == 2 || iShooterFacing == 6){
+			if(iShooterFacing == 2 || iShooterFacing == 6)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 5:
-			if(iShooterFacing == 3 || iShooterFacing == 7){
+			if(iShooterFacing == 3 || iShooterFacing == 7)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 6:
-			if(iShooterFacing == 0 || iShooterFacing == 4){
+			if(iShooterFacing == 0 || iShooterFacing == 4)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		case 7:
-			if(iShooterFacing == 1 || iShooterFacing == 5){
+			if(iShooterFacing == 1 || iShooterFacing == 5)
+			{
 				*dShotOffsetX /= iDivisor;
-				*dShotOffsetY /= iDivisor;
+				//*dShotOffsetY /= iDivisor;
 			}
 			break;
 		default:

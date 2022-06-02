@@ -3547,7 +3547,7 @@ STR16 gpStrategicString[] =
 	L"异形向你的民兵发起了攻击，在分区%c%d。",
 	//1st %d refers to the number of civilians eaten by monsters,  %c%d is the sector -- ex:  A9
 	//Note:  the minimum number of civilians eaten will be two.
-	L"异形吃掉了%d名平民，在%s分区。",   //注：这里的%d和%s可以随意放前面或后面。L"Creatures attack and kill %d civilians in sector %s.",
+	L"生物（血猫，异形，僵尸）袭击了%s分区，杀死%d平民。",   //注：这里原本的%d和%s在中文中要反过来放，不然会出错。（%d和%s在中文中要反过来） L"Creatures attack and kill %d civilians in sector %s.",
 	//%s is the sector location -- ex:  A9: Omerta
 	L"敌军向你的%s分区发起了攻击，你的佣兵中没人能进行战斗。",
 	//%s is the sector location -- ex:  A9: Omerta
@@ -3570,7 +3570,7 @@ STR16 gpStrategicString[] =
 	L"土匪攻击",	//L"BANDIT ATTACK",
 	L"僵尸",	//L"Zombie",
 	L"土匪",	//L"Bandit",
-	L"土匪杀死了%d名平民，在%s分区。",	//注：这里的%d和%s不可以随意放前面或后面，一定要按英文顺序，不然会出错。L"Bandits attack and kill %d civilians in sector %s.",
+	L"土匪杀死了%d名平民，在%s分区。",	//注：这里的%d和%s不可以随意放前面或后面，一定要按英文顺序，不然会出错。（%d和%s 在中文中不能反过来。） L"Bandits attack and kill %d civilians in sector %s.",
 };
 
 STR16 gpGameClockString[] =
@@ -4661,7 +4661,7 @@ STR16 pTransactionText[] =
 	L"在%s区域训练民兵",	//L"Drill militia in %s", Flugente: drill militia
 	L"微型事件", //L"Mini event", rftr: mini events
 	L"从反抗军司令部转移资金", //L"Funds transferred from rebel command", rftr: rebel command
-	L"Funds transferred to rebel command", // rftr: rebel command
+	L"资金转移到反抗军司令部", //L"Funds transferred to rebel command", rftr: rebel command 
 };
 
 STR16 pTransactionAlternateText[] =
@@ -6575,6 +6575,7 @@ STR16		zOptionsToggleText[] =
 	L"显示LBE(携行具)物品",
 	L"反转鼠标滚轮",                 //L"Invert mouse wheel",
 	L"保持佣兵间距",				// when multiple mercs are selected, they will try to keep their relative distances
+	L"显示已知敌人位置",			//L"Show enemy location", show locator on last known enemy location
 	L"--作弊模式选项--",				// TOPTION_CHEAT_MODE_OPTIONS_HEADER,
 	L"强制 Bobby Ray 送货",				// force all pending Bobby Ray shipments
 	L"-----------------",				// TOPTION_CHEAT_MODE_OPTIONS_END
@@ -6692,7 +6693,8 @@ STR16	zOptionsScreenHelpText[] =
 	L"打开时，会直接显示该区域最后一个敌人的大致位置。",
 	L"打开时，在区域物品栏界面，右键点击装有物品的携行具时可直接显示包含的物品。",
 	L"打开时，反转鼠标滚轮方向。",
-	L"打开时，当选择了多个佣兵，他们在前进时会保持彼此的间距。（|C|t|r|l+|A|l|t+|G）",	// L"When multiple mercs are selected, they will try to keep their relative distances while moving. (|C|t|r|l+|S|h|i|f|t+|G)",
+	L"打开时，当选择多个佣兵，在前进时会保持彼此的间距。|C|t|r|l+|A|l|t+|G \n（按|S|h|i|f|t+点击人物头像可以加入或移出队伍）", //L"When ON and multiple mercs are selected, they will try to keep their relative distances while moving.\n(press |C|t|r|l+|A|l|t+|G to toggle mode or |S|h|i|f|t + click to move in formation)", TODO.Translate
+	L"打开时，会显示已知敌人最后移动的位置。",	//L"When ON, shows last known enemy location.",   TODO.Translate
 	L"(text not rendered)TOPTION_CHEAT_MODE_OPTIONS_HEADER",
 	L"强制 Bobby Ray 出货",
 	L"(text not rendered)TOPTION_CHEAT_MODE_OPTIONS_END",
