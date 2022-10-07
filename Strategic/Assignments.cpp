@@ -8746,24 +8746,31 @@ void HandlePrison( INT16 sMapX, INT16 sMapY, INT8 bZ )
 	{
 		FLOAT prisonertoguardratio = 1.0f;
 		if ( prisonguardvalue )
-			prisonertoguardratio = (FLOAT)(prisonerriotvalue / prisonguardvalue);
+			prisonertoguardratio = (FLOAT)prisonerriotvalue / (FLOAT)prisonguardvalue;
 
 		// in a riot, prisoners escape and are added to the sector as enemies. Not all might escape - the worse the prisoner/guard ratio, the more escape
 		INT16 escapedprisoners[PRISONER_MAX] = {0};
-		for (int i = PRISONER_ADMIN; i < PRISONER_MAX; ++i )
-			escapedprisoners[i] = min( Random( aPrisoners[i] * prisonertoguardratio ), aPrisoners[i] );
+		INT16 sTotalEscapedPrisoners = 0;
+		for (int i = PRISONER_ADMIN; i < PRISONER_MAX; ++i)
+		{
+			escapedprisoners[i] = min(Random(1 + aPrisoners[i] * prisonertoguardratio), aPrisoners[i]);
+			sTotalEscapedPrisoners += escapedprisoners[i];
+		}
 
-		// add enemies (PRISONER_CIVILIAN just flee)
-		pSectorInfo->ubNumTroops = min( 512, pSectorInfo->ubNumTroops + escapedprisoners[PRISONER_REGULAR] );
-		pSectorInfo->ubNumElites = min( 512, pSectorInfo->ubNumElites + escapedprisoners[PRISONER_ELITE] + escapedprisoners[PRISONER_OFFICER] + escapedprisoners[PRISONER_GENERAL] );
-		pSectorInfo->ubNumAdmins = min( 512, pSectorInfo->ubNumAdmins + escapedprisoners[PRISONER_ADMIN] );
+		if (sTotalEscapedPrisoners > 0)
+		{
+			// add enemies (PRISONER_CIVILIAN just flee)
+			pSectorInfo->ubNumTroops = min(255, pSectorInfo->ubNumTroops + escapedprisoners[PRISONER_REGULAR]);
+			pSectorInfo->ubNumElites = min(255, pSectorInfo->ubNumElites + escapedprisoners[PRISONER_ELITE] + escapedprisoners[PRISONER_OFFICER] + escapedprisoners[PRISONER_GENERAL]);
+			pSectorInfo->ubNumAdmins = min(255, pSectorInfo->ubNumAdmins + escapedprisoners[PRISONER_ADMIN]);
 
-		// reduce prisoner count!
-		// we have to change the sign
-		for ( int i = PRISONER_ADMIN; i < PRISONER_MAX; ++i )
-			escapedprisoners[i] = -escapedprisoners[i];
+			// reduce prisoner count!
+			// we have to change the sign
+			for (int i = PRISONER_ADMIN; i < PRISONER_MAX; ++i)
+				escapedprisoners[i] = -escapedprisoners[i];
 
-		ChangeNumberOfPrisoners( pSectorInfo, escapedprisoners );
+			ChangeNumberOfPrisoners(pSectorInfo, escapedprisoners);
+		}
 
 		ScreenMsg( FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, szPrisonerTextStr[STR_PRISONER_RIOT], wSectorName  );
 	}
@@ -10501,8 +10508,14 @@ BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier , bool bAllow1stAidKit)
 			fCharacterInfoPanelDirty = TRUE;
 
 			//shadooow: rules for item swapping rewritten to honor pocket restrictions
+			// sevenfm: for AI, just swap objects
+			if (!(pSoldier->flags.uiStatusFlags & SOLDIER_PC))
+			{
+				SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);
+				return(TRUE);
+			}
 			//nothing in main hand
-			if (!pSoldier->inv[HANDPOS].exists())
+			else if (!pSoldier->inv[HANDPOS].exists())
 			{				
 				SwapObjs(pSoldier, HANDPOS, bPocket, TRUE);//todo: this should probably be more robust and handle potentional custom medical kit that uses both hands
 				return(TRUE);
@@ -10550,7 +10563,7 @@ BOOLEAN MakeSureMedKitIsInHand( SOLDIERTYPE *pSoldier , bool bAllow1stAidKit)
 		}
 	}
 	//if we came here it means we don't have medical kit or we cannot place it into hand due to no suitable pockets for whatever merc carries in them
-	if(medkit_found)
+	if (medkit_found && (pSoldier->flags.uiStatusFlags & SOLDIER_PC))
 		ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, TacticalStr[QUICK_ITEMS_NOWHERE_TO_PLACE]);
 	if(!bAllow1stAidKit)
 		return FALSE;
