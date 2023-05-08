@@ -1,6 +1,3 @@
-#ifdef PRECOMPILEDHEADERS
-	#include "AI All.h"
-#else
 	#include "ai.h"
 	#include "Weapons.h"
 	#include "opplist.h"
@@ -28,7 +25,6 @@
 	#include "Rotting Corpses.h"	// sevenfm
 	#include "wcheck.h"				// sevenfm
 	#include "SmokeEffects.h"		// sevenfm
-#endif
 
 #include "GameInitOptionsScreen.h"
 
@@ -788,10 +784,7 @@ BOOLEAN IsActionAffordable(SOLDIERTYPE *pSoldier, INT8 bAction)
 			break;
 
 		case AI_ACTION_JUMP_WINDOW:
-			if((UsingNewInventorySystem() == true) && pSoldier->inv[BPACKPOCKPOS].exists() == true
-				//JMich.BackpackClimb
-				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)pSoldier->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[pSoldier->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb  )
-				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[pSoldier->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			if (!pSoldier->CanClimbWithCurrentBackpack())
 				bMinPointsNeeded = GetAPsToJumpThroughWindows( pSoldier, TRUE );
 			else
 				bMinPointsNeeded = GetAPsToJumpFence( pSoldier, FALSE );

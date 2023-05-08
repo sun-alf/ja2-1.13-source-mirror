@@ -1,6 +1,3 @@
-#ifdef PRECOMPILEDHEADERS
-	#include "Tactical All.h"
-#else
 	#include "builddefines.h"
 	#include <stdio.h>
 	#include <time.h>
@@ -73,7 +70,6 @@
 	// HEADROCK HAM 3.6: This is required for Stat Progress Bars
 	#include "Campaign.h"
 	#include "Food.h"	// added by Flugente
-#endif
 
 //legion by Jazz
 #include "Interface Utils.h"
@@ -4636,10 +4632,7 @@ void BtnClimbCallback(GUI_BUTTON *btn,INT32 reason)
 
 		if ( fNearLowerLevel )
 		{
-			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
-				//JMich.BackpackClimb
-				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
-				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			if (!gpSMCurrentMerc->CanClimbWithCurrentBackpack())
 			{
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
 				return;
@@ -4650,10 +4643,7 @@ void BtnClimbCallback(GUI_BUTTON *btn,INT32 reason)
 
 		if ( fNearHeigherLevel )
 		{
-			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
-				//JMich.BackpackClimb
-				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
-				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			if (!gpSMCurrentMerc->CanClimbWithCurrentBackpack())
 			{
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
 				return;
@@ -4666,10 +4656,7 @@ void BtnClimbCallback(GUI_BUTTON *btn,INT32 reason)
 		
 		if (gGameExternalOptions.fCanClimbOnWalls == TRUE)
 		{
-			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
-				//JMich.BackpackClimb
-				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
-				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			if (!gpSMCurrentMerc->CanClimbWithCurrentBackpack())
 			{
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
 				return;
@@ -4685,10 +4672,7 @@ void BtnClimbCallback(GUI_BUTTON *btn,INT32 reason)
 
 		if ( FindFenceJumpDirection( gpSMCurrentMerc, gpSMCurrentMerc->sGridNo, gpSMCurrentMerc->ubDirection, &bDirection ) )
 		{
-			if ((UsingNewInventorySystem() == true) && gpSMCurrentMerc->inv[BPACKPOCKPOS].exists() == true
-				//JMich.BackpackClimb
-				&& ((gGameExternalOptions.sBackpackWeightToClimb == -1) || (INT16)gpSMCurrentMerc->inv[BPACKPOCKPOS].GetWeightOfObjectInStack() + Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].sBackpackWeightModifier > gGameExternalOptions.sBackpackWeightToClimb)
-				&& ((gGameExternalOptions.fUseGlobalBackpackSettings == TRUE) || (Item[gpSMCurrentMerc->inv[BPACKPOCKPOS].usItem].fAllowClimbing == FALSE)))
+			if (!gpSMCurrentMerc->CanClimbWithCurrentBackpack())
 			{
 				ScreenMsg(FONT_MCOLOR_LTYELLOW, MSG_INTERFACE, NewInvMessage[NIV_NO_CLIMB]);
 				return;

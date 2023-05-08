@@ -1,9 +1,6 @@
 ﻿// WANNE: Yes, this should be disabled, otherwise we get weird behavior when running the game with a VS 2005 build!
 //#pragma setlocale("CHINESE")
 
-#ifdef PRECOMPILEDHEADERS
-	#include "Utils All.h"
-#else
 	#include "Language Defines.h"
 	#if defined( CHINESE )
 		#include "text.h"
@@ -12,7 +9,6 @@
 		#include "EditorMercs.h"
 		#include "Item Statistics.h"
 	#endif
-#endif
 
 //suppress : warning LNK4221: no public symbols found; archive member will be inaccessible
 void this_is_the_ChineseText_public_symbol(void){;}
@@ -2480,7 +2476,8 @@ STR16 pAssignmentStrings[] =
 	L"掩埋尸体", //L"Burial",
 	L"管理", //L"Admin",
 	L"探索",	//L"Explore"
-	L"事件"  //L"Event"  rftr: merc is on a mini event
+	L"事件",  //L"Event",  rftr: merc is on a mini event
+	L"任务", //L"Mission", rftr: rebel command
 };
 
 
@@ -3229,11 +3226,11 @@ STR16 gzMercSkillTextNew[] =
 	// new minor traits
 	L"无线电操作员",	// 21
 	L"告发",	// 22
-	L"生还者", //L"Survival"
+	L"向导", //L"Survival"
 
 	// second names for major skills
 	L"机枪手",		// 24
-	L"掷弹兵",
+	L"枪炮专家",	//L"Bombardier",
 	L"狙击手",
 	L"游骑兵",
 	L"枪斗术",
@@ -3255,7 +3252,7 @@ STR16 gzMercSkillTextNew[] =
 	L"间谍",				// 43
 	L"Placeholder",		// for radio operator (minor trait)
 	L"Placeholder",		// for snitch (minor trait)
-	L"生还者",			// for survival (minor trait)
+	L"向导",			// for survival (minor trait)
 	L"更多...",			// 47
 	L"情报",			//L"Intel", for INTEL
 	L"伪装",		//L"Disguise", for DISGUISE
@@ -4662,6 +4659,7 @@ STR16 pTransactionText[] =
 	L"微型事件", //L"Mini event", rftr: mini events
 	L"从反抗军司令部转移资金", //L"Funds transferred from rebel command", rftr: rebel command
 	L"资金转移到反抗军司令部", //L"Funds transferred to rebel command", rftr: rebel command 
+	L"支付赏金", //L"Bounty payout", rftr: rebel command soldier bounties
 };
 
 STR16 pTransactionAlternateText[] =
@@ -6215,7 +6213,7 @@ STR16	zOptionsText[] =
 STR16	z113FeaturesScreenText[] =
 {
 	L"1.13 特征功能",	//L"1.13 FEATURE TOGGLES",
-	L"在游戏中更改这些选项将影响您的游戏体验。",	//L"Changing these settings during a campaign will affect your experience.",
+	L"在游戏中更改这些选项将影响您的游戏体验。（更改后必须重新开始新游戏）",	//L"Changing these settings during a campaign will affect your experience.",
 	L"将鼠标悬停在功能按钮上以获得更多信息。某些功能需要在JA2_Options.ini（或其他文件）中设置。",	//L"Hover over a feature to display more information. Some features may be configurable in JA2_Options.ini (or other specified file).",
 };
 
@@ -6534,7 +6532,7 @@ STR16		zOptionsToggleText[] =
 	L"实时确认",		//"Real Time Confirmation",
 	L"显示睡觉/醒来时的提示",	//"Display sleep/wake notifications",
 	L"使用公制系统",		//"Use Metric System",
-	L"佣兵移动时高亮显示",	//"Merc Lights during Movement",
+	L"高亮显示佣兵",	//"Highlight Mercs",
 	L"锁定佣兵",	//"Snap Cursor to Mercs",
 	L"锁定门",		//"Snap Cursor to Doors",
 	L"物品闪亮",	//"Make Items Glow",
@@ -6576,6 +6574,8 @@ STR16		zOptionsToggleText[] =
 	L"反转鼠标滚轮",                 //L"Invert mouse wheel",
 	L"保持佣兵间距",				// when multiple mercs are selected, they will try to keep their relative distances
 	L"显示已知敌人位置",			//L"Show enemy location", show locator on last known enemy location
+	L"准心开始时为最大",	// L"Start at maximum aim",
+	L"替换新的寻路方式",	// L"Alternative pathfinding",
 	L"--作弊模式选项--",				// TOPTION_CHEAT_MODE_OPTIONS_HEADER,
 	L"强制 Bobby Ray 送货",				// force all pending Bobby Ray shipments
 	L"-----------------",				// TOPTION_CHEAT_MODE_OPTIONS_END
@@ -6636,8 +6636,8 @@ STR16	zOptionsScreenHelpText[] =
 	//Use the metric system
 	L"打开时，使用公制系统，否则使用英制系统。",
 
-	//Merc Lighted movement
-	L"打开时，佣兵移动时会照亮地表，切换虚拟佣兵光照。（|G）\n（关闭这个选项会使游戏的显示速度变快）",
+	//Highlight Mercs
+	L"打开时，虚拟灯光会照亮佣兵周围。（|G）",   //L"When ON, highlights the mercenary (Not visible to enemies).\nToggle in-game with (|G)",
 
 	//Smart cursor
 	L"打开时，光标移动到佣兵身上时会高亮显示佣兵。",
@@ -6693,8 +6693,10 @@ STR16	zOptionsScreenHelpText[] =
 	L"打开时，会直接显示该区域最后一个敌人的大致位置。",
 	L"打开时，在区域物品栏界面，右键点击装有物品的携行具时可直接显示包含的物品。",
 	L"打开时，反转鼠标滚轮方向。",
-	L"打开时，当选择多个佣兵，在前进时会保持彼此的间距。|C|t|r|l+|A|l|t+|G \n（按|S|h|i|f|t+点击人物头像可以加入或移出队伍）", //L"When ON and multiple mercs are selected, they will try to keep their relative distances while moving.\n(press |C|t|r|l+|A|l|t+|G to toggle mode or |S|h|i|f|t + click to move in formation)", TODO.Translate
-	L"打开时，会显示已知敌人最后移动的位置。",	//L"When ON, shows last known enemy location.",   TODO.Translate
+	L"打开时，当选择多个佣兵，在前进时会保持彼此的间距。|C|t|r|l+|A|l|t+|G \n（按|S|h|i|f|t+点击人物头像可以加入或移出队伍）", //L"When ON and multiple mercs are selected, they will try to keep their relative distances while moving.\n(press |C|t|r|l+|A|l|t+|G to toggle mode or |S|h|i|f|t + click to move in formation)", 
+	L"打开时，会显示已知敌人最后移动的位置。",	//L"When ON, shows last known enemy location.",    
+	L"打开时，默认瞄准值为最大，而不是无。",	//L"When ON, aiming at enemy will start at maximum aiming instead of default no aim",
+	L"打开时，使用A*寻路算法，而不是原始算法。",	//L"When ON, Use A* pathfinding algorithm, instead of original",
 	L"(text not rendered)TOPTION_CHEAT_MODE_OPTIONS_HEADER",
 	L"强制 Bobby Ray 出货",
 	L"(text not rendered)TOPTION_CHEAT_MODE_OPTIONS_END",
@@ -7030,7 +7032,7 @@ STR16 pMessageStrings[] =
 	L"磁盘空间不足。只有%sMB可用空间，《铁血联盟2》需要%sMB。",
 	L"从AIM雇佣了%s。", 		//"Hired %s from AIM",
 	L"%s抓住了%s。",	//"%s has caught %s.",	//'Merc name' has caught 'item' -- let SirTech know if name comes after item.
-	L"%s使用了（拾取）%s。",	//L"%s has taken %s。",
+	L"%s（使用了、拾取了、中了）%s。",	//L"%s has taken %s。",
 	L"%s没有医疗技能",	//"%s has no medical skill",//'Merc name' has no medical skill.
 
 	//CDRom errors (such as ejecting CD while attempting to read the CD)
@@ -7129,7 +7131,7 @@ STR16 pMessageStrings[] =
 	L"虚拟佣兵光照开启",
 	L"虚拟佣兵光照关闭",
 	L"军队%s活动。", //L"Squad %s active.",
-	L"%s作弊者%s。", //L"%s smoked %s.",
+	L"%s抽了只%s。", //L"%s smoked %s.",
 	L"激活作弊？", //L"Activate cheats?",
 	L"关闭作弊？", //L"Deactivate cheats?",
 };
@@ -7828,7 +7830,7 @@ STR16 MissingIMPSkillsDescriptions[] =
 	// Radio Operator
 	L"无线电操作员：你通过使用通讯设备让队伍的战略和战术水平得到了提升。 ± ", //L"Radio Operator: Your usage of communication devices broaden your team's tactical and strategic skills. ± ",
 	// Survival
-	L"生还者: 大自然是你第二个家。 ± ", //L"Survival: Nature is a second home to you. ± ",
+	L"向导: 大自然是你第二个家。 ± ", //L"Survival: Nature is a second home to you. ± ",
 };
 
 STR16 NewInvMessage[] =
@@ -8131,7 +8133,7 @@ STR16 gzIMPDisabilityTraitText[]=
 	L"身心健全",
 	L"怕热",
 	L"神经质",
-	L"幽闭恐慌症",
+	L"幽闭恐惧症",
 	L"旱鸭子",
 	L"怕虫",
 	L"健忘",
@@ -9196,6 +9198,8 @@ STR16	szPrisonerTextStr[]=
 	L"一个高阶军官%s被发现！",	//L"A high-ranking army officer in %s has been revealed!",
 	L"敌方领袖拒绝考虑投降！", //L"The enemy leader refuses to even consider surrender!",
 	L"%d名囚犯自愿加入我军。", //L"%d prisoners volunteered to join our forces.",
+	L"你的佣兵成功逃脱了敌人的追捕。", //L"Some of your mercs managed to escape the enemy capture!",
+	L"没有逃跑与投降，只有死战到底！", //L"No possible escape is seen, it's a fight to the death!",
 };
 
 STR16	szMTATextStr[]=
@@ -11864,12 +11868,16 @@ STR16 gLbeStatsDesc[14] =
 
 STR16 szRebelCommandText[] =
 {
-	L"Arulco反抗军司令部 - 国家总览",   //L"Arulco Rebel Command - National Overview",
-	L"Arulco反抗军司令部 - 地区总览",   //L"Arulco Rebel Command - Regional Overview",
-	L"点击地区总览",   //L"Switch to Regional Overview",
-	L"点击国家总览",   //L"Switch to National Overview",
+	L"国家总览",   //L"National Overview",
+	L"地区总览",   //L"Regional Overview",
+	L"任务总览",   //L"Mission Overview",
+	L"选择区域：",   //L"Select View:",
+	L"地区总览 (2)",   //L"Regional (2)",
+	L"国家总览 (1)",   //L"National (1)",
+	L"任务(3)",   //L"Mission (3)",
 	L"物资：",   //L"Supplies:",
 	L"后勤物资",   //L"Incoming Supplies",
+	L"情报：",   //L"Intel:",
 	L"  /天",   //L"/day",
 	L"当前项目",   //L"Current Directive",
 	L"升级项目（$%d）",   //L"Improve Directive ($%d)",
@@ -11927,18 +11935,69 @@ STR16 szRebelCommandText[] =
 	L"<",   //L"<",
 	L">",   //L">",
 	L"更改此指令操作将花费$%d并重置。确认支出？",   //L"Changing this Admin Action will cost $%d and reset its tier. Confirm expenditure?",
+	L"补给不足！管理操作已禁用。",   //L"Insufficient supplies! Admin Actions have been DISABLED.",
+	L"每过%d小时可获得新任务。",   //L"New missions will be available every %d hours.",
+	L"A.R.C网站上已有新任务可以获取。",   //L"New missions are available at the A.R.C. website.",
+	L"任务准备工作进行中。",   //L"Mission preparations in progress.", 
+	L"任务持续时间：%d天",   //L"Mission duration: %d days", 
+	L"成功率：%d%s",   //L"Chance of success: %d%s",
+	L"[编辑]",   //L"[REDACTED]",
+	L"姓名：%s",   //L"Name: %s",
+	L"地址：%s",   //L"Location: %s",
+	L"分配任务：%s",   //L"Assignment: %s",
+	L"合同：%d天",   //L"Contract: %d days",
+	L"合同：%d小时",   //L"Contract: %d hours",
+	L"合同：---",   //L"Contract: ---",
+	L"代理奖金：",   //L"Agent bonus:",
+	L"成功率+%d%s (%s)",   //L"Chance of success +%d%s (%s)", 
+	L"部署范围+%d (%s)",   //L"Deployment range +%d (%s)",
+	L"ASD收入-%2.0f%s (%s)",   //L"ASD Income -%2.0f%s (%s)",
+	L"偷窃燃料；发送至%s (%s)",   //L"Steal fuel; send to %s (%s)", 
+	L"销毁储存单位(%s)",   //L"Destroy reserve units (%s)",
+	L"时间+%2.0f%s (%s)",   //L"Time +%2.0f%s (%s)",
+	L"视野-%2.0f%s (%s)",   //L"Vision -%2.0f%s (%s)",
+	L"装备质量-%d (%s)",   //L"Gear quality -%d (%s)", 
+	L"总体统计-%d (%s)",   //L"Overall stats -%d (%s)",
+	L"训练人数上限：%d (%s)",   //L"Max trainers: %d (%s)", 
+	L"支付+%2.0f%s (%s)",   //L"Payout +%2.0f%s (%s)", 
+	L"支付限额增加到$%d (%s)",   //L"Payout limit increased to $%d (%s)", 
+	L"军官奖励(%s)",   //L"Bonus for officers (%s)", 
+	L"车辆奖励(%s)",   //L"Bonus for vehicles (%s)",
+	L"持续时间+%d小时(%s)",   //L"Duration +%d hours (%s)",
+	L"特工不在城镇",   //L"Agent not in town",
+	L"城镇忠诚度太低",   //L"Town loyalty too low",
+	L"特工不可用",   //L"Agent unavailable",
+	L"特工合同到期",   //L"Agent contract expiring",
+	L"无法使用反抗军特工",   //L"Can't use rebel agent",
+	L"战斗进行中",   //L"Battle in progress",
+	L"准备任务(%d补给)",   //L"Prepare Mission (%d supplies)",
+	L"查看当前任务结果",   //L"View active mission effects",
+	L"查看可用任务列表",   //L"View available mission list", 
+	L"你可以做准备展示的两个任务之一，一旦派遣特工成功，他们将在大约%d小时内不可用，然后再次可用。任务准备完成时，会有弹窗提醒，任务效果将变为有效。",   //L"You are able to prepare one of the two missions presented. Once an agent is dispatched, they will be unavailable for approximately %d hours before becoming available again. A popup will notify you when preparations are complete. If preparations succeed, the mission's effects become active.",
+	L"一名抵抗军特工可以前去准备这个任务，但是使用佣兵的话效果会更好。他们的等级和技能可以带来额外的任务奖励。",   //L"A rebel agent can be sent to prepare a mission, but your mercenaries will be far more effective. Their experience level and skills can provide additional bonuses to missions.",
+	L"任务准备的花销将根据同时准备或激活的其它任务数量有所增加。",   //L"The cost of preparing a mission increases based on the number other missions either active or being prepared.",
+	L"新的任务将在%d日00:00可用。",   //L"New missions will be available on Day %d at 00:00.", 
+	L"激活的任务：",   //L"Active missions:",
+	L"%s - 准备中 - 就绪时间：%d日，%02d:%02d",   //L"%s - Preparing - Ready on Day %d, %02d:%02d",
+	L"%s - 生效 -  过期时间：%d日，%02d:%02d",   //L"%s - Active - Expires on Day %d, %02d:%02d", 
+	L"[%s (%d补给)]",   //L"[%s (%d supplies)]", 
+	L"%s派遣一名反抗军特工去准备这个任务？",   //L"%s Send a rebel agent to prepare this mission?", 
+	L"%s派遣%s去准备这个任务？他将会在大致%d小时后返回。",   //L"%s Send %s to prepare this mission? He will return in approximately %d hours.",
+	L"%s派遣%s去准备这个任务？她将会在大致%d小时后返回。",   //L"%s Send %s to prepare this mission? She will return in approximately %d hours.",
+	L"任务\"%s\"生效中。",   //L"Mission \"%s\" is now in effect.",
+	L"任务\"%s\"准备失败。",   //L"Preparations for mission \"%s\" failed.", 
+	L"任务\"%s\"已经过期，不再生效。",   //L"Mission \"%s\" has expired and is no longer in effect.",
 };
 
 STR16 szRebelCommandHelpText[] =
 {
 	L"|物|资\n \n食物、水、医疗用品、武器以及任何\n反抗军认为有用的物资。反抗军会自动收集。",   //L"|S|u|p|p|l|i|e|s\n \nFood, water, medical supplies, weapons, and anything else that\nthe rebels might find useful. Supplies are obtained automatically\nby the rebels.",
-	L"|后|勤|物|资\n \n反抗军每天都会自动收集物资。当你\n占领更多的城镇时，他们每天能够\n找到的物资补给量将会增加。",   //L"|I|n|c|o|m|i|n|g |S|u|p|p|l|i|e|s\n \nEach day, the rebels will gather supplies on their own. As you\ntake over more towns, the amount of supplies they will be\nable to find per day will increase.",
+	L"|后|勤|物|资\n \n反抗军每天都会自动收集物资。当你\n占领更多的城镇时，他们每天能够\n找到的物资补给量将会增加。\n \n+%d (基础收入)",   //L"|I|n|c|o|m|i|n|g |S|u|p|p|l|i|e|s\n \nEach day, the rebels will gather supplies on their own. As you\ntake over more towns, the amount of supplies they will be\nable to find per day will increase.\n \n+%d (Base income)",
 	L"|当|前|项|目\n \n你可以选择反抗军优先进行的战略目标。\n当你选定好战略目标时，新的项目指令将生效。",   //L"|C|u|r|r|e|n|t |D|i|r|e|c|t|i|v|e\n \nYou can choose how the rebels will prioritise their strategic\nobjectives. New directives will become available as you make\nprogress.",
 	L"|指|挥|部\n \n指挥部一旦部署，就会负责处理\n该区域内的日常事务。包括支持当地人，制造\n反抗宣传，制定地区政策等等。",   //L"|A|d|m|i|n|i|s|t|r|a|t|i|o|n |T|e|a|m\n \nOnce deployed, an admin team is responsible for handling the\nday-to-day affairs of the region. This includes supporting\nlocals, creating rebel propaganda, establishing regional\npolicies, and more.",
 	L"|忠|诚|度\n \n许多行政命令的有效性取决于\n该地区的忠诚度，提高忠诚度\n能得到最大利益化。",   //L"|L|o|y|a|l|t|y\n \nThe effectiveness of many Administrative Actions depends on\nthe region's loyalty to your cause. It is in your best interest\nto raise loyalty as high as possible.",
 	L"|最|高|忠|诚|度\n \n你需要说服当地人完全信任你。这可以\n通过为他们建立物资供应来实现，表明\n你打算改善他们的生活质量。",   //L"|M|a|x|i|m|u|m |L|o|y|a|l|t|y\n \nYou will need to convince the locals to fully trust you. This\ncan be done by creating a supply line to them, showing that\nyou intend to improve their quality of life.",
-	L"|援|助|物|资\n \n将物资送到此处的反抗军手里，并允许\n他们根据需要使用。这将少量增加\n该地区的忠诚度，但是会略微增加制定\n该地区政策的成本。",   //L"|G|r|a|n|t |S|u|p|p|l|i|e|s\n \nSend supplies to the admin team here and allow them to use them\nas needed. This will increase the region's loyalty by a small amount\neach time you do this. However, doing this will slightly increase\nthe cost of enacting regional policies.",
-	L"该管理行动只会作用到城镇区域。", //L"This Admin Action applies its bonus to town sectors only.", TODO.Translate
+	L"该管理行动只会作用到城镇区域。", //L"This Admin Action applies its bonus to town sectors only.", 
 	L"该管理行动会作用到城镇区域。\n和直接相邻的区域。",   //L"This Admin Action applies its bonus to town sectors, and\nsectors immediately adjacent to them.",
 	L"该管理行动会作用到城镇区域。\n1级覆盖周边1个区域。\n2级覆盖周边2个区域。",   //L"This Admin Action applies its bonus to town sectors, one\nsector away at Tier 1, and up to two sectors away at Tier 2.",
 	L"该管理行动会作用到城镇区域。\n1级覆盖周边2个区域。\n2级覆盖周边3个区域。",   //L"This Admin Action applies its bonus to town sectors, up to\ntwo sectors away at Tier 1, and up to three sectors away at Tier 2.",
@@ -11966,7 +12025,7 @@ STR16 szRebelCommandAdminActionsText[] =
 	L"民兵武器库",   //L"Militia Warehouses",
 	L"在偏远地区建造仓库，让反抗军为民兵储备武器。提供每日民兵资源。",   //L"Construct warehouses in remote areas, allowing the rebels to stockpile weapons for the militia. Provides daily militia resources.",
 	L"税务局",   //L"Regional Taxes",
-	L"从当地人那里筹集资金来帮助你。这是一种永久的行为。增加每日收入，但地区忠诚度会逐日下降。",   //L"Collect money from the locals to assist your efforts. This is a permanent action. Increases daily income, but regional loyalty falls daily.",
+	L"从当地人那里筹集资金来帮助你。增加每日收入，但地区忠诚度会逐日下降。",   //L"Collect money from the locals to assist your efforts. Increases daily income, but regional loyalty falls daily.",
 	L"民间援助",   //L"Civilian Aid",
 	L"指派一些反抗军直接协助和支持该地区的平民。增加每天志愿者的总数。",   //L"Assign some rebels to directly assist and support civilians in the area. Increases daily volunteer pool growth.",
 	L"私人佣兵团",   //L"Merc Support",
@@ -12028,6 +12087,32 @@ STR16 szRebelCommandDirectivesText[] =
 	L"每天获得%.0f名志愿者。所有城镇每天都会失去一些忠诚度。",   //L"Gain %.0f volunteers each day. All towns lose some loyalty each day.",
 	L"征召平民作为民兵新兵。不过民众\n可能不会对此感到高兴。随着您\n占领更多城镇，效率会提高。",   //L"Draft civilians as recruits for militia. The general population\nprobably won't be too happy about it, though. Effectiveness\nincreases as you capture more towns.",
 	L"升级此项将会增加每天志愿者人数。",   //L"Improving this directive will increase the number of volunteers gained per day.",
+};
+
+STR16 szRebelCommandAgentMissionsText[] =
+{
+	L"深入部署",   //L"Deep Deployment",
+	L"协同行动，悄悄地抵进敌军，但是要小心：这可能会让你部署在劣势区域。当进攻敌军部队时，部署区会更大。",   //L"Coordinate efforts to find ways to sneak up on the enemy, but be careful: it's equally possible to put yourself in a disadvantaged deployment area. When attacking enemy forces, the deployment area is much larger.", 
+	L"扰乱ASD",   //L"Disrupt ASD", 
+	L"破坏Arulco特种部门(ASD)的日常行动。临时阻止ASD部署更多的机械化单位，并且大幅度降低他们的每日收入。",   //L"Wreak havoc on the day-to-day operations of the Arulco Special Division. Temporarily prevent the ASD from deploying additional mechanised units, and drastically reduce their daily income.",
+	L"战略情报",   //L"Strategic Intel",
+	L"侦听敌人，发现敌军的攻击目标。当在战略地图上观察队伍时，敌军优先进攻的目标区域会被标红。",   //L"Intercept plans and discover where enemies intend to strike. When viewing teams on the strategic map, sectors prioritised by the enemy will be marked in red.",
+	L"强化本地商店",   //L"Improve Local Shops", 
+	L"为商人们建立横跨国家的渠道，让他们更方便进到好货。商店将会出售更好的物资。",   //L"Set up ways for merchants across the country to acquire better goods more easily. Shopkeepers will have better than usual inventories.", 
+	L"减缓战略决策",   //L"Slow Strategic Decisions",
+	L"在敌人的高级指挥层中散布迷惑性和误导性消息。使得敌人会花更长时间进行战略层面的决策。",   //L"Sow confusion and misdirection at the highest levels of enemy command. The enemy takes longer to make decisions at a strategic level.",
+	L"降低战备程度",   //L"Lower Readiness",
+	L"戏弄敌军士兵，让他们的警惕性下降。在因为佣兵行动进入警戒前，敌军士兵的视距下降。",   //L"Trick enemy soldiers into letting their guard down. Enemy soldiers have reduced vision range until they are alerted to your mercs' presence.",
+	L"破坏装备",   //L"Sabotage Equipment",
+	L"袭扰敌军的补给线，阻止敌军维护他们的装备。敌军士兵将会使用比平时更糟的装备。",   //L"Disrupt enemy supply chains and prevent the enemy from maintaining their gear properly. Enemy soldiers use equipment that is worse than normal.",
+	L"破坏载具",   //L"Sabotage Vehicles",
+	L"破坏敌军的载具维护中心，削弱他们的战斗效能和战备度。遭遇到的敌军载具状态下降。",   //L"Sabotage vehicle maintenance hubs to reduce their combat effectiveness and readiness. Enemy vehicles encountered have reduced stats.",
+	L"输送补给",   //L"Send Supplies",
+	L"临时增加对这个城镇的直接援助。城镇忠诚度会在任务期间被动提升。",   //L"Temporarily increase direct support to this town. Town loyalty passively increases for the duration of the mission.",
+	L"士兵悬赏(Kingpin)",   //L"Soldier Bounties (Kingpin)", 
+	L"杀敌以获得资金奖励。和Kingpin谈谈，他感觉可以利用你的存在来削弱女王的权威。奖金会在午夜存入你的账户，每天最多$%d。",   //L"Get a payout for enemy kills. Negotiate with Kingpin, who feels he can use your presence here to indirectly weaken the Queen's power. Bounties are deposited into your account at midnight and are limited to $%d per day.",
+	L"在城镇外任意地区训练民兵",   //L"Train Militia Anywhere",
+	L"野外训练区是可以快速设立和拆毁的。民兵可以在城镇外的非交战区接受训练。",   //L"Create training areas in the wilderness that can be quickly set up and torn down. Militia can be trained in uncontested sectors outside of town.",
 };
 
 STR16 szRobotText[] =

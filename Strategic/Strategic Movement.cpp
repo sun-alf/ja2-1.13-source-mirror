@@ -1,6 +1,3 @@
-#ifdef PRECOMPILEDHEADERS
-	#include "Strategic All.h"
-#else
 	#include "builddefines.h"
 	#include <stdlib.h>
 	#include <memory.h>
@@ -53,7 +50,6 @@
 	#include "Creature Spreading.h"	// added by Flugente
 	#include "MilitiaIndividual.h"	// added by Flugente
 	#include "Rebel Command.h"
-#endif
 
 #include "MilitiaSquads.h"
 #include "Vehicles.h"
@@ -4457,7 +4453,7 @@ void CheckMembersOfMvtGroupAndComplainAboutBleeding( SOLDIERTYPE *pSoldier )
 		return;
 	}
 
-	// make sure there are members in the group..if so, then run through and make each bleeder compain
+	// make sure there are members in the group..if so, then run through and make each bleeder complain
 	pPlayer = pGroup->pPlayerList;
 
 	// is there a player list?
@@ -5475,7 +5471,7 @@ BOOLEAN TestForBloodcatAmbush( GROUP *pGroup )
 			{
 				if( MercPtrs[ i ]->bActive && MercPtrs[ i ]->stats.bLife && !(MercPtrs[ i ]->flags.uiStatusFlags & SOLDIER_VEHICLE) )
 				{
-					if ( MercPtrs[ i ]->sSectorX == pGroup->ubSectorX && MercPtrs[ i ]->sSectorY == pGroup->ubSectorY && MercPtrs[ i ]->bAssignment != ASSIGNMENT_POW && MercPtrs[ i ]->bAssignment != ASSIGNMENT_MINIEVENT && MercPtrs[ i ]->stats.bLife >= OKLIFE )
+					if ( MercPtrs[ i ]->sSectorX == pGroup->ubSectorX && MercPtrs[ i ]->sSectorY == pGroup->ubSectorY && MercPtrs[ i ]->bAssignment != ASSIGNMENT_POW && MercPtrs[ i ]->bAssignment != ASSIGNMENT_MINIEVENT && MercPtrs[i]->bAssignment != ASSIGNMENT_REBELCOMMAND && MercPtrs[ i ]->stats.bLife >= OKLIFE )
 					{
 						if( HAS_SKILL_TRAIT( MercPtrs[ i ], SCOUTING_NT ) && MercPtrs[ i ]->ubProfile != NO_PROFILE )
 						{
@@ -5880,6 +5876,7 @@ BOOLEAN GroupHasInTransitDeadOrPOWMercs( GROUP *pGroup )
 			if( ( pPlayer->pSoldier->bAssignment == IN_TRANSIT ) ||
 				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_POW ) ||
 				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_MINIEVENT ) ||
+				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_REBELCOMMAND ) ||
 				SPY_LOCATION( pPlayer->pSoldier->bAssignment ) ||
 				( pPlayer->pSoldier->bAssignment == ASSIGNMENT_DEAD ) )
 			{

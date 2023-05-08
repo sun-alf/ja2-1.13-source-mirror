@@ -886,6 +886,8 @@ enum
 	STR_PRISONER_DETECTION_VIP,
 	STR_PRISONER_REFUSE_SURRENDER_LEADER,
 	STR_PRISONER_TURN_VOLUNTEER,
+	STR_PRISONER_ESCAPE,
+	STR_PRISONER_NO_ESCAPE,
 
 	TEXT_NUM_PRISONER_STR
 };
@@ -3138,6 +3140,7 @@ extern STR16	szRebelCommandText[];
 extern STR16	szRebelCommandHelpText[];
 extern STR16	szRebelCommandAdminActionsText[];
 extern STR16	szRebelCommandDirectivesText[];
+extern STR16	szRebelCommandAgentMissionsText[];
 
 extern STR16	szRobotText[];
 enum {

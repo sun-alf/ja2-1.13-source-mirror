@@ -1,6 +1,3 @@
-#ifdef PRECOMPILEDHEADERS
-	#include "Strategic All.h"
-#else
 	#include "Map Screen Interface.h"
 	#include "string.h"
 	#include "Map Screen Interface Map.h"
@@ -56,7 +53,6 @@
 	#include "Food.h"
 	#include "Personnel.h"
 	#include "mapscreen.h"
-#endif
 
 #include "connect.h"
 
@@ -1938,7 +1934,7 @@ void UpdateCharRegionHelpText( void )
 		pSoldier = MercPtrs[ gCharactersList[ bSelectedInfoChar ].usSolID ];
 
 		// health/energy/morale
-		if( pSoldier->bAssignment != ASSIGNMENT_POW && pSoldier->bAssignment != ASSIGNMENT_MINIEVENT )
+		if( pSoldier->bAssignment != ASSIGNMENT_POW && pSoldier->bAssignment != ASSIGNMENT_MINIEVENT && pSoldier->bAssignment != ASSIGNMENT_REBELCOMMAND )
 		{
 			if ( pSoldier->stats.bLife != 0 )
 			{
@@ -3713,7 +3709,7 @@ void SetUpMovingListsForSector( INT16 sSectorX, INT16 sSectorY, INT16 sSectorZ )
 			pSoldier = MercPtrs[ gCharactersList[ iCounter ].usSolID ];
 
 			if( ( pSoldier->bActive ) &&
-					( pSoldier->bAssignment != IN_TRANSIT ) && ( pSoldier->bAssignment != ASSIGNMENT_POW ) && !SPY_LOCATION( pSoldier->bAssignment ) && ( pSoldier->bAssignment != ASSIGNMENT_MINIEVENT ) &&
+					( pSoldier->bAssignment != IN_TRANSIT ) && ( pSoldier->bAssignment != ASSIGNMENT_POW ) && !SPY_LOCATION( pSoldier->bAssignment ) && ( pSoldier->bAssignment != ASSIGNMENT_MINIEVENT ) && ( pSoldier->bAssignment != ASSIGNMENT_REBELCOMMAND ) &&
 					( pSoldier->sSectorX == sSectorX ) && ( pSoldier->sSectorY == sSectorY ) && ( pSoldier->bSectorZ == sSectorZ ) )
 			{
 				if ( pSoldier->flags.uiStatusFlags & SOLDIER_VEHICLE )
@@ -6063,8 +6059,8 @@ BOOLEAN CanCharacterMoveInStrategic( SOLDIERTYPE *pSoldier, INT8 *pbErrorNumber 
 		return( FALSE );
 	}
 
-	// mini event?
-	if ( pSoldier->bAssignment == ASSIGNMENT_MINIEVENT )
+	// mini event/rebel command?
+	if ( pSoldier->bAssignment == ASSIGNMENT_MINIEVENT || pSoldier->bAssignment == ASSIGNMENT_REBELCOMMAND )
 	{
 		*pbErrorNumber = 29;
 		return( FALSE );
@@ -6731,11 +6727,10 @@ void TurnOnSectorLocator( UINT8 ubProfileID )
 		if ( ( ubProfileID == SKYRIDER ) && fSkyRiderSetUp )
 		{
 			// if helicopter position is being shown, don't do this, too, cause the helicopter icon is on top and it looks
-			// like crap.	I tried moving the heli icon blit to before, but that screws up it's blitting.
-			if ( gusMapDisplayColourMode != MAP_DISPLAY_AIRSPACE && gusMapDisplayColourMode != MAP_DISPLAY_AIRSPACE_COLOURED_SAMS )
+			// like crap. I tried moving the heli icon blit to before, but that screws up it's blitting.
+			if ( gusMapDisplayColourMode != MAP_DISPLAY_AIRSPACE && gusMapDisplayColourMode != MAP_DISPLAY_AIRSPACE_COLOURED_SAMS && iHelicopterVehicleId != -1 )
 			{
 				// can't use his profile, he's where his chopper is
-				Assert( iHelicopterVehicleId != -1 );
 				gsSectorLocatorX = pVehicleList[ iHelicopterVehicleId ].sSectorX;
 				gsSectorLocatorY = pVehicleList[ iHelicopterVehicleId ].sSectorY;
 			}
