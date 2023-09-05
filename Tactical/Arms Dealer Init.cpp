@@ -451,8 +451,8 @@ void DailyCheckOnItemQuantities()
 		if( armsDealerInfo[ ubArmsDealer ].uiFlags & ARMS_DEALER_HAS_NO_INVENTORY )
 			continue;
 
-		int numTotalItems[MAXITEMS] = { 0 };
-		bool itemsAreOnOrder[MAXITEMS] = { false };
+		std::map< UINT16, UINT16> numTotalItems;
+		std::set<UINT16> itemsAreOnOrder;
 		for (DealerItemList::iterator iter = gArmsDealersInventory[ ubArmsDealer ].begin();	iter != gArmsDealersInventory[ ubArmsDealer ].end(); ++iter)
 		{
 			if (iter->object.exists() == true)
@@ -463,7 +463,7 @@ void DailyCheckOnItemQuantities()
 				}
 				else
 				{
-					itemsAreOnOrder[iter->object.usItem] = true;
+					itemsAreOnOrder.insert(iter->object.usItem);
 
 					//and today is the day the items come in
 					if( iter->uiOrderArrivalTime >= GetWorldDay() )
@@ -490,18 +490,23 @@ void DailyCheckOnItemQuantities()
 			if( CanDealerTransactItem( ubArmsDealer, usItemIndex, FALSE ) )
 			{
 				//if there are no items on order
-				if ( itemsAreOnOrder[ usItemIndex ] == false )
+				if ( itemsAreOnOrder.count( usItemIndex ) == 0 )
 				{
 					ubMaxSupply = GetDealersMaxItemAmount( ubArmsDealer, usItemIndex );
-
+					UINT16 halfSupply = (UINT16)(ubMaxSupply / 2);
+					UINT16 itemsInStock = 0;
+					if ( numTotalItems.count(usItemIndex) > 0 )
+					{
+						itemsInStock = numTotalItems[usItemIndex];
+					}
 					//if the qty on hand is half the desired amount or fewer
-					if( numTotalItems[ usItemIndex ] <= (INT32)( ubMaxSupply / 2 ) )
+					if( itemsInStock <= halfSupply )
 					{
 						//determine if the item can be restocked (assume new, use items aren't checked for until the stuff arrives)
 						if (ItemTransactionOccurs( ubArmsDealer, usItemIndex, DEALER_BUYING, FALSE ))
 						{
 							// figure out how many items to reorder (items are reordered an entire batch at a time)
-							ubNumItems = HowManyItemsToReorder( ubMaxSupply, numTotalItems[ usItemIndex ] );
+							ubNumItems = HowManyItemsToReorder( ubMaxSupply, itemsInStock);
 #ifdef JA2UB							
 							//if the dealer is betty, and we are to ADD the stuff instantly
 							if( ubArmsDealer == ARMS_DEALER_BETTY && fInstallyHaveItemsAppear &&
@@ -722,10 +727,7 @@ void LimitArmsDealersInventory( UINT8 ubArmsDealer, UINT32 uiDealerItemType, UIN
 	if( gArmsDealerStatus[ ubArmsDealer ].fOutOfBusiness )
 		return;
 
-	//ADB, ya, a whole 1 line of extra code!
-	// not permitted for repair dealers - would take extra code to avoid counting items under repair!
-	//Assert( !DoesDealerDoRepairs( ubArmsDealer ) );
-	int numTotalItems[MAXITEMS] = { 0 };
+	std::map< UINT16, UINT16> numTotalItems;
 	for (DealerItemList::iterator iter = gArmsDealersInventory[ ubArmsDealer ].begin(); iter != gArmsDealersInventory[ ubArmsDealer ].end(); ++iter) {
 		if (iter->ItemIsInInventory() == true && iter->IsUnderRepair() == false) {
 			numTotalItems[iter->object.usItem] += iter->object.ubNumberOfObjects;
@@ -742,7 +744,7 @@ void LimitArmsDealersInventory( UINT8 ubArmsDealer, UINT32 uiDealerItemType, UIN
 	for ( usItemIndex = 1; usItemIndex < gMAXITEMS_READ; ++usItemIndex )
 	{
 		//if there is some items in stock
-		if( numTotalItems[usItemIndex] > 0)
+		if (numTotalItems.count(usItemIndex) > 0)
 		{
 			//if the item is of the same dealer item type
 			if( uiDealerItemType & GetArmsDealerItemTypeFromItemNumber( usItemIndex ) )
@@ -806,45 +808,6 @@ void LimitArmsDealersInventory( UINT8 ubArmsDealer, UINT32 uiDealerItemType, UIN
 			}
 		}
 
-		/*
-		//loop through all items of the same type
-		for( usItemIndex = 1; usItemIndex < MAXITEMS; usItemIndex++ )
-		{
-			//if there are some non-repairing items in stock
-			if( gOldArmsDealersInventory[ ubArmsDealer ][ usItemIndex ].ubTotalItems )
-			{
-				//if the item is of the same dealer item type
-				if( uiDealerItemType & GetArmsDealerItemTypeFromItemNumber( usItemIndex ) )
-				{
-					// a random chance that the item will be removed
-					if( Random( 100 ) < 30 )
-					{
-						//remove the item
-
-						//if the dealer item type is ammo
-						if( uiDealerItemType == ARMS_DEALER_AMMO )
-						{
-							// remove all of them, since each ammo item counts as only one "item" here
-
-							// create item info describing a perfect item
-							SetSpecialItemInfoToDefaults( &SpclItemInfo );
-							// ammo will always be only condition 100, there's never any in special slots
-							RemoveItemFromArmsDealerInventory( ubArmsDealer, usItemIndex, gOldArmsDealersInventory[ ubArmsDealer ][ usItemIndex ].ubTotalItems );
-						}
-						else
-						{
-							// pick 1 random one, don't care about its condition
-							RemoveRandomItemFromArmsDealerInventory( ubArmsDealer, usItemIndex, 1 );
-						}
-
-						uiItemsToRemove--;
-						if( uiItemsToRemove == 0)
-							break;
-					}
-				}
-			}
-		}
-		*/
 	}
 }
 
@@ -858,10 +821,8 @@ void GuaranteeAtLeastOneItemOfType( UINT8 ubArmsDealer, UINT32 uiDealerItemType 
 	if( gArmsDealerStatus[ ubArmsDealer ].fOutOfBusiness )
 		return;
 
-	//ADB, ya, a whole 1 line of extra code!
-	// not permitted for repair dealers - would take extra code to avoid counting items under repair!
-	//Assert( !DoesDealerDoRepairs( ubArmsDealer ) );
-	int numTotalItems[MAXITEMS] = { 0 };
+
+	std::map< UINT16, UINT16> numTotalItems;
 	for (DealerItemList::iterator iter = gArmsDealersInventory[ ubArmsDealer ].begin();	iter != gArmsDealersInventory[ ubArmsDealer ].end(); ++iter)
 	{
 		if (iter->ItemIsInInventory() == true && iter->IsUnderRepair() == false)
@@ -869,6 +830,7 @@ void GuaranteeAtLeastOneItemOfType( UINT8 ubArmsDealer, UINT32 uiDealerItemType 
 			numTotalItems[iter->object.usItem] += iter->object.ubNumberOfObjects;
 		}
 	}
+
 
 	std::vector<UINT16> usAvailableItems;
 	std::vector<UINT8> ubChanceForAvailableItem;
@@ -879,7 +841,7 @@ void GuaranteeAtLeastOneItemOfType( UINT8 ubArmsDealer, UINT32 uiDealerItemType 
 		if( uiDealerItemType & GetArmsDealerItemTypeFromItemNumber( usItemIndex ) )
 		{
 			//if there are any of these in stock
-			if( numTotalItems[usItemIndex] > 0 )
+			if( numTotalItems.count(usItemIndex) > 0 )
 			{
 				//there is already at least 1 item of that type, return
 				return;
@@ -1163,7 +1125,7 @@ UINT32 GetArmsDealerItemTypeFromItemNumber( UINT16 usItem )
 			return( 0 );
 			break;
 		default:
-			AssertMsg( FALSE, String( "GetArmsDealerItemTypeFromItemNumber(), invalid class %d for item %d.	DF 0.", Item[ usItem ].usItemClass, usItem ) );
+			AssertMsg( FALSE, String( "GetArmsDealerItemTypeFromItemNumber(), invalid class %d for item %d. gMAXITEMS_READ = %d.", Item[ usItem ].usItemClass, usItem, gMAXITEMS_READ ) );
 			break;
 	}
 	return( 0 );

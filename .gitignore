@@ -22,6 +22,4 @@
 /out/
 /CMakeSettings.json
 /CMakeUserPresets.json
-
-# My shelves
-.shelve/
+/lib/
