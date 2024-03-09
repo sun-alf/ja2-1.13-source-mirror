@@ -93,6 +93,9 @@ INT32 FindGridNoFromSweetSpot( SOLDIERTYPE *pSoldier, INT32 sSweetGridNo, INT8 u
 	soldier.pathing.bLevel = 0;
 	soldier.bTeam = 1;
 	soldier.sGridNo = sSweetGridNo;
+	soldier.sDragCorpseID = pSoldier->sDragCorpseID;
+	soldier.sDragGridNo = pSoldier->sDragGridNo;
+	soldier.usDragPersonID = pSoldier->usDragPersonID;
 
 	sTop		= ubRadius;
 	sBottom = -ubRadius;
@@ -1367,11 +1370,9 @@ void InternalSoldierInSectorSleep( SOLDIERTYPE *pSoldier, INT32 sGridNo, BOOLEAN
 	usAnim = STANDING;
 	}
 
-	// OK, look for sutable placement....
+	// OK, look for suitable placement....
 	sGoodGridNo = FindGridNoFromSweetSpotWithStructData( pSoldier, usAnim, sGridNo, 5, &ubNewDirection, FALSE );
-
-	sWorldX = CenterX( sGoodGridNo );
-	sWorldY = CenterY( sGoodGridNo );
+	ConvertGridNoToCenterCellXY(sGoodGridNo, &sWorldX, &sWorldY);
 
 	pSoldier->EVENT_SetSoldierPosition( sWorldX, sWorldY );
 
@@ -1408,11 +1409,9 @@ void SoldierInSectorIncompaciated( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 		return;
 	}
 
-	// OK, look for sutable placement....
+	// OK, look for suitable placement....
 	sGoodGridNo = FindGridNoFromSweetSpotWithStructData( pSoldier, STAND_FALLFORWARD_STOP, sGridNo, 5, &ubNewDirection, FALSE );
-
-	sWorldX = CenterX( sGoodGridNo );
-	sWorldY = CenterY( sGoodGridNo );
+	ConvertGridNoToCenterCellXY(sGoodGridNo, &sWorldX, &sWorldY);
 
 	pSoldier->EVENT_SetSoldierPosition( sWorldX, sWorldY );
 
@@ -1444,11 +1443,9 @@ void SoldierInSectorPatient( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 		return;
 	}
 
-	// OK, look for sutable placement....
+	// OK, look for suitable placement....
 	sGoodGridNo = FindGridNoFromSweetSpotWithStructData( pSoldier, BEING_PATIENT, sGridNo, 5, &ubNewDirection, FALSE );
-
-	sWorldX = CenterX( sGoodGridNo );
-	sWorldY = CenterY( sGoodGridNo );
+	ConvertGridNoToCenterCellXY(sGoodGridNo, &sWorldX, &sWorldY);
 
 	pSoldier->EVENT_SetSoldierPosition( sWorldX, sWorldY );
 
@@ -1479,11 +1476,9 @@ void SoldierInSectorDoctor( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 		return;
 	}
 
-	// OK, look for sutable placement....
+	// OK, look for suitable placement....
 	sGoodGridNo = FindGridNoFromSweetSpotWithStructData( pSoldier, BEING_DOCTOR, sGridNo, 5, &ubNewDirection, FALSE );
-
-	sWorldX = CenterX( sGoodGridNo );
-	sWorldY = CenterY( sGoodGridNo );
+	ConvertGridNoToCenterCellXY(sGoodGridNo, &sWorldX, &sWorldY);
 
 	pSoldier->EVENT_SetSoldierPosition( sWorldX, sWorldY );
 
@@ -1514,11 +1509,9 @@ void SoldierInSectorRepair( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 		return;
 	}
 
-	// OK, look for sutable placement....
+	// OK, look for suitable placement....
 	sGoodGridNo = FindGridNoFromSweetSpotWithStructData( pSoldier, BEING_REPAIRMAN, sGridNo, 5, &ubNewDirection, FALSE );
-
-	sWorldX = CenterX( sGoodGridNo );
-	sWorldY = CenterY( sGoodGridNo );
+	ConvertGridNoToCenterCellXY(sGoodGridNo, &sWorldX, &sWorldY);
 
 	pSoldier->EVENT_SetSoldierPosition( sWorldX, sWorldY );
 
@@ -1550,8 +1543,7 @@ void AddSoldierToSectorGridNo( SOLDIERTYPE *pSoldier, INT32 sGridNo, UINT8 ubDir
 	DebugMsg(TOPIC_JA2,DBG_LEVEL_3,String("AddSoldierToSectorGridNo"));
 
 	// Add merc to gridno
-	sWorldX = CenterX( sGridNo );
-	sWorldY = CenterY( sGridNo );
+	ConvertGridNoToCenterCellXY(sGridNo, &sWorldX, &sWorldY);
 
 	// Set reserved location!
 	pSoldier->sReservedMovementGridNo = NOWHERE;

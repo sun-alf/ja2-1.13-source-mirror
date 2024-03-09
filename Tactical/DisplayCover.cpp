@@ -373,7 +373,7 @@ BOOLEAN HasAdjTile( const INT32& ubX, const INT32& ubY, const INT32& ubZ )
 
 void AddCoverObjectsToViewArea()
 {
-	register INT32 ubX, ubY, ubZ;
+	INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
 	BOOLEAN fNightTime = NightTime( );
@@ -406,7 +406,7 @@ void RemoveCoverObjectsFromViewArea()
 		return;
 
 	// Go through the whole gCoverViewArea when removing cover objects. Otherwise we don't clean up tiles that are not in the viewport which results in an annoying visual bug.
-	register INT32 ubX, ubY, ubZ;
+	INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
 	for ( ubX = 0; ubX < COVER_X_CELLS; ++ubX )
@@ -669,8 +669,8 @@ static void CalculateCoverFromEnemies()
 
 void CalculateCover()
 {
-	register INT32 ubX, ubY;
-	register INT8 ubZ;
+	INT32 ubX, ubY;
+	INT8 ubZ;
 	SOLDIERTYPE* pSoldier;
 
 	if (gusSelectedSoldier == NOBODY)
@@ -1144,7 +1144,7 @@ void AddMinesObjectsToViewArea()
 	if ( gsMaxCellY < 0 )
 		return;
 	
-	register INT32 ubX, ubY, ubZ;
+	INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
 	BOOLEAN fNightTime = NightTime( );
@@ -1503,7 +1503,7 @@ void AddTraitObjectsToViewArea()
 	if ( gsMaxCellY < 0 )
 		return;
 	
-	register INT32 ubX, ubY, ubZ;
+	INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
 	BOOLEAN fNightTime = NightTime( );
@@ -1657,7 +1657,7 @@ void AddTrackerObjectsToViewArea( )
 	if ( gsMaxCellY < 0 )
 		return;
 
-	register INT32 ubX, ubY, ubZ;
+	INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
 	BOOLEAN fNightTime = NightTime();
@@ -1717,10 +1717,10 @@ BOOLEAN TrackerTileHasAdjTile( const INT32& ubX, const INT32& ubY, const INT32& 
 void CalculateFortify( )
 {
 	// simply get all fortified gridnos and colour them
-	std::vector< std::pair<INT16, std::pair<UINT8, INT8> > > vec = GetAllForticationGridNo( );
+	auto vec = GetAllForticationGridNo();
 
-	std::vector< std::pair<INT16, std::pair<UINT8, INT8> > >::iterator itend = vec.end( );
-	for ( std::vector< std::pair<INT16, std::pair<UINT8, INT8> > >::iterator it = vec.begin( ); it != itend; ++it )
+	auto itend = vec.end();
+	for (auto it = vec.begin(); it != itend; ++it)
 	{
 		INT16 sX, sY;
 		ConvertGridNoToXY( (*it).first, &sX, &sY );
@@ -1731,7 +1731,7 @@ void CalculateFortify( )
 	if ( gsMaxCellY < 0 )
 		return;
 
-	register INT32 ubX, ubY, ubZ;
+	INT32 ubX, ubY, ubZ;
 	BOOLEAN fChanged = FALSE;
 
 	BOOLEAN fNightTime = NightTime( );

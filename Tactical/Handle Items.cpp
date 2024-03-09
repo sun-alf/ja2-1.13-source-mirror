@@ -2187,7 +2187,7 @@ void HandleSoldierThrowItem( SOLDIERTYPE *pSoldier, INT32 sGridNo )
 					pSoldier->usPendingAnimation = LOB_ITEM;
 			}
 			// Draw item depending on distance from buddy
-			else if ( GetRangeFromGridNoDiff( sGridNo, pSoldier->sGridNo ) < MIN_LOB_RANGE )
+			else if (PythSpacesAway( sGridNo, pSoldier->sGridNo ) < MIN_LOB_RANGE )
 			{
 				//ddd maybe need to add check for throwing item class - grenade
 				if( (pSoldier->pThrowParams->ubActionCode == THROW_ARM_ITEM) && 
@@ -5919,8 +5919,7 @@ void SetOffBoobyTrap( ITEM_POOL * pItemPool )
 	if ( pItemPool )
 	{
 		INT16 sX, sY;
-		sX = CenterX( pItemPool->sGridNo );
-		sY = CenterY( pItemPool->sGridNo );
+		ConvertGridNoToCenterCellXY(pItemPool->sGridNo, &sX, &sY);
 		IgniteExplosion( NOBODY, sX, sY, (INT16) (gpWorldLevelData[pItemPool->sGridNo].sHeight + pItemPool->bRenderZHeightAboveLevel), pItemPool->sGridNo, MINI_GRENADE, 0 );
 		RemoveItemFromPool( pItemPool->sGridNo, pItemPool->iItemIndex, pItemPool->ubLevel );
 	}
@@ -8166,7 +8165,7 @@ void CorrectDragStructData( INT32 sGridNo, INT8 sLevel, UINT8 ausHitpoints, UINT
 		if ( pStruct->ubHitPoints < pStruct->pDBStructureRef->pDBStructure->ubHitPoints
 			|| pStruct->ubDecalFlag & STRUCTURE_DECALFLAG_BLOOD )
 		{
-			gpWorldLevelData[sGridNo].uiFlags & MAPELEMENT_STRUCTURE_DAMAGED;
+			gpWorldLevelData[sGridNo].uiFlags |= MAPELEMENT_STRUCTURE_DAMAGED;
 
 			//SetRenderFlags( RENDER_FLAG_FULL );
 		}
@@ -8714,9 +8713,9 @@ void AddFortificationPlanNode( INT32 sGridNo, INT8 sLevel, INT16 sFortificationS
 	UpdateFortificationPossibleAmount();
 }
 
-std::vector< std::pair<INT16, std::pair<UINT8, INT8> > > GetAllForticationGridNo( )
+GetAllForticationGridNoResult GetAllForticationGridNo()
 {
-	std::vector< std::pair<INT16, std::pair<UINT8, INT8> > > gridnovector;
+	GetAllForticationGridNoResult gridnovector;
 
 	if ( !gWorldSectorX || !gWorldSectorY )
 		return gridnovector;
