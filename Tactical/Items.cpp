@@ -4134,6 +4134,26 @@ void PerformAttachmentComboMerge( OBJECTTYPE * pObj, INT8 bAttachmentComboMerge 
 	(*pObj)[0]->data.objectStatus = (INT8) (uiStatusTotal / bNumStatusContributors );
 }
 
+INT8 GenerateRndAttachmentDamage(INT32 iSkillCheckResult, INT8 bSkillCheckMod)
+{
+	INT8 result = 0;
+	if (iSkillCheckResult < 0)  // sanity check if actually a fuckup takes place
+	{
+		// use skill check modifier from AttachmentInfo (bSkillCheckMod) as designation of how difficult this attachment/crafting was (fu = abs(iSkillCheckResult)):
+		// [-128 .. -1] -- difficult, high risk of serious damage: min dmg = fu / 4, max dmg = fu
+		// [0 .. 5] -- medium, moderate damage is possible: min dmg = fu / 8, max dmg = fu / 2
+		// [6 .. 127] -- easy, little damage is the most likely: min dmg = 0, max dmg = fu / 4
+		UINT32 severity = (UINT32) abs(iSkillCheckResult);
+		if (bSkillCheckMod < 0)  // difficult
+			result = Random(severity) + severity / 4;
+		else if (bSkillCheckMod <= 5)  // medium
+			result = Random(severity / 2) + severity / 8;
+		else  // easy
+			result = Random(severity / 4);
+	}
+	return result;
+}
+
 BOOLEAN OBJECTTYPE::AttachObjectOAS( SOLDIERTYPE * pSoldier, OBJECTTYPE * pAttachment, BOOLEAN playSound, UINT8 subObject )
 {
 	//CHRISL: This makes it impossible to add attachments to objects in a stack.  Let's remove this and make this possible.
@@ -4202,9 +4222,9 @@ BOOLEAN OBJECTTYPE::AttachObjectOAS( SOLDIERTYPE * pSoldier, OBJECTTYPE * pAttac
 				iCheckResult = SkillCheck( pSoldier, AttachmentInfo[ bAttachInfoIndex ].bAttachmentSkillCheck, AttachmentInfo[ bAttachInfoIndex ].bAttachmentSkillCheckMod );
 				if (iCheckResult < 0)
 				{
-					// the attach failure damages both items
-					DamageObj( this, (INT8) -iCheckResult, subObject );
-					DamageObj( pAttachment, (INT8) -iCheckResult, subObject );
+					// the attach failure damages both items, but not much
+					DamageObj( this, GenerateRndAttachmentDamage(iCheckResult, AttachmentInfo[bAttachInfoIndex].bAttachmentSkillCheckMod), subObject );
+					DamageObj( pAttachment, GenerateRndAttachmentDamage(iCheckResult, AttachmentInfo[bAttachInfoIndex].bAttachmentSkillCheckMod), subObject );
 
 					// there should be a quote here!
 					pSoldier->DoMercBattleSound( BATTLE_SOUND_CURSE1 );
@@ -4833,9 +4853,9 @@ BOOLEAN OBJECTTYPE::AttachObjectNAS( SOLDIERTYPE * pSoldier, OBJECTTYPE * pAttac
 				iCheckResult = SkillCheck( pSoldier, AttachmentInfo[ bAttachInfoIndex ].bAttachmentSkillCheck, AttachmentInfo[ bAttachInfoIndex ].bAttachmentSkillCheckMod );
 				if (iCheckResult < 0)
 				{
-					// the attach failure damages both items
-					DamageObj( this, (INT8) -iCheckResult, subObject );
-					DamageObj( pAttachment, (INT8) -iCheckResult, subObject );
+					// the attach failure damages both items, but not much
+					DamageObj( this, GenerateRndAttachmentDamage(iCheckResult, AttachmentInfo[bAttachInfoIndex].bAttachmentSkillCheckMod), subObject );
+					DamageObj( pAttachment, GenerateRndAttachmentDamage(iCheckResult, AttachmentInfo[bAttachInfoIndex].bAttachmentSkillCheckMod), subObject );
 
 					// there should be a quote here!
 					pSoldier->DoMercBattleSound( BATTLE_SOUND_CURSE1 );
